@@ -23,7 +23,7 @@
         <StackPanel Margin="22,22,22,20">
             <DockPanel>
                 <Grid DockPanel.Dock="Left" Width="64" Height="64" Margin="0,0,16,0" VerticalAlignment="Top">
-                    <Image Source="pack://application:,,,/app.ico" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image Source="{StaticResource AppLogo}" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource Gold}" BorderBrush="#1B1917" BorderThickness="2"
                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-6,-6">
                         <views:LucideIcon Kind="download" Size="12" StrokeWidth="2.5" HorizontalAlignment="Center" TextElement.Foreground="{StaticResource OnGold}"/>

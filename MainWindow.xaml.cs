@@ -381,7 +381,9 @@ public partial class MainWindow : Window
 
         // Folders: "show in folder" and "open" (in Explorer) make sense; save-as / open-with don't
         bool isFolder = Directory.Exists(filePath);
-        SaveAsButton.Visibility = OpenWithButton.Visibility = isFolder ? Visibility.Collapsed : Visibility.Visible;
+        OpenWithButton.Visibility = isFolder ? Visibility.Collapsed : Visibility.Visible;
+        // Save as = convert to another image format; other files have nothing to convert to
+        SaveAsButton.Visibility = !isFolder && IsImagePath(filePath) ? Visibility.Visible : Visibility.Collapsed;
         BackButton.Visibility = _folderHistory.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (isFolder)
         {
@@ -1188,7 +1190,7 @@ public partial class MainWindow : Window
     private async void SaveAs()
     {
         string source = _currentFilePath;
-        if (string.IsNullOrEmpty(source) || !File.Exists(source)) return;
+        if (string.IsNullOrEmpty(source) || !File.Exists(source) || !IsImagePath(source)) return;
 
         string ext = Path.GetExtension(source).ToLowerInvariant();
         bool isImage = Array.IndexOf(ImageExtensions, ext) >= 0;

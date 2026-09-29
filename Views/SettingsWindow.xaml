@@ -218,7 +218,7 @@
                     MouseLeftButtonDown="OnDrag">
                 <DockPanel Margin="14,20,14,16">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,22">
-                        <Image Source="pack://application:,,,/app.ico" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <Image Source="{StaticResource AppLogo}" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                         <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Lupik" FontFamily="{StaticResource DisplayFont}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
                             <TextBlock Text="{loc:T settings.title}" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>
@@ -396,7 +396,7 @@
                         <StackPanel x:Name="PageAbout" Visibility="Collapsed">
                             <Border Style="{StaticResource Row}" Padding="22,22">
                                 <DockPanel>
-                                    <Image DockPanel.Dock="Left" Source="pack://application:,,,/app.ico" Width="64" Height="64" Margin="0,0,20,0"
+                                    <Image DockPanel.Dock="Left" Source="{StaticResource AppLogo}" Width="64" Height="64" Margin="0,0,20,0"
                                            RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Top"/>
                                     <StackPanel>
                                         <TextBlock Text="Lupik" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>

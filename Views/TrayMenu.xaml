@@ -50,7 +50,7 @@
             <!-- Header: icon, name, version -->
             <Border Background="#211E1B" CornerRadius="10" Padding="10,10" Margin="0,0,0,4">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="pack://application:,,,/app.ico" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image Source="{StaticResource AppLogo}" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Lupik" FontFamily="{StaticResource DisplayFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
                         <TextBlock x:Name="VersionText" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>

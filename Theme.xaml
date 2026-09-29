@@ -24,6 +24,35 @@
         <GradientStop Color="#B8861F" Offset="1"/>
     </LinearGradientBrush>
 
+    <!-- The app icon as vectors (same look as app.ico): sharp at any size, unlike the .ico's bitmaps -->
+    <DrawingImage x:Key="AppLogo">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="{StaticResource GoldGradient}" Geometry="M22,0 H78 A22,22 0 0 1 100,22 V78 A22,22 0 0 1 78,100 H22 A22,22 0 0 1 0,78 V22 A22,22 0 0 1 22,0 Z"/>
+                <DrawingGroup Opacity="0.22">
+                    <DrawingGroup.Transform>
+                        <MatrixTransform Matrix="2.583,0,0,2.583,19,22.5"/>
+                    </DrawingGroup.Transform>
+                    <GeometryDrawing Geometry="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0 M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="#5A3A05" Thickness="2.6" StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
+                        </GeometryDrawing.Pen>
+                    </GeometryDrawing>
+                </DrawingGroup>
+                <DrawingGroup>
+                    <DrawingGroup.Transform>
+                        <MatrixTransform Matrix="2.583,0,0,2.583,19,20"/>
+                    </DrawingGroup.Transform>
+                    <GeometryDrawing Geometry="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0 M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="#3A3632" Thickness="2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
+                        </GeometryDrawing.Pen>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
     <!-- Filled call-to-action button; set Background for another color (e.g. Danger) -->
     <Style x:Key="PrimaryButton" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource Gold}"/>
