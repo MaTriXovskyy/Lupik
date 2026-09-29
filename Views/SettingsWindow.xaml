@@ -145,9 +145,10 @@
         </Style>
 
         <!-- Language tile -->
+        <!-- Must stay focusable: a ListBoxItem only gets selected on click if it can take the focus -->
         <Style x:Key="LangTile" TargetType="ListBoxItem">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Margin" Value="0,0,8,8"/>
             <Setter Property="Template">
                 <Setter.Value>

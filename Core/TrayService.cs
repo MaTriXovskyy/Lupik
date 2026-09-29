@@ -13,8 +13,6 @@ namespace Lupik.Core;
 public class TrayService : IDisposable
 {
     private NotifyIcon? _notifyIcon;
-    private ToolStripMenuItem? _openItem, _settingsItem, _updateItem, _exitItem;
-    private ToolStripSeparator? _updateSeparator;
 
     public event Action? DoubleClicked;
 
@@ -32,38 +30,12 @@ public class TrayService : IDisposable
                 Visible = true
             };
 
-            var contextMenu = new ContextMenuStrip();
-
-            var titleItem = new ToolStripMenuItem("Lupik")
+            // Right click: Lupik's own menu (Views/TrayMenu) instead of the plain Windows one
+            _notifyIcon.MouseUp += (s, e) =>
             {
-                Enabled = false,
-                Font = new Font(contextMenu.Font, System.Drawing.FontStyle.Bold)
+                if (e.Button == MouseButtons.Right)
+                    Application.Current.Dispatcher.InvokeAsync(() => TrayMenu.ShowAtCursor(() => DoubleClicked?.Invoke()));
             };
-            contextMenu.Items.Add(titleItem);
-            contextMenu.Items.Add(new ToolStripSeparator());
-
-            _openItem = new ToolStripMenuItem();
-            _openItem.Click += (s, e) => DoubleClicked?.Invoke();
-            contextMenu.Items.Add(_openItem);
-
-            _settingsItem = new ToolStripMenuItem();
-            _settingsItem.Click += (s, e) => Application.Current.Dispatcher.InvokeAsync(SettingsWindow.ShowOrActivate);
-            contextMenu.Items.Add(_settingsItem);
-
-            // Shown once a newer version is found
-            _updateSeparator = new ToolStripSeparator { Visible = false };
-            contextMenu.Items.Add(_updateSeparator);
-            _updateItem = new ToolStripMenuItem { Visible = false, Font = new Font(contextMenu.Font, System.Drawing.FontStyle.Bold) };
-            _updateItem.Click += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => Updater.OfferAsync(null));
-            contextMenu.Items.Add(_updateItem);
-
-            contextMenu.Items.Add(new ToolStripSeparator());
-
-            _exitItem = new ToolStripMenuItem();
-            _exitItem.Click += (s, e) => Application.Current.Shutdown();
-            contextMenu.Items.Add(_exitItem);
-
-            _notifyIcon.ContextMenuStrip = contextMenu;
             _notifyIcon.DoubleClick += (s, e) =>
             {
                 DoubleClicked?.Invoke();
@@ -71,7 +43,6 @@ public class TrayService : IDisposable
 
             RefreshTexts();
             Loc.Instance.LanguageChanged += RefreshTexts; // also fires when the keys change
-            Updater.StatusChanged += RefreshTexts;
 
             App.Log("[TrayService] NotifyIcon initialized successfully and is visible in system tray.");
         }
@@ -88,13 +59,6 @@ public class TrayService : IDisposable
 
         string tip = Loc.T("tray.tooltip", Loc.T("key.preview"));
         _notifyIcon.Text = tip.Length > 127 ? tip[..127] : tip;
-        _openItem!.Text = Loc.T("tray.open");
-        _settingsItem!.Text = Loc.T("tray.settings");
-        _exitItem!.Text = Loc.T("tray.exit");
-
-        string? version = Updater.AvailableVersion;
-        _updateItem!.Visible = _updateSeparator!.Visible = version != null;
-        if (version != null) _updateItem.Text = Loc.T("tray.update", version);
     }
 
     public void ShowBalloonNotification(string title, string text)
