@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -24,6 +24,7 @@ public partial class PdfViewer : UserControl
     private const double PageGap = 16;       // between pages (and above the first)
     private const double SideMargin = 16;    // PagesPanel's left/right margin
     private const int KeepAround = 4;        // rendered pages kept beyond the visible ones (released further away)
+    private const int RenderAhead = 2;       // pages below the visible ones rendered in advance: paging down is instant
     private const int MaxPixelWidth = 6000;  // one page bitmap at 400% on a 4K screen stays below ~150 MB
 
     private sealed class PageSlot
@@ -86,7 +87,10 @@ public partial class PdfViewer : UserControl
 
             Relayout(keepPage: false);
             UpdatePageIndicator();
-            await RenderVisibleAsync(); // the first page(s) before returning: the window shows a finished page
+            // Return once the visible page(s) are drawn, so the window shows a finished page; the neighbours follow
+            var visibleDone = new TaskCompletionSource();
+            _ = RenderVisibleAsync(visibleDone);
+            await visibleDone.Task;
         }
         catch (Exception ex)
         {
@@ -246,21 +250,22 @@ public partial class PdfViewer : UserControl
     // ---------- Rendering ----------
 
     /// <summary>
-    /// Renders the visible pages (and one on each side) at the screen's real pixel size; frees bitmaps of pages
-    /// far away. One render at a time: when it finishes it looks again (the user may have scrolled meanwhile).
+    /// Renders the visible pages first, then one above and <see cref="RenderAhead"/> below, at the screen's real
+    /// pixel size; frees bitmaps of pages far away. One render at a time: when it finishes it looks again (the user
+    /// may have scrolled meanwhile). <paramref name="visibleDone"/> completes once the visible pages are drawn.
     /// </summary>
-    private async Task RenderVisibleAsync()
+    private async Task RenderVisibleAsync(TaskCompletionSource? visibleDone = null)
     {
-        if (_rendering || _pdfDoc == null || _slots.Count == 0) return;
+        if (_rendering || _pdfDoc == null || _slots.Count == 0) { visibleDone?.TrySetResult(); return; }
         _rendering = true;
         int token = _loadToken;
         try
         {
             while (token == _loadToken && _pdfDoc != null)
             {
-                var (first, last) = VisibleRange();
-                first = Math.Max(0, first - 1);
-                last = Math.Min(_slots.Count - 1, last + 1);
+                var (shownFirst, shownLast) = VisibleRange();
+                int first = Math.Max(0, shownFirst - 1);
+                int last = Math.Min(_slots.Count - 1, shownLast + RenderAhead);
 
                 // Far from the screen: let the bitmap go (a long PDF would otherwise fill the memory)
                 for (int i = 0; i < _slots.Count; i++)
@@ -270,18 +275,19 @@ public partial class PdfViewer : UserControl
                         _slots[i].RenderedPixelWidth = 0;
                     }
 
-                int next = -1, pixels = 0, pixelsHigh = 0;
-                for (int i = first; i <= last; i++)
+                // Exactly the pixels the image covers on screen (inside the outline): any mismatch means WPF
+                // rescales the whole page, and that is what makes text soft
+                bool Pending(int i) => _slots[i].RenderedPixelWidth != _slots[i].PixelWidth;
+                int next = -1;
+                for (int i = shownFirst; i <= shownLast && next < 0; i++) if (Pending(i)) next = i;
+                if (next < 0)
                 {
-                    // Exactly the pixels the image covers on screen (inside the outline): any mismatch means WPF
-                    // rescales the whole page, and that is what makes text soft
-                    if (_slots[i].RenderedPixelWidth != _slots[i].PixelWidth)
-                    {
-                        next = i; pixels = _slots[i].PixelWidth; pixelsHigh = _slots[i].PixelHeight;
-                        break;
-                    }
+                    visibleDone?.TrySetResult();
+                    for (int i = shownLast + 1; i <= last && next < 0; i++) if (Pending(i)) next = i;
+                    if (next < 0 && first < shownFirst && Pending(first)) next = first;
                 }
                 if (next < 0) break;
+                int pixels = _slots[next].PixelWidth, pixelsHigh = _slots[next].PixelHeight;
 
                 var doc = _pdfDoc;
                 var slot = _slots[next];
@@ -307,6 +313,7 @@ public partial class PdfViewer : UserControl
         finally
         {
             _rendering = false;
+            visibleDone?.TrySetResult();
         }
     }
 
