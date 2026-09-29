@@ -428,13 +428,6 @@ public partial class ArchiveViewer : UserControl
         ExtractDonePanel.Visibility = Visibility.Collapsed;
     }
 
-    private static string Plural(int n, string one, string few, string many)
-    {
-        if (n == 1) return one;
-        int lastTwo = n % 100, last = n % 10;
-        return last is >= 2 and <= 4 && lastTwo is < 12 or > 14 ? few : many;
-    }
-
     private static Brush Freeze(Brush brush)
     {
         brush.Freeze();

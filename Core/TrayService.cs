@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows;
 using System.Windows.Forms;
@@ -15,10 +14,6 @@ public class TrayService : IDisposable
     private NotifyIcon? _notifyIcon;
 
     public event Action? DoubleClicked;
-
-    public TrayService(MainWindow ownerWindow)
-    {
-    }
 
     public void Initialize()
     {
@@ -89,32 +84,7 @@ public class TrayService : IDisposable
         {
             App.Log($"[TrayService] Could not load app icon: {ex.Message}");
         }
-        return CreateModernIcon(); // fallback
-    }
-
-    private static Icon CreateModernIcon()
-    {
-        using var bmp = new Bitmap(32, 32);
-        using (var g = Graphics.FromImage(bmp))
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Color.Transparent);
-
-            // Dark rounded pill
-            using var bgBrush = new SolidBrush(Color.FromArgb(24, 24, 27));
-            g.FillEllipse(bgBrush, 2, 2, 28, 28);
-
-            // Cyan ring
-            using var pen = new Pen(Color.FromArgb(56, 189, 248), 2.5f);
-            g.DrawEllipse(pen, 7, 7, 18, 18);
-
-            // Center eye pupil
-            using var pupilBrush = new SolidBrush(Color.FromArgb(56, 189, 248));
-            g.FillEllipse(pupilBrush, 12, 12, 8, 8);
-        }
-
-        IntPtr hIcon = bmp.GetHicon();
-        return (Icon)Icon.FromHandle(hIcon).Clone();
+        return (Icon)SystemIcons.Application.Clone(); // fallback
     }
 
     public void Dispose()

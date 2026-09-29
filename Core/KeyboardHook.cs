@@ -22,9 +22,6 @@ public class KeyboardHook : IDisposable
     private static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
     private const uint GA_ROOT = 2;
 
-    [DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int vKey);
-
     public void Start()
     {
         if (_hookThread != null) return;

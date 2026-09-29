@@ -91,13 +91,6 @@ public partial class ConfirmDeleteWindow : Window
         }
     }
 
-    /// <summary>Polish plural forms: 1 plik, 2 pliki, 5 plików.</summary>
-    private static string Count(int n, string one, string few, string many)
-    {
-        string word = n == 1 ? one : n % 10 is >= 2 and <= 4 && n % 100 is < 12 or > 14 ? few : many;
-        return $"{n} {word}";
-    }
-
     private static string FormatSize(long bytes)
     {
         string[] units = { "B", "KB", "MB", "GB", "TB" };

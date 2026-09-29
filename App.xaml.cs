@@ -115,11 +115,11 @@ public partial class App : Application
 
             // 4. Initialize Keyboard Hook
             _keyboardHook = new KeyboardHook();
-            KeyboardHook.PreviewKeyPressed += OnSpacePressed;
+            KeyboardHook.PreviewKeyPressed += OnPreviewKeyPressed;
             _keyboardHook.Start();
 
             // 5. Setup System Tray Icon
-            _trayService = new TrayService(_mainWindow);
+            _trayService = new TrayService();
             Autostart.Refresh();
             _trayService.Initialize();
             Updater.ScheduleChecks();
@@ -157,9 +157,9 @@ public partial class App : Application
         }
     }
 
-    private void OnSpacePressed()
+    private void OnPreviewKeyPressed()
     {
-        Log("[App] OnSpacePressed received from hook. Dispatching to UI thread...");
+        Log("[App] OnPreviewKeyPressed received from hook. Dispatching to UI thread...");
         Dispatcher.InvokeAsync(() =>
         {
             Log("[App] Calling _mainWindow.ToggleWindow()...");
@@ -167,18 +167,30 @@ public partial class App : Application
         });
     }
 
+    /// <summary>
+    /// %LocalAppData%\Lupik\logs\Lupik.log: outside the program folder, which an update replaces
+    /// (and when running from bin\ the log still lands in one known place).
+    /// </summary>
+    public static readonly string LogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lupik", "logs", "Lupik.log");
+
+    private static readonly object LogLock = new();
+
     public static void Log(string message)
     {
         try
         {
-            string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lupik.log");
+            lock (LogLock) // called from the hook thread, thumbnail workers and the UI at once
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
 
-            // Keep the log from growing forever: past 2 MB it becomes Lupik.old.log (one generation)
-            var info = new FileInfo(logPath);
-            if (info.Exists && info.Length > 2 * 1024 * 1024)
-                File.Move(logPath, Path.ChangeExtension(logPath, ".old.log"), overwrite: true);
+                // Keep the log from growing forever: past 2 MB it becomes Lupik.old.log (one generation)
+                var info = new FileInfo(LogPath);
+                if (info.Exists && info.Length > 2 * 1024 * 1024)
+                    File.Move(LogPath, Path.ChangeExtension(LogPath, ".old.log"), overwrite: true);
 
-            File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}{Environment.NewLine}");
+                File.AppendAllText(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}{Environment.NewLine}");
+            }
         }
         catch
         {
