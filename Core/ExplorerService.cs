@@ -104,6 +104,8 @@ public static class ExplorerService
             long rootHwnd32 = rootWnd.ToInt64() & 0xFFFFFFFFL;
 
             List<string>? fallbackCandidate = null;
+            // Explorer tabs all share the window's HWND: only the visible tab is the one the user is looking at
+            IntPtr activeTab = ActiveTab(rootWnd);
 
             for (int i = 0; i < count; i++)
             {
@@ -115,7 +117,13 @@ public static class ExplorerService
                     long itemHwnd = (long)item.HWND & 0xFFFFFFFFL;
                     App.Log($"[ExplorerService] Window {i}: HWND=0x{itemHwnd:X}, Location='{item.LocationName}'");
 
-                    if (fgWnd != IntPtr.Zero && (itemHwnd == fgHwnd32 || itemHwnd == rootHwnd32))
+                    bool sameWindow = fgWnd != IntPtr.Zero && (itemHwnd == fgHwnd32 || itemHwnd == rootHwnd32);
+                    if (sameWindow && activeTab != IntPtr.Zero && TabOf((object)item) is IntPtr tab && tab != IntPtr.Zero && tab != activeTab)
+                    {
+                        App.Log($"[ExplorerService] Window {i} is a background tab, skipped");
+                        continue;
+                    }
+                    if (sameWindow)
                     {
                         dynamic? doc = item.Document;
                         if (doc != null)
@@ -177,6 +185,55 @@ public static class ExplorerService
         }
 
         return null;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr childAfter, string? className, string? windowName);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    /// <summary>The visible tab (ShellTabWindowClass) of an Explorer window, or zero (no tabs / not Explorer).</summary>
+    private static IntPtr ActiveTab(IntPtr explorerWindow)
+    {
+        if (explorerWindow == IntPtr.Zero) return IntPtr.Zero;
+        for (IntPtr tab = FindWindowEx(explorerWindow, IntPtr.Zero, "ShellTabWindowClass", null);
+             tab != IntPtr.Zero;
+             tab = FindWindowEx(explorerWindow, tab, "ShellTabWindowClass", null))
+        {
+            if (IsWindowVisible(tab)) return tab;
+        }
+        return IntPtr.Zero;
+    }
+
+    [ComImport, Guid("6D5140C1-7436-11CE-8034-00AA006009FA"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IServiceProvider
+    {
+        [PreserveSig] int QueryService(ref Guid service, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out object? obj);
+    }
+
+    [ComImport, Guid("000214E2-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellBrowser
+    {
+        [PreserveSig] int GetWindow(out IntPtr hwnd); // from IOleWindow; the rest of the interface isn't needed
+    }
+
+    private static Guid SID_STopLevelBrowser = new("4C96BE40-915C-11CF-99D3-00AA004AE837");
+    private static Guid IID_IShellBrowser = new("000214E2-0000-0000-C000-000000000046");
+
+    /// <summary>The tab window a shell view lives in (its IShellBrowser's window).</summary>
+    private static IntPtr TabOf(object shellWindow)
+    {
+        try
+        {
+            if (shellWindow is IServiceProvider sp &&
+                sp.QueryService(ref SID_STopLevelBrowser, ref IID_IShellBrowser, out var obj) == 0 &&
+                obj is IShellBrowser browser && browser.GetWindow(out var hwnd) == 0)
+                return hwnd;
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[ExplorerService] Tab lookup failed: {ex.Message}");
+        }
+        return IntPtr.Zero;
     }
 
     private static string? GetDesktopSelection(dynamic windows)
