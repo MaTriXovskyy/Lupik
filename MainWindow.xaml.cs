@@ -100,7 +100,7 @@ public partial class MainWindow : Window
         source?.AddHook(HwndHook);
 
         ApplyHotkey();
-        Settings.Changed += ApplyHotkey;
+        Settings.Changed += () => ApplyHotkey();
 
         // Borderless windows lack the minimize style, so clicking the taskbar button wouldn't minimize/restore
         const int GWL_STYLE = -16, WS_MINIMIZEBOX = 0x20000;
@@ -115,26 +115,25 @@ public partial class MainWindow : Window
         ApplyModernStyling(hwnd);
     }
 
-    /// <summary>(Re)registers the global hotkey chosen in the tray settings.</summary>
-    private void ApplyHotkey()
+    /// <summary>(Re)registers the global hotkey chosen in Settings. False if another app already uses it.</summary>
+    public bool ApplyHotkey()
     {
         NativeMethods.UnregisterHotKey(Hwnd, 9001);
 
-        uint? modifiers = Settings.Current.Hotkey switch
-        {
-            GlobalHotkey.CtrlSpace => NativeMethods.MOD_CONTROL,
-            GlobalHotkey.CtrlAltSpace => NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT,
-            _ => null,
-        };
-        if (modifiers == null)
+        var hotkey = Settings.Current.GlobalHotkey;
+        if (hotkey == null)
         {
             App.Log("[MainWindow] Global hotkey disabled");
-            return;
+            return true;
         }
 
-        bool ok = NativeMethods.RegisterHotKey(Hwnd, 9001, modifiers.Value | NativeMethods.MOD_NOREPEAT, NativeMethods.VK_SPACE);
-        App.Log($"[MainWindow] Registered HotKey {Settings.Current.Hotkey}: {ok}");
+        bool ok = NativeMethods.RegisterHotKey(Hwnd, 9001, hotkey.HotkeyModifiers | NativeMethods.MOD_NOREPEAT, (uint)hotkey.Vk);
+        App.Log($"[MainWindow] Registered HotKey {hotkey}: {ok}");
+        return ok;
     }
+
+    /// <summary>While Settings records a new shortcut, the current one mustn't fire.</summary>
+    public void SuspendHotkey() => NativeMethods.UnregisterHotKey(Hwnd, 9001);
 
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
@@ -160,7 +159,7 @@ public partial class MainWindow : Window
         if (NativeMethods.RefuseAutomation(msg, ref handled)) return IntPtr.Zero;
         if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == 9001)
         {
-            App.Log("[MainWindow] WM_HOTKEY Ctrl+Space triggered!");
+            App.Log("[MainWindow] WM_HOTKEY triggered");
             ToggleWindow();
             handled = true;
         }
@@ -168,7 +167,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Welcome text names the key that opens a preview.</summary>
-    private void UpdateWelcomeText() => WelcomeSubtitle.Text = Loc.T("welcome.subtitle", Loc.T("key.space"));
+    private void UpdateWelcomeText() => WelcomeSubtitle.Text = Loc.T("welcome.subtitle", Loc.T("key.preview"));
 
     public void ShowWelcome()
     {
@@ -490,12 +489,27 @@ public partial class MainWindow : Window
         GetWindowThreadProcessId(root, out uint pid);
         bool ours = pid == (uint)Environment.ProcessId;
         bool keepOnTop = ours || root == SourceWindow;
+        if (!keepOnTop && Settings.Current.CloseOnFocusLoss && hwnd != IntPtr.Zero && !IsShellWindow(root))
+        {
+            App.Log($"[MainWindow] Another app in front ({DescribeWindow(root)}): closing (CloseOnFocusLoss)");
+            HideWindow();
+            return;
+        }
         if (Topmost != keepOnTop) Topmost = keepOnTop;
         // Back to its Explorer window: make sure the preview is really above it again
         if (keepOnTop) SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    /// <summary>Taskbar, Start, notifications: clicking them isn't "switching to another app".</summary>
+    private static bool IsShellWindow(IntPtr hwnd)
+    {
+        var sb = new System.Text.StringBuilder(64);
+        NativeMethods.GetClassName(hwnd, sb, sb.Capacity);
+        return sb.ToString() is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "Windows.UI.Core.CoreWindow" or "NotifyIconOverflowWindow"
+            or "Progman" or "WorkerW" or "XamlExplorerHostIslandWindow" or "TopLevelWindowForOverflowXamlIsland";
+    }
 
     // --- Diagnostics for z-order problems ---
 
@@ -710,7 +724,8 @@ public partial class MainWindow : Window
             h = Math.Min(1035, work.Height * 0.95);
         }
 
-        return Centered(work, w, h);
+        double scale = Settings.Current.WindowScale; // "Window size" in Settings
+        return Centered(work, Math.Max(w * scale, 552), Math.Max(h * scale, 414));
     }
 
     private Rect ComputeImageBounds(double imgWidth, double imgHeight)
@@ -718,8 +733,8 @@ public partial class MainWindow : Window
         if (imgWidth <= 0 || imgHeight <= 0) return ComputeDefaultBounds("");
         if (!TryGetWorkArea(out var work, out _, out _)) return new Rect(Left, Top, Width, Height);
 
-        double maxW = work.Width * 0.95;
-        double maxH = work.Height * 0.95;
+        double maxW = work.Width * 0.95 * Settings.Current.WindowScale;
+        double maxH = work.Height * 0.95 * Settings.Current.WindowScale;
 
         const double chrome = 38 + 36; // title bar + image footer (the key hints live in it)
         double w = imgWidth;

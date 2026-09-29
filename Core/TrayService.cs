@@ -1,26 +1,25 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows;
 using System.Windows.Forms;
-using Microsoft.Win32;
+using Lupik.Localization;
+using Lupik.Views;
 using Application = System.Windows.Application;
-using MessageBox = System.Windows.MessageBox;
 
 namespace Lupik.Core;
 
 public class TrayService : IDisposable
 {
     private NotifyIcon? _notifyIcon;
-    private ToolStripMenuItem? _autostartMenuItem;
-    private readonly MainWindow _ownerWindow;
+    private ToolStripMenuItem? _openItem, _settingsItem, _updateItem, _exitItem;
+    private ToolStripSeparator? _updateSeparator;
 
     public event Action? DoubleClicked;
 
     public TrayService(MainWindow ownerWindow)
     {
-        _ownerWindow = ownerWindow;
     }
 
     public void Initialize()
@@ -29,78 +28,50 @@ public class TrayService : IDisposable
         {
             _notifyIcon = new NotifyIcon
             {
-                Text = "Lupik (Spacja = podgląd)",
                 Icon = LoadAppIcon(),
                 Visible = true
             };
 
             var contextMenu = new ContextMenuStrip();
 
-            var statusItem = new ToolStripMenuItem("Lupik: Aktywny")
+            var titleItem = new ToolStripMenuItem("Lupik")
             {
                 Enabled = false,
                 Font = new Font(contextMenu.Font, System.Drawing.FontStyle.Bold)
             };
-            contextMenu.Items.Add(statusItem);
+            contextMenu.Items.Add(titleItem);
             contextMenu.Items.Add(new ToolStripSeparator());
 
-            var openItem = new ToolStripMenuItem("Otwórz podgląd");
-            openItem.Click += (s, e) => DoubleClicked?.Invoke();
-            contextMenu.Items.Add(openItem);
+            _openItem = new ToolStripMenuItem();
+            _openItem.Click += (s, e) => DoubleClicked?.Invoke();
+            contextMenu.Items.Add(_openItem);
 
-            AddSampleItem(contextMenu, "Pokaż próbkę grafiki", "sample_image.png");
-            AddSampleItem(contextMenu, "Pokaż próbkę kodu", "sample_code.cs");
-            AddSampleItem(contextMenu, "Pokaż próbkę PDF", "sample_document.pdf");
+            _settingsItem = new ToolStripMenuItem();
+            _settingsItem.Click += (s, e) => Application.Current.Dispatcher.InvokeAsync(SettingsWindow.ShowOrActivate);
+            contextMenu.Items.Add(_settingsItem);
+
+            // Shown once a newer version is found
+            _updateSeparator = new ToolStripSeparator { Visible = false };
+            contextMenu.Items.Add(_updateSeparator);
+            _updateItem = new ToolStripMenuItem { Visible = false, Font = new Font(contextMenu.Font, System.Drawing.FontStyle.Bold) };
+            _updateItem.Click += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => Updater.OfferAsync(null));
+            contextMenu.Items.Add(_updateItem);
 
             contextMenu.Items.Add(new ToolStripSeparator());
 
-            // --- Settings ---
-            _autostartMenuItem = new ToolStripMenuItem("Uruchamiaj przy starcie Windows")
-            {
-                Checked = IsAutostartEnabled()
-            };
-            _autostartMenuItem.Click += (s, e) => ToggleAutostart();
-            contextMenu.Items.Add(_autostartMenuItem);
-
-            var spaceItem = new ToolStripMenuItem("Spacja w Eksploratorze otwiera podgląd")
-            {
-                Checked = Settings.Current.SpaceInExplorer
-            };
-            spaceItem.Click += (s, e) =>
-            {
-                Settings.Update(st => st.SpaceInExplorer = !st.SpaceInExplorer);
-                spaceItem.Checked = Settings.Current.SpaceInExplorer;
-            };
-            contextMenu.Items.Add(spaceItem);
-
-            var hotkeyMenu = new ToolStripMenuItem("Skrót globalny");
-            foreach (var (label, value) in new[]
-                     {
-                         ("Ctrl+Spacja", GlobalHotkey.CtrlSpace),
-                         ("Ctrl+Alt+Spacja", GlobalHotkey.CtrlAltSpace),
-                         ("Wyłączony", GlobalHotkey.None),
-                     })
-            {
-                var option = new ToolStripMenuItem(label) { Checked = Settings.Current.Hotkey == value };
-                option.Click += (s, e) =>
-                {
-                    Settings.Update(st => st.Hotkey = value);
-                    foreach (ToolStripMenuItem other in hotkeyMenu.DropDownItems) other.Checked = other == option;
-                };
-                hotkeyMenu.DropDownItems.Add(option);
-            }
-            contextMenu.Items.Add(hotkeyMenu);
-            contextMenu.Items.Add(new ToolStripSeparator());
-
-            var exitItem = new ToolStripMenuItem("Wyjście");
-            exitItem.Click += (s, e) => Application.Current.Shutdown();
-            contextMenu.Items.Add(exitItem);
+            _exitItem = new ToolStripMenuItem();
+            _exitItem.Click += (s, e) => Application.Current.Shutdown();
+            contextMenu.Items.Add(_exitItem);
 
             _notifyIcon.ContextMenuStrip = contextMenu;
             _notifyIcon.DoubleClick += (s, e) =>
             {
                 DoubleClicked?.Invoke();
             };
+
+            RefreshTexts();
+            Loc.Instance.LanguageChanged += RefreshTexts; // also fires when the keys change
+            Updater.StatusChanged += RefreshTexts;
 
             App.Log("[TrayService] NotifyIcon initialized successfully and is visible in system tray.");
         }
@@ -110,16 +81,20 @@ public class TrayService : IDisposable
         }
     }
 
-    private void AddSampleItem(ContextMenuStrip menu, string label, string fileName)
+    private void RefreshTexts()
     {
-        var item = new ToolStripMenuItem(label);
-        item.Click += (s, e) =>
-        {
-            string sample = Path.Combine(AppContext.BaseDirectory, "test_samples", fileName);
-            if (File.Exists(sample))
-                _ownerWindow.Dispatcher.InvokeAsync(() => _ownerWindow.ShowFile(sample));
-        };
-        menu.Items.Add(item);
+        if (_notifyIcon == null) return;
+        if (!Application.Current.Dispatcher.CheckAccess()) { Application.Current.Dispatcher.BeginInvoke(RefreshTexts); return; }
+
+        string tip = Loc.T("tray.tooltip", Loc.T("key.preview"));
+        _notifyIcon.Text = tip.Length > 127 ? tip[..127] : tip;
+        _openItem!.Text = Loc.T("tray.open");
+        _settingsItem!.Text = Loc.T("tray.settings");
+        _exitItem!.Text = Loc.T("tray.exit");
+
+        string? version = Updater.AvailableVersion;
+        _updateItem!.Visible = _updateSeparator!.Visible = version != null;
+        if (version != null) _updateItem.Text = Loc.T("tray.update", version);
     }
 
     public void ShowBalloonNotification(string title, string text)
@@ -176,62 +151,6 @@ public class TrayService : IDisposable
 
         IntPtr hIcon = bmp.GetHicon();
         return (Icon)Icon.FromHandle(hIcon).Clone();
-    }
-
-    /// <summary>Autostart entry left by the old name (QuickPeek): replaced by one for this exe.</summary>
-    public static void MigrateAutostart()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
-            if (key?.GetValue("QuickPeek") == null) return;
-            key.DeleteValue("QuickPeek", false);
-            if (Environment.ProcessPath is { } exe) key.SetValue("Lupik", $"\"{exe}\" --tray");
-        }
-        catch (Exception ex)
-        {
-            App.Log($"[TrayService] Autostart migration failed: {ex.Message}");
-        }
-    }
-
-    public static bool IsAutostartEnabled()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
-            return key?.GetValue("Lupik") != null;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private void ToggleAutostart()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
-            if (key == null) return;
-
-            string? exePath = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(exePath)) return;
-
-            if (IsAutostartEnabled())
-            {
-                key.DeleteValue("Lupik", false);
-                if (_autostartMenuItem != null) _autostartMenuItem.Checked = false;
-            }
-            else
-            {
-                key.SetValue("Lupik", $"\"{exePath}\" --tray"); // --tray: start silently in the tray
-                if (_autostartMenuItem != null) _autostartMenuItem.Checked = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Nie udało się zmienić ustawienia autostartu:\n{ex.Message}", "Lupik");
-        }
     }
 
     public void Dispose()

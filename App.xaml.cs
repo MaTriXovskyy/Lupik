@@ -115,13 +115,14 @@ public partial class App : Application
 
             // 4. Initialize Keyboard Hook
             _keyboardHook = new KeyboardHook();
-            KeyboardHook.SpacePressed += OnSpacePressed;
+            KeyboardHook.PreviewKeyPressed += OnSpacePressed;
             _keyboardHook.Start();
 
             // 5. Setup System Tray Icon
             _trayService = new TrayService(_mainWindow);
-            TrayService.MigrateAutostart();
+            Autostart.Refresh();
             _trayService.Initialize();
+            Updater.ScheduleChecks();
             _trayService.DoubleClicked += () =>
             {
                 Dispatcher.InvokeAsync(() => _mainWindow.ToggleWindow());
@@ -133,7 +134,7 @@ public partial class App : Application
             {
                 _trayService.ShowBalloonNotification(
                     Loc.T("tray.readyTitle"),
-                    Loc.T("tray.readyBody", Loc.T("key.space")));
+                    Loc.T("tray.readyBody", Loc.T("key.preview")));
             }
 
             Log($"Lupik initialized successfully and running (startInTray={startInTray}).");

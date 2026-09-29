@@ -167,7 +167,7 @@
                         </Border.Resources>
                         <UniformGrid Columns="2" TextElement.Foreground="#B5AB9D">
                             <StackPanel Orientation="Horizontal" Margin="0,5,28,5">
-                                <Border Style="{StaticResource Cap}"><TextBlock Text="{loc:T key.space}" Foreground="#F0C95E"/></Border>
+                                <Border Style="{StaticResource Cap}"><TextBlock Text="{loc:T key.preview}" Foreground="#F0C95E"/></Border>
                                 <TextBlock Text="{loc:T welcome.previewClose}" Margin="6,0,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,5,28,5">
@@ -176,8 +176,7 @@
                                 <TextBlock Text="{loc:T welcome.nextFile}" Margin="6,0,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,5,28,5">
-                                <Border Style="{StaticResource Cap}"><TextBlock Text="Ctrl" Foreground="#F0C95E"/></Border>
-                                <Border Style="{StaticResource Cap}"><TextBlock Text="{loc:T key.space}" Foreground="#F0C95E"/></Border>
+                                <Border Style="{StaticResource Cap}"><TextBlock Text="{loc:T key.hotkey}" Foreground="#F0C95E"/></Border>
                                 <TextBlock Text="{loc:T welcome.globalShortcut}" Margin="6,0,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,5,28,5">
@@ -239,7 +238,7 @@
                 <Border Style="{StaticResource Cap}"><TextBlock Text="←" FontSize="10.5" Foreground="#B5AB9D"/></Border>
                 <Border Style="{StaticResource Cap}"><TextBlock Text="→" FontSize="10.5" Foreground="#B5AB9D"/></Border>
                 <TextBlock Text="{loc:T hint.prevNext}" FontSize="11" VerticalAlignment="Center" Margin="3,0,18,0"/>
-                <Border Style="{StaticResource Cap}"><TextBlock Text="{loc:T key.space}" FontSize="10.5" Foreground="#B5AB9D"/></Border>
+                <Border Style="{StaticResource Cap}"><TextBlock Text="{loc:T key.preview}" FontSize="10.5" Foreground="#B5AB9D"/></Border>
                 <TextBlock Text="{loc:T hint.close}" FontSize="11" VerticalAlignment="Center" Margin="3,0,0,0"/>
             </StackPanel>
         </Border>

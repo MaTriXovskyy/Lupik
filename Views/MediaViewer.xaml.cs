@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -61,7 +61,9 @@ public partial class MediaViewer : UserControl
         Player.Volume = _volume;
         Player.Source = new Uri(filePath);
         Player.Play();
-        SetPlaying(true);
+        bool autoplay = Core.Settings.Current.AutoplayMedia;
+        if (!autoplay) Player.Pause(); // opens and shows the first frame, waits for K / the play button
+        SetPlaying(autoplay);
 
         // Some broken files never raise either event
         var finished = await Task.WhenAny(opening.Task, Task.Delay(8000));

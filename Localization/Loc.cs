@@ -37,10 +37,23 @@ public sealed class Loc : INotifyPropertyChanged
     {
         _english = Load("en");
         _texts = _english;
+        Core.Settings.Changed += Refresh;
     }
 
-    public string this[string key] =>
-        _texts.TryGetValue(key, out var t) ? t : _english.TryGetValue(key, out var e) ? e : key;
+    public string this[string key] => key switch
+    {
+        // The keys chosen in Settings, by name ("Space", "Ctrl+Space")
+        "key.preview" => (Core.Settings.Current.PreviewKey ?? Core.Settings.Current.GlobalHotkey)?.Display() ?? "—",
+        "key.hotkey" => Core.Settings.Current.GlobalHotkey?.Display() ?? "—",
+        _ => _texts.TryGetValue(key, out var t) ? t : _english.TryGetValue(key, out var e) ? e : key,
+    };
+
+    /// <summary>Texts that depend on the settings (key names) changed: refresh the bindings.</summary>
+    public void Refresh()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(Binding.IndexerName));
+        LanguageChanged?.Invoke();
+    }
 
     public static string T(string key) => Instance[key];
 

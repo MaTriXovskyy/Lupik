@@ -11,7 +11,7 @@ public class KeyboardHook : IDisposable
 {
     private static IntPtr _hookId = IntPtr.Zero;
     private static readonly NativeMethods.LowLevelKeyboardProc _staticProc = HookCallback;
-    public static event Action? SpacePressed;
+    public static event Action? PreviewKeyPressed;
     public static MainWindow? MainWindowRef { get; set; }
 
     private uint _hookThreadId;
@@ -123,13 +123,10 @@ public class KeyboardHook : IDisposable
             if (IsOwnDialogInForeground())
                 return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
 
-            if (kb.vkCode == NativeMethods.VK_SPACE)
+            // The preview key (Space unless changed in Settings)
+            var previewKey = Settings.Current.PreviewKey;
+            if (previewKey != null && previewKey.Matches(kb.vkCode, Core.KeyState.Modifiers))
             {
-                bool isCtrl = (GetAsyncKeyState(0x11) & 0x8000) != 0;
-                bool isAlt = (GetAsyncKeyState(0x12) & 0x8000) != 0;
-                bool isWin = ((GetAsyncKeyState(0x5B) & 0x8000) != 0) || ((GetAsyncKeyState(0x5C) & 0x8000) != 0);
-
-                if (!isCtrl && !isAlt && !isWin)
                 {
                     var window = MainWindowRef;
                     bool previewShown = window != null && window.IsShown;
@@ -164,7 +161,7 @@ public class KeyboardHook : IDisposable
                                                className == "DirectUIHWND" ||
                                                className == "#32770" || rootClass == "#32770";
 
-                    if (isExplorerOrDesktop && Settings.Current.SpaceInExplorer)
+                    if (isExplorerOrDesktop)
                     {
                         bool editing = IsUserEditingText(fgWnd);
                         App.Log($"[KeyboardHook] Target is Explorer/Desktop! isEditing={editing}");
@@ -181,7 +178,7 @@ public class KeyboardHook : IDisposable
                             {
                                 // 3. Preview closed -> open it
                                 App.Log("[KeyboardHook] Triggering SpacePressed event async...");
-                                Task.Run(() => SpacePressed?.Invoke());
+                                Task.Run(() => PreviewKeyPressed?.Invoke());
                             }
                             return (IntPtr)1; // Swallow space so Explorer doesn't scroll
                         }
