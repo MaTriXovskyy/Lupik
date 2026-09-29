@@ -68,24 +68,32 @@ public static class ShellThumbnails
 
     private static BitmapSource? FromMagick(string path, int size)
     {
-        using var image = new ImageMagick.MagickImage(path);
+        using var image = new ImageMagick.MagickImage(path, Views.ImageViewer.FirstImageOnly);
         image.AutoOrient();
         image.Thumbnail(new ImageMagick.MagickGeometry((uint)size, (uint)size));
-        using var buffer = new MemoryStream();
-        image.Write(buffer, ImageMagick.MagickFormat.Png32);
-        buffer.Position = 0;
-        var bmp = new BitmapImage();
-        bmp.BeginInit();
-        bmp.StreamSource = buffer;
-        bmp.CacheOption = BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
-        return bmp;
+        return Views.ImageViewer.ToBitmapSource(image);
+    }
+
+    /// <summary>
+    /// Explorer's thumbnail only if it's already in the shell cache (fast), else null. Runs on its own STA thread,
+    /// so it doesn't wait behind a folder's worth of queued requests.
+    /// </summary>
+    public static System.Threading.Tasks.Task<BitmapSource?> FromCacheAsync(string path, int size)
+    {
+        var result = new System.Threading.Tasks.TaskCompletionSource<BitmapSource?>();
+        var thread = new Thread(() =>
+        {
+            try { result.SetResult(FromShell(path, size, cacheOnly: true)); }
+            catch (Exception ex) { App.Log($"[ShellThumbnails] Cache lookup failed: {ex.Message}"); result.SetResult(null); }
+        }) { IsBackground = true, Name = "Lupik cached thumbnail" };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return result.Task;
     }
 
     // ---------- Shell interop ----------
 
-    private static BitmapSource? FromShell(string path, int size)
+    private static BitmapSource? FromShell(string path, int size, bool cacheOnly = false)
     {
         var iid = typeof(IShellItemImageFactory).GUID;
         int hr = SHCreateItemFromParsingName(path, IntPtr.Zero, ref iid, out var factory);
@@ -95,8 +103,12 @@ public static class ShellThumbnails
         {
             // The shell hands back real thumbnails top-down but icons bottom-up, and the bitmap header can't tell
             // them apart. So ask for each kind explicitly: a thumbnail if the file has one, otherwise its icon.
-            const int ThumbnailOnly = 0x8, IconOnly = 0x4;
+            const int ThumbnailOnly = 0x8, IconOnly = 0x4, InCacheOnly = 0x10, BiggerSizeOk = 0x1;
             var request = new NativeSize { Width = size, Height = size };
+
+            if (cacheOnly)
+                return factory.GetImage(request, ThumbnailOnly | InCacheOnly | BiggerSizeOk, out IntPtr cached) == 0
+                    ? Convert(cached, flipRows: false) : null;
 
             if (factory.GetImage(request, ThumbnailOnly, out IntPtr thumbnail) == 0)
                 return Convert(thumbnail, flipRows: false);

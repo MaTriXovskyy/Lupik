@@ -46,23 +46,23 @@ public partial class ImageViewer : UserControl
             // The shown image stays cached too: reopening it (Space, Space) is instant instead of a fresh decode
             var decoding = GetDecodeTask(filePath);
             Remember(filePath, decoding);
+
+            // A slow decode (big PNG, PSD, AVIF...): show a quick stand-in first, the real picture replaces it
+            if (await Task.WhenAny(decoding, Task.Delay(QuickPreviewAfterMs)) != decoding)
+            {
+                var quick = await QuickPreviewAsync(filePath);
+                if (token != _loadToken) return false;
+                if (quick is var (preview, size0, w0, h0) && !decoding.IsCompleted)
+                {
+                    Show(filePath, preview, size0, w0, h0, placeholder: true);
+                    _ = ReplacePlaceholderAsync(decoding, token);
+                    return true;
+                }
+            }
+
             var (bitmap, size, width, height) = await decoding;
-
             if (token != _loadToken) return false;
-
-            _naturalWidth = width;
-            _naturalHeight = height;
-
-            PreviewImage.Source = bitmap;
-            ImageRotation.Angle = 0; // rotation is per file
-            ResetZoom();
-
-            FileSizeText.Text = FormatFileSize(size);
-            _formatLabel = Path.GetExtension(filePath).TrimStart('.').ToUpperInvariant();
-            FormatText.Text = _formatLabel;
-            DimensionsText.Text = $"{_naturalWidth:F0} × {_naturalHeight:F0} px";
-            _currentPath = filePath;
-            if (_infoOpen) _ = LoadInfoAsync(filePath);
+            Show(filePath, bitmap, size, width, height, placeholder: false);
             return true;
         }
         catch (Exception ex)
@@ -77,7 +77,137 @@ public partial class ImageViewer : UserControl
         }
     }
 
-    private static (BitmapSource, long, int, int) Decode(string filePath)
+    private void Show(string filePath, BitmapSource bitmap, long size, int width, int height, bool placeholder)
+    {
+        _naturalWidth = width;
+        _naturalHeight = height;
+
+        PreviewImage.Source = bitmap;
+        _showingPlaceholder = placeholder;
+        _detailRequested = false;
+        ImageRotation.Angle = 0; // rotation is per file
+        ResetZoom();
+
+        FileSizeText.Text = FormatFileSize(size);
+        _formatLabel = Path.GetExtension(filePath).TrimStart('.').ToUpperInvariant();
+        FormatText.Text = _formatLabel;
+        DimensionsText.Text = $"{_naturalWidth:F0} × {_naturalHeight:F0} px";
+        _currentPath = filePath;
+        if (_infoOpen) _ = LoadInfoAsync(filePath);
+    }
+
+    // --- Quick stand-in while a slow format decodes ---
+
+    private const int QuickPreviewAfterMs = 60; // faster decodes just appear; a stand-in would only flicker
+    private bool _showingPlaceholder;
+
+    private async Task ReplacePlaceholderAsync(Task<(BitmapSource, long, int, int)> decoding, int token)
+    {
+        try
+        {
+            var (bitmap, _, _, _) = await decoding;
+            if (token != _loadToken || !_showingPlaceholder) return;
+            PreviewImage.Source = bitmap;
+            _showingPlaceholder = false;
+        }
+        catch (Exception ex)
+        {
+            if (token != _loadToken) return;
+            App.Log($"[ImageViewer] Decode after stand-in failed: {ex.Message}");
+            DimensionsText.Text = Loc.T("image.readError");
+        }
+    }
+
+    /// <summary>
+    /// Something to show right away, with the real pixel size: Explorer's cached thumbnail if it has one
+    /// (only from its cache: generating one would be as slow as decoding), else the JPEG's own EXIF thumbnail.
+    /// </summary>
+    private static async Task<(BitmapSource, long, int, int)?> QuickPreviewAsync(string filePath)
+    {
+        try
+        {
+            var header = await Task.Run(() => ReadHeader(filePath));
+            if (header is not var (w, h, size, embedded)) return null;
+            var cached = await Lupik.Core.ShellThumbnails.FromCacheAsync(filePath, 1024);
+            var preview = cached ?? embedded;
+            return preview == null ? null : (preview, size, w, h);
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[ImageViewer] No quick preview: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>Pixel size (and the embedded thumbnail, if any) from the file header, without decoding the image.</summary>
+    private static (int, int, long, BitmapSource?)? ReadHeader(string filePath)
+    {
+        string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        long size = new FileInfo(filePath).Length;
+        if (ext == ".svg" || IsPostScript(ext)) return null; // rendered, their size depends on the rendering
+        if (MagickOnlyFormats.Contains(ext))
+        {
+            var info = new ImageMagick.MagickImageInfo(filePath);
+            return ((int)info.Width, (int)info.Height, size, null);
+        }
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var frame = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0];
+        BitmapSource? thumbnail = null;
+        try
+        {
+            if (frame.Thumbnail is BitmapSource t) { thumbnail = new WriteableBitmap(t); thumbnail.Freeze(); }
+        }
+        catch
+        {
+            // no embedded thumbnail
+        }
+        return (frame.PixelWidth, frame.PixelHeight, size, thumbnail);
+    }
+
+    // --- Decoding: JPEGs at the window's size first, full resolution when zooming in ---
+
+    /// <summary>
+    /// The most image a fitted preview can show, in real pixels: the largest work area, as far as the window may grow.
+    /// </summary>
+    private static (int Width, int Height) PreviewBox()
+    {
+        int w = 1280, h = 720;
+        foreach (var screen in System.Windows.Forms.Screen.AllScreens)
+        {
+            w = Math.Max(w, screen.WorkingArea.Width);
+            h = Math.Max(h, screen.WorkingArea.Height);
+        }
+        double scale = 0.95 * Lupik.Core.Settings.Current.WindowScale;
+        return ((int)(w * scale), (int)(h * scale));
+    }
+
+    /// <summary>
+    /// Width to decode a JPEG at. JPEG can shrink by 2, 4 or 8 while decoding, which is much faster than a full decode;
+    /// any other size means a full decode plus a resize (slower than no resize at all). So: the smallest such step that
+    /// still fills the preview window, or null for none. Full resolution: capped at <see cref="MaxDecodeSize"/>.
+    /// </summary>
+    private static int? JpegDecodeWidth(int w, int h, bool full)
+    {
+        if (!full)
+        {
+            var (boxW, boxH) = PreviewBox();
+            double fit = Math.Min(1, Math.Min((double)boxW / w, (double)boxH / h));
+            int shrink = 1;
+            while (shrink < 8 && w / (shrink * 2) >= w * fit && h / (shrink * 2) >= h * fit) shrink *= 2;
+            if (shrink > 1 && Math.Max(w, h) / shrink <= MaxDecodeSize) return w / shrink;
+        }
+        return CappedWidth(w, h);
+    }
+
+    /// <summary>Width that keeps the longest side within <see cref="MaxDecodeSize"/> (null: fits already).</summary>
+    private static int? CappedWidth(int w, int h) =>
+        Math.Max(w, h) <= MaxDecodeSize ? null : Math.Max(1, (int)Math.Round(w * (double)MaxDecodeSize / Math.Max(w, h)));
+
+    private static bool IsJpeg(string ext) => ext is ".jpg" or ".jpeg" or ".jfif";
+
+    private static (BitmapSource, long, int, int) Decode(string filePath) => Decode(filePath, full: false);
+
+    private static (BitmapSource, long, int, int) Decode(string filePath, bool full)
     {
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
         if (ext == ".svg") return DecodeSvg(filePath);
@@ -85,7 +215,7 @@ public partial class ImageViewer : UserControl
         if (MagickOnlyFormats.Contains(ext)) return DecodeWithMagick(filePath);
         try
         {
-            return DecodeWithWic(filePath);
+            return DecodeWithWic(filePath, full);
         }
         catch (Exception ex)
         {
@@ -93,6 +223,43 @@ public partial class ImageViewer : UserControl
             App.Log($"[ImageViewer] Windows decoder failed ({ex.Message}), falling back to Magick.NET");
             return DecodeWithMagick(filePath);
         }
+    }
+
+    private bool _detailRequested;
+
+    /// <summary>Zoomed in (or rotated) past what the window-sized decode holds: swap in the full resolution.</summary>
+    private async void EnsureDetail()
+    {
+        if (_detailRequested || _currentPath == null || PreviewImage.Source is not BitmapSource shown) return;
+        if (!_showingPlaceholder && !IsReduced(shown)) return;
+        _detailRequested = true;
+        int token = _loadToken;
+        string path = _currentPath;
+        try
+        {
+            var (bitmap, _, _, _) = await Task.Run(() => Decode(path, full: true));
+            if (token != _loadToken) return;
+            PreviewImage.Source = bitmap;
+            _showingPlaceholder = false;
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[ImageViewer] Full-resolution decode failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Smaller than the full-resolution decode would be.</summary>
+    private bool IsReduced(BitmapSource shown) =>
+        Math.Max(shown.PixelWidth, shown.PixelHeight) < Math.Min(MaxDecodeSize, Math.Max(_naturalWidth, _naturalHeight)) - 1;
+
+    /// <summary>The image at full (decode) resolution, e.g. for the clipboard.</summary>
+    private async Task<BitmapSource?> FullBitmapAsync()
+    {
+        if (PreviewImage.Source is not BitmapSource shown || _currentPath == null) return null;
+        if (!_showingPlaceholder && !IsReduced(shown)) return shown;
+        string path = _currentPath;
+        var (bitmap, _, _, _) = await Task.Run(() => Decode(path, full: true));
+        return bitmap;
     }
 
     // --- Preload cache: neighbors of the current image are decoded ahead of time ---
@@ -171,7 +338,7 @@ public partial class ImageViewer : UserControl
     }
 
     /// <summary>Fast path: Windows' built-in (WIC) decoders.</summary>
-    private static (BitmapSource, long, int, int) DecodeWithWic(string filePath)
+    private static (BitmapSource, long, int, int) DecodeWithWic(string filePath, bool full)
     {
         // Decode from a stream, so the file isn't locked and no stale URI cache is used
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -185,12 +352,9 @@ public partial class ImageViewer : UserControl
         bmp.BeginInit();
         bmp.StreamSource = stream;
         bmp.CacheOption = BitmapCacheOption.OnLoad;
-        // Huge photos (e.g. 50 MP) are decoded at a reduced size: far faster, still sharp on screen
-        if (Math.Max(w, h) > MaxDecodeSize)
-        {
-            if (w >= h) bmp.DecodePixelWidth = MaxDecodeSize;
-            else bmp.DecodePixelHeight = MaxDecodeSize;
-        }
+        // Huge images are decoded at a reduced size; JPEGs just big enough for the window (see JpegDecodeWidth)
+        int? width = IsJpeg(Path.GetExtension(filePath).ToLowerInvariant()) ? JpegDecodeWidth(w, h, full) : CappedWidth(w, h);
+        if (width is int decodeWidth) bmp.DecodePixelWidth = decodeWidth;
         bmp.EndInit();
         bmp.Freeze();
         return (bmp, stream.Length, w, h);
@@ -242,17 +406,7 @@ public partial class ImageViewer : UserControl
         settings.Density = new ImageMagick.Density(96 * scale);
 
         using var image = new ImageMagick.MagickImage(data, settings);
-        using var buffer = new MemoryStream();
-        image.Write(buffer, ImageMagick.MagickFormat.Png32);
-        buffer.Position = 0;
-
-        var bmp = new BitmapImage();
-        bmp.BeginInit();
-        bmp.StreamSource = buffer;
-        bmp.CacheOption = BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
-        return (bmp, data.Length, (int)image.Width, (int)image.Height);
+        return (ToBitmapSource(image), data.Length, (int)image.Width, (int)image.Height);
     }
 
     /// <summary>
@@ -262,33 +416,32 @@ public partial class ImageViewer : UserControl
     private static (BitmapSource, long, int, int) DecodeWithMagick(string filePath)
     {
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var image = new ImageMagick.MagickImage(stream);
+        using var image = new ImageMagick.MagickImage(stream, FirstImageOnly);
         image.AutoOrient(); // phone photos store rotation as metadata
+        return (ToBitmapSource(image, MaxDecodeSize), stream.Length, (int)image.Width, (int)image.Height);
+    }
 
+    /// <summary>Only the first image: for a PSD that's the flattened composite, and Magick then skips the layers.</summary>
+    internal static ImageMagick.MagickReadSettings FirstImageOnly => new() { FrameIndex = 0, FrameCount = 1 };
+
+    /// <summary>
+    /// Magick's pixels straight into a WPF bitmap (no PNG/BMP in between for WPF to decode again). Bigger than
+    /// <paramref name="maxSize"/>: shrunk with Windows' scaler, several times faster than Magick's resize.
+    /// </summary>
+    internal static BitmapSource ToBitmapSource(ImageMagick.IMagickImage<byte> image, int maxSize = int.MaxValue)
+    {
         int w = (int)image.Width, h = (int)image.Height;
-        if (Math.Max(w, h) > MaxDecodeSize)
-            image.Resize(new ImageMagick.MagickGeometry(MaxDecodeSize, MaxDecodeSize));
-
-        using var buffer = new MemoryStream();
-        if (image.HasAlpha)
+        bool alpha = image.HasAlpha;
+        byte[] data;
+        using (var pixels = image.GetPixelsUnsafe()) data = pixels.ToByteArray(ImageMagick.PixelMapping.BGRA)!;
+        BitmapSource bitmap = BitmapSource.Create(w, h, 96, 96, alpha ? PixelFormats.Bgra32 : PixelFormats.Bgr32, null, data, w * 4);
+        if (Math.Max(w, h) > maxSize)
         {
-            // BMP3 has no alpha channel; PNG keeps transparency (e.g. PSD layers). Quality 10 = fastest zlib level.
-            image.Quality = 10;
-            image.Write(buffer, ImageMagick.MagickFormat.Png32);
+            double scale = (double)maxSize / Math.Max(w, h);
+            bitmap = new WriteableBitmap(new TransformedBitmap(bitmap, new ScaleTransform(scale, scale)));
         }
-        else
-        {
-            image.Write(buffer, ImageMagick.MagickFormat.Bmp3);
-        }
-        buffer.Position = 0;
-
-        var bmp = new BitmapImage();
-        bmp.BeginInit();
-        bmp.StreamSource = buffer;
-        bmp.CacheOption = BitmapCacheOption.OnLoad;
-        bmp.EndInit();
-        bmp.Freeze();
-        return (bmp, stream.Length, w, h);
+        bitmap.Freeze();
+        return bitmap;
     }
 
     public void ResetZoom()
@@ -320,6 +473,7 @@ public partial class ImageViewer : UserControl
 
         ImageScale.ScaleX = newScale;
         ImageScale.ScaleY = newScale;
+        if (newScale > 1) EnsureDetail();
 
         UpdateZoomText();
         e.Handled = true;
@@ -344,6 +498,7 @@ public partial class ImageViewer : UserControl
                 // Zoom in to 2.0x on double click
                 ImageScale.ScaleX = 2.0;
                 ImageScale.ScaleY = 2.0;
+                EnsureDetail();
             }
             else
             {
@@ -396,6 +551,7 @@ public partial class ImageViewer : UserControl
         ImageTranslate.X = center.X - (center.X - ImageTranslate.X) * factor;
         ImageTranslate.Y = center.Y - (center.Y - ImageTranslate.Y) * factor;
         ImageScale.ScaleX = ImageScale.ScaleY = newScale;
+        if (newScale > 1) EnsureDetail();
         UpdateZoomText();
     }
 
@@ -406,6 +562,7 @@ public partial class ImageViewer : UserControl
     {
         ImageRotation.Angle = ((int)ImageRotation.Angle + degrees + 360) % 360;
         ResetZoom();
+        if (Rotation is 90 or 270) EnsureDetail();
         FormatText.Text = _formatLabel + (Rotation != 0 ? "  ·  " + Loc.T("image.rotated", Rotation) : "");
     }
 
@@ -417,9 +574,10 @@ public partial class ImageViewer : UserControl
     /// <summary>Copies the (rotated) image as a bitmap, ready to paste into Photoshop, Messenger, etc.</summary>
     public async void CopyImageToClipboard()
     {
-        if (PreviewImage.Source is not BitmapSource source) return;
+        if (PreviewImage.Source == null) return;
         try
         {
+            if (await FullBitmapAsync() is not BitmapSource source) return;
             BitmapSource bitmap = Rotation == 0
                 ? source
                 : new TransformedBitmap(source, new System.Windows.Media.RotateTransform(Rotation));
