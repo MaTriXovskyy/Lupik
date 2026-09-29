@@ -17,7 +17,9 @@ public partial class SettingsWindow : Window
 
     /// <summary>Which key field is waiting for a key (null = none).</summary>
     private Button? _recording;
-    private bool _loading;
+    // True until the controls show the saved values. It must be on during InitializeComponent too: the slider's
+    // Minimum="60" bumps its value from 0 to 60 there and raises ValueChanged, which used to save 60%.
+    private bool _loading = true;
 
     public static void ShowOrActivate()
     {
@@ -36,7 +38,6 @@ public partial class SettingsWindow : Window
     private SettingsWindow()
     {
         InitializeComponent();
-        _loading = true;
 
         BuildLanguageList();
         StartupSwitch.IsChecked = Autostart.IsEnabled;
