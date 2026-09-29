@@ -289,10 +289,14 @@ public partial class MainWindow : Window
         }
         UpdateFooter();
         CopyInPreview = target == ImageViewerControl || target == CsvViewerControl;
+        PdfInPreview = target == PdfViewerControl;
     }
 
     /// <summary>Whether Ctrl+C / Ctrl+A mean something in the current preview (read by the keyboard hook thread).</summary>
     public volatile bool CopyInPreview;
+
+    /// <summary>A PDF is shown: PgUp/PgDn/Home/End page through it (read by the keyboard hook thread).</summary>
+    public volatile bool PdfInPreview;
 
     /// <summary>
     /// Shows the window above everything else. Topmost is only held for the moment of opening,

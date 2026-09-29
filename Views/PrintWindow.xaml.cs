@@ -188,6 +188,18 @@ public partial class PrintWindow : Window
 
     private async Task UpdatePreviewAsync()
     {
+        try
+        {
+            await UpdatePreviewCoreAsync();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Window closed (and the document with it) while a page was still rendering
+        }
+    }
+
+    private async Task UpdatePreviewCoreAsync()
+    {
         if (_pages.Count == 0) return;
         int token = ++_previewToken;
         int page = _pages[_previewPosition];

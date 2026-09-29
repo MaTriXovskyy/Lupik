@@ -238,6 +238,10 @@ public class KeyboardHook : IDisposable
             case 0x43: return (mods & Ctrl) == 0 || window.CopyInPreview; // C: compare; Ctrl+C only where the preview copies something
             case 0x41: return (mods & Ctrl) != 0 && window.CopyInPreview; // Ctrl+A (table)
             case 0x53: case 0x50: return true; // Ctrl+S / Ctrl+P, S (compare mode)
+            case 0x21: case 0x22: case 0x23: case 0x24: // PgUp, PgDn, End, Home: paging through a PDF
+                return (mods & Ctrl) == 0 && window.PdfInPreview;
+            case >= 0x31 and <= 0x39: case >= 0x61 and <= 0x69: // 1–9 (0 is zoom, above): typing a page number in a PDF
+                return mods == System.Windows.Input.ModifierKeys.None && window.PdfInPreview;
             case 0x46: case 0x52: case 0x49: case 0x4B: case 0x4A: case 0x4C: case 0x4D: case 0x58: // F R I K J L M X
             case 0x30: case 0x60: case 0xBB: case 0xBD: case 0x6B: case 0x6D: // 0, +, −
                 return (mods & Ctrl) == 0;

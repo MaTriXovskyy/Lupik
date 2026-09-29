@@ -1,4 +1,4 @@
-<UserControl x:Class="Lupik.Views.PdfViewer"
+﻿<UserControl x:Class="Lupik.Views.PdfViewer"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:Lupik.Localization"
@@ -14,21 +14,42 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Top Tool / Status Bar -->
+        <!-- Toolbar: file info on the left, page navigation in the middle, zoom on the right -->
         <Border Grid.Row="0" Background="#24211E" BorderBrush="#3B3631" BorderThickness="0,0,0,1" Padding="14,8">
-            <DockPanel LastChildFill="False">
-                <!-- Page Indicator and File Info -->
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
                     <Border Background="#E3B341" CornerRadius="4" Padding="6,2" Margin="0,0,10,0">
                         <TextBlock x:Name="FormatBadgeText" Text="PDF" Foreground="#1A1407" FontSize="11" FontWeight="Bold"/>
                     </Border>
-                    <TextBlock x:Name="PageIndicatorText" Text="" Foreground="#F6F1E9" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock Text="•" Foreground="#8A8074" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock x:Name="FileSizeText" Text="" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="FileSizeText" Text="" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+
+                <!-- Previous · [page] / total · next. The page box takes typed digits through the keyboard hook:
+                     the preview never has the keyboard focus (see MainWindow.HandleHookKey) -->
+                <StackPanel Grid.Column="1" x:Name="PageNavigation" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+                    <Button x:Name="PrevPageButton" Style="{StaticResource IconButton}" ToolTip="{loc:T pdf.prevPageTip}" Click="OnPrevPageClicked">
+                        <views:LucideIcon Kind="chevron-up" Size="15"/>
+                    </Button>
+                    <Border x:Name="PageBox" MinWidth="46" Height="26" Margin="6,0,6,0" CornerRadius="6" Padding="8,0"
+                            Background="#161412" BorderBrush="#3B3631" BorderThickness="1" Cursor="IBeam"
+                            ToolTip="{loc:T pdf.pageBoxTip}" MouseLeftButtonDown="OnPageBoxClicked">
+                        <TextBlock x:Name="PageBoxText" Foreground="#F6F1E9" FontSize="13" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="PageTotalText" Foreground="#B5AB9D" FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Button x:Name="NextPageButton" Style="{StaticResource IconButton}" ToolTip="{loc:T pdf.nextPageTip}" Click="OnNextPageClicked">
+                        <views:LucideIcon Kind="chevron-down" Size="15"/>
+                    </Button>
                 </StackPanel>
 
                 <!-- Zoom (opening externally lives in the title bar) -->
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T pdf.zoomOutTip}" Click="OnZoomOutClicked">
                         <views:LucideIcon Kind="zoom-out" Size="15"/>
                     </Button>
@@ -38,7 +59,7 @@
                         <views:LucideIcon Kind="zoom-in" Size="15"/>
                     </Button>
                 </StackPanel>
-            </DockPanel>
+            </Grid>
         </Border>
 
         <!-- Pages ScrollViewer -->
@@ -46,8 +67,10 @@
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
                       ScrollChanged="OnScrollChanged"
+                      SizeChanged="OnViewportSizeChanged"
                       PreviewMouseWheel="OnPreviewMouseWheel">
-            <StackPanel x:Name="PagesPanel" HorizontalAlignment="Center" Margin="16" />
+            <!-- Layout rounding keeps every page on whole device pixels: a page starting at x.5 would be blurred -->
+            <StackPanel x:Name="PagesPanel" HorizontalAlignment="Center" Margin="16,16,16,0" UseLayoutRounding="True" />
         </ScrollViewer>
     </Grid>
 </UserControl>

@@ -53,6 +53,10 @@ public partial class MainWindow
         bool csvShown = CsvViewerControl.Visibility == Visibility.Visible;
         bool mediaShown = MediaViewerControl.Visibility == Visibility.Visible;
 
+        // A PDF: digits type a page number (Enter jumps there); while typing, Backspace / Esc edit it
+        if (PdfViewerControl.Visibility == Visibility.Visible && mods == ModifierKeys.None && PdfViewerControl.HandlePageEntryKey(key))
+            return true;
+
         if (imageShown && ImageViewerControl.IsCropping)
         {
             // Crop mode owns the keyboard: Enter saves the crop, Esc leaves; nothing else (no file switching)
@@ -173,6 +177,20 @@ public partial class MainWindow
         else if (key == Key.Space || key == Key.Escape)
         {
             HideWindow();
+            handled = true;
+        }
+        else if (PdfViewerControl.Visibility == Visibility.Visible && key is Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End)
+        {
+            // In a PDF: ↑/↓ scroll, PgUp/PgDn go a page back/forward, Home/End to the first/last page; ←/→ still switch files
+            switch (key)
+            {
+                case Key.Up: PdfViewerControl.ScrollBy(-80); break;
+                case Key.Down: PdfViewerControl.ScrollBy(80); break;
+                case Key.PageUp: PdfViewerControl.StepPage(-1); break;
+                case Key.PageDown: PdfViewerControl.StepPage(1); break;
+                case Key.Home: PdfViewerControl.FirstPage(); break;
+                case Key.End: PdfViewerControl.LastPage(); break;
+            }
             handled = true;
         }
         else if ((key == Key.Up || key == Key.Down) && CodeViewerControl.Visibility == Visibility.Visible)

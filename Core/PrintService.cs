@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -6,9 +6,6 @@ using System.Drawing.Printing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Windows.Data.Pdf;
-using Windows.Storage;
-using Windows.Storage.Streams;
 
 namespace Lupik.Core;
 
@@ -28,10 +25,9 @@ public interface IPrintSource : IDisposable
 public sealed class PdfPrintSource : IPrintSource
 {
     private readonly PdfDocument _document;
-    private readonly object _lock = new(); // PdfDocument isn't safe to render from several threads at once
 
     public string Name { get; }
-    public int PageCount => (int)_document.PageCount;
+    public int PageCount => _document.PageCount;
 
     private PdfPrintSource(string name, PdfDocument document)
     {
@@ -41,40 +37,20 @@ public sealed class PdfPrintSource : IPrintSource
 
     public static async Task<PdfPrintSource> OpenAsync(string path)
     {
-        var file = await StorageFile.GetFileFromPathAsync(path);
-        var document = await PdfDocument.LoadFromFileAsync(file);
+        var document = await PdfDocument.OpenAsync(path);
         return new PdfPrintSource(Path.GetFileName(path), document);
     }
 
     public SizeF PageSizeInches(int index)
     {
-        lock (_lock)
-        {
-            using var page = _document.GetPage((uint)index);
-            // PdfPage.Size is in DIPs (1/96 inch)
-            return new SizeF((float)(page.Size.Width / 96), (float)(page.Size.Height / 96));
-        }
+        var (w, h) = _document.PageSizePoints(index); // points: 1/72 inch
+        return new SizeF((float)(w / 72), (float)(h / 72));
     }
 
-    public Bitmap RenderPage(int index, int pixelWidth)
-    {
-        lock (_lock)
-        {
-            using var page = _document.GetPage((uint)index);
-            using var stream = new InMemoryRandomAccessStream();
-            var options = new PdfPageRenderOptions
-            {
-                DestinationWidth = (uint)Math.Max(64, pixelWidth),
-                BackgroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255),
-            };
-            page.RenderToStreamAsync(stream, options).AsTask().GetAwaiter().GetResult();
-            using var managed = stream.AsStream();
-            using var image = Image.FromStream(managed);
-            return PrintService.ToOpaque(image);
-        }
-    }
+    /// <summary>Thread-safe: PDFium calls are serialized inside PdfDocument.</summary>
+    public Bitmap RenderPage(int index, int pixelWidth) => _document.RenderPageForPrint(index, Math.Max(64, pixelWidth));
 
-    public void Dispose() { /* PdfDocument has no Dispose; released with the object */ }
+    public void Dispose() => _document.Dispose();
 }
 
 public sealed class ImagePrintSource : IPrintSource

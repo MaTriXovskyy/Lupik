@@ -289,6 +289,10 @@ T = {
 "tray.exit":              ["Wyjście", "Exit", "Beenden", "Salir", "Quitter", "Esci", "Выход", "Вихід"],
 "archive.extractOneTip": ["Wypakuj obok archiwum", "Extract next to the archive", "Neben dem Archiv entpacken", "Extraer junto al archivo", "Extraire à côté de l'archive", "Estrai accanto all'archivio", "Извлечь рядом с архивом", "Видобути поруч з архівом"],
 "archive.itemHint":      ["Przytrzymaj plik, aby go podejrzeć  •  przeciągnij, aby wypakować", "Hold a file to peek at it  •  drag it out to extract", "Datei gedrückt halten für eine Vorschau  •  herausziehen zum Entpacken", "Mantén pulsado un archivo para verlo  •  arrástralo fuera para extraerlo", "Maintenez un fichier pour l'aperçu  •  faites-le glisser pour l'extraire", "Tieni premuto un file per l'anteprima  •  trascinalo fuori per estrarlo", "Удерживайте файл для просмотра  •  перетащите, чтобы извлечь", "Утримуйте файл для перегляду  •  перетягніть, щоб видобути"],
+"pdf.password":          ["Ten PDF jest zabezpieczony hasłem.", "This PDF is password protected.", "Diese PDF ist passwortgeschützt.", "Este PDF está protegido con contraseña.", "Ce PDF est protégé par un mot de passe.", "Questo PDF è protetto da password.", "Этот PDF защищён паролем.", "Цей PDF захищено паролем."],
+"pdf.prevPageTip":       ["Poprzednia strona (PgUp)", "Previous page (PgUp)", "Vorherige Seite (Bild↑)", "Página anterior (RePág)", "Page précédente (Pg préc)", "Pagina precedente (PgSu)", "Предыдущая страница (PgUp)", "Попередня сторінка (PgUp)"],
+"pdf.nextPageTip":       ["Następna strona (PgDn)", "Next page (PgDn)", "Nächste Seite (Bild↓)", "Página siguiente (AvPág)", "Page suivante (Pg suiv)", "Pagina successiva (PgGiù)", "Следующая страница (PgDn)", "Наступна сторінка (PgDn)"],
+"pdf.pageBoxTip":        ["Wpisz numer strony i naciśnij Enter", "Type a page number and press Enter", "Seitenzahl eingeben und Enter drücken", "Escribe un número de página y pulsa Intro", "Tapez un numéro de page puis Entrée", "Digita un numero di pagina e premi Invio", "Введите номер страницы и нажмите Enter", "Введіть номер сторінки й натисніть Enter"],
 }
 
 if __name__ == "__main__":
