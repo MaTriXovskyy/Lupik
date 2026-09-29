@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <Compile Remove="test_samples\**" />
+    <Compile Remove="tools\**" />
     <None Include="test_samples\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
