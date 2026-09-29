@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -79,7 +79,6 @@ public partial class SettingsWindow : Window
         AutoLanguageHint.Text = Loc.T("settings.languageAutoHint", SystemLanguageName());
 
         if (_recording != PreviewKeyField) PreviewKeyField.Content = Settings.Current.PreviewKey?.Display() ?? Loc.T("settings.off");
-        if (_recording != HotkeyField) HotkeyField.Content = Settings.Current.GlobalHotkey?.Display() ?? Loc.T("settings.off");
     }
 
     private void OnNav(object sender, RoutedEventArgs e)
@@ -168,7 +167,6 @@ public partial class SettingsWindow : Window
     // --- Keys
 
     private void OnRecordPreviewKey(object sender, RoutedEventArgs e) => StartRecording(PreviewKeyField);
-    private void OnRecordHotkey(object sender, RoutedEventArgs e) => StartRecording(HotkeyField);
 
     private void StartRecording(Button field)
     {
@@ -177,8 +175,6 @@ public partial class SettingsWindow : Window
         field.Content = Loc.T("settings.pressKeys");
         field.BorderBrush = (Brush)FindResource("Gold");
         ShowKeyMessage(Loc.T("settings.recordHint"), error: false);
-        // The current shortcut would swallow the keys we're waiting for
-        KeyboardHook.MainWindowRef?.SuspendHotkey();
     }
 
     private void StopRecording()
@@ -186,7 +182,6 @@ public partial class SettingsWindow : Window
         if (_recording == null) return;
         _recording.BorderBrush = (Brush)FindResource("LineStrong");
         _recording = null;
-        KeyboardHook.MainWindowRef?.ApplyHotkey();
         RefreshTexts();
     }
 
@@ -207,33 +202,10 @@ public partial class SettingsWindow : Window
         var combo = new KeyCombo(KeyInterop.VirtualKeyFromKey(key), mods);
         var field = _recording;
 
-        if (field == HotkeyField)
-        {
-            if (!combo.HasCommandModifier)
-            {
-                ShowKeyMessage(Loc.T("settings.needsModifier"), error: true);
-                return; // keep listening
-            }
-            var previous = Settings.Current.GlobalHotkey;
-            Settings.Update(s => s.GlobalHotkey = combo);
-            _recording = null;
-            field.BorderBrush = (Brush)FindResource("LineStrong");
-            if (KeyboardHook.MainWindowRef?.ApplyHotkey() == false)
-            {
-                // Another app has it: keep the old one
-                Settings.Update(s => s.GlobalHotkey = previous);
-                ShowKeyMessage(Loc.T("settings.hotkeyTaken", combo.Display()), error: true);
-            }
-            else ShowKeyMessage(Loc.T("settings.recordHint"), error: false);
-        }
-        else
-        {
-            Settings.Update(s => s.PreviewKey = combo);
-            _recording = null;
-            field.BorderBrush = (Brush)FindResource("LineStrong");
-            KeyboardHook.MainWindowRef?.ApplyHotkey();
-            ShowKeyMessage(Loc.T("settings.recordHint"), error: false);
-        }
+        Settings.Update(s => s.PreviewKey = combo);
+        _recording = null;
+        field.BorderBrush = (Brush)FindResource("LineStrong");
+        ShowKeyMessage(Loc.T("settings.recordHint"), error: false);
         RefreshTexts();
     }
 
@@ -249,20 +221,10 @@ public partial class SettingsWindow : Window
         Settings.Update(s => s.PreviewKey = null);
     }
 
-    private void OnDisableHotkey(object sender, RoutedEventArgs e)
-    {
-        StopRecording();
-        Settings.Update(s => s.GlobalHotkey = null);
-    }
-
     private void OnRestoreKeys(object sender, RoutedEventArgs e)
     {
         StopRecording();
-        Settings.Update(s =>
-        {
-            s.PreviewKey = KeyCombo.DefaultPreview;
-            s.GlobalHotkey = KeyCombo.DefaultHotkey;
-        });
+        Settings.Update(s => s.PreviewKey = KeyCombo.DefaultPreview);
         ShowKeyMessage(Loc.T("settings.recordHint"), error: false);
     }
 

@@ -15,22 +15,9 @@ public sealed class KeyCombo
     public KeyCombo(int vk, ModifierKeys mods) { Vk = vk; Mods = mods; }
 
     public static KeyCombo DefaultPreview => new(0x20, ModifierKeys.None);
-    public static KeyCombo DefaultHotkey => new(0x20, ModifierKeys.Control);
 
     /// <summary>Exactly this key with exactly these modifiers held.</summary>
     public bool Matches(uint vk, ModifierKeys mods) => vk == Vk && mods == Mods;
-
-    /// <summary>A global hotkey needs Ctrl, Alt or Win (Shift+letter would eat typing).</summary>
-    [JsonIgnore]
-    public bool HasCommandModifier => (Mods & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) != 0;
-
-    /// <summary>RegisterHotKey's modifier flags.</summary>
-    [JsonIgnore]
-    public uint HotkeyModifiers =>
-        ((Mods & ModifierKeys.Alt) != 0 ? NativeMethods.MOD_ALT : 0) |
-        ((Mods & ModifierKeys.Control) != 0 ? NativeMethods.MOD_CONTROL : 0) |
-        ((Mods & ModifierKeys.Shift) != 0 ? NativeMethods.MOD_SHIFT : 0) |
-        ((Mods & ModifierKeys.Windows) != 0 ? NativeMethods.MOD_WIN : 0);
 
     public override string ToString() => Display();
 

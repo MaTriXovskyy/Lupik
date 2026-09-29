@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Windows.Input;
 
 namespace Lupik.Core;
 
@@ -11,9 +10,6 @@ public class Settings
 {
     /// <summary>Opens the preview of the file selected in Explorer/Desktop (and closes it). Null = off.</summary>
     public KeyCombo? PreviewKey { get; set; } = KeyCombo.DefaultPreview;
-
-    /// <summary>Opens/closes the preview from anywhere. Null = off.</summary>
-    public KeyCombo? GlobalHotkey { get; set; } = KeyCombo.DefaultHotkey;
 
     /// <summary>Close the preview when another app comes to the front.</summary>
     public bool CloseOnFocusLoss { get; set; }
@@ -35,7 +31,6 @@ public class Settings
 
     // Older settings files: migrated in Load
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SpaceInExplorer { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Hotkey { get; set; }
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lupik", "settings.json");
@@ -69,15 +64,7 @@ public class Settings
     private static Settings Migrate(Settings s)
     {
         if (s.SpaceInExplorer == false) s.PreviewKey = null;
-        if (s.Hotkey is { } old) // 0 = Ctrl+Space, 1 = Ctrl+Alt+Space, 2 = off
-            s.GlobalHotkey = old switch
-            {
-                1 => new KeyCombo(0x20, ModifierKeys.Control | ModifierKeys.Alt),
-                2 => null,
-                _ => KeyCombo.DefaultHotkey,
-            };
         s.SpaceInExplorer = null;
-        s.Hotkey = null;
         s.WindowScale = Math.Clamp(s.WindowScale, 0.6, 1.0);
         return s;
     }

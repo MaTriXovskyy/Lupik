@@ -338,20 +338,6 @@
                                     </StackPanel>
                                 </DockPanel>
                             </Border>
-                            <Border Style="{StaticResource Row}">
-                                <DockPanel>
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button x:Name="HotkeyField" Style="{StaticResource KeyField}" Click="OnRecordHotkey"/>
-                                        <Button Style="{StaticResource IconButton}" Margin="6,0,0,0" Click="OnDisableHotkey" ToolTip="{loc:T settings.disable}">
-                                            <views:LucideIcon Kind="x" Size="14"/>
-                                        </Button>
-                                    </StackPanel>
-                                    <StackPanel Margin="0,0,16,0">
-                                        <TextBlock Text="{loc:T settings.hotkey}" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="{loc:T settings.hotkeyHint}" Style="{StaticResource RowHint}"/>
-                                    </StackPanel>
-                                </DockPanel>
-                            </Border>
 
                             <TextBlock x:Name="KeyMessage" Text="{loc:T settings.recordHint}" FontSize="12.5" Foreground="{StaticResource TextMuted}"
                                        TextWrapping="Wrap" Margin="2,4,0,16"/>

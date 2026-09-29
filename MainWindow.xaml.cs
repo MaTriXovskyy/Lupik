@@ -126,9 +126,6 @@ public partial class MainWindow : Window
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(HwndHook);
 
-        ApplyHotkey();
-        Settings.Changed += () => ApplyHotkey();
-
         // Borderless windows lack the minimize style, so clicking the taskbar button wouldn't minimize/restore
         const int GWL_STYLE = -16, WS_MINIMIZEBOX = 0x20000;
         SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_MINIMIZEBOX);
@@ -141,26 +138,6 @@ public partial class MainWindow : Window
 
         ApplyModernStyling(hwnd);
     }
-
-    /// <summary>(Re)registers the global hotkey chosen in Settings. False if another app already uses it.</summary>
-    public bool ApplyHotkey()
-    {
-        NativeMethods.UnregisterHotKey(Hwnd, 9001);
-
-        var hotkey = Settings.Current.GlobalHotkey;
-        if (hotkey == null)
-        {
-            App.Log("[MainWindow] Global hotkey disabled");
-            return true;
-        }
-
-        bool ok = NativeMethods.RegisterHotKey(Hwnd, 9001, hotkey.HotkeyModifiers | NativeMethods.MOD_NOREPEAT, (uint)hotkey.Vk);
-        App.Log($"[MainWindow] Registered HotKey {hotkey}: {ok}");
-        return ok;
-    }
-
-    /// <summary>While Settings records a new shortcut, the current one mustn't fire.</summary>
-    public void SuspendHotkey() => NativeMethods.UnregisterHotKey(Hwnd, 9001);
 
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
@@ -183,13 +160,7 @@ public partial class MainWindow : Window
 
     private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (NativeMethods.RefuseAutomation(msg, ref handled)) return IntPtr.Zero;
-        if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == 9001)
-        {
-            App.Log("[MainWindow] WM_HOTKEY triggered");
-            ToggleWindow();
-            handled = true;
-        }
+        NativeMethods.RefuseAutomation(msg, ref handled);
         return IntPtr.Zero;
     }
 

@@ -43,8 +43,7 @@ public sealed class Loc : INotifyPropertyChanged
     public string this[string key] => key switch
     {
         // The keys chosen in Settings, by name ("Space", "Ctrl+Space")
-        "key.preview" => (Core.Settings.Current.PreviewKey ?? Core.Settings.Current.GlobalHotkey)?.Display() ?? "—",
-        "key.hotkey" => Core.Settings.Current.GlobalHotkey?.Display() ?? "—",
+        "key.preview" => Core.Settings.Current.PreviewKey?.Display() ?? "—",
         _ => _texts.TryGetValue(key, out var t) ? t : _english.TryGetValue(key, out var e) ? e : key,
     };
 

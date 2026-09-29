@@ -176,10 +176,6 @@
                                 <TextBlock Text="{loc:T welcome.nextFile}" Margin="6,0,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,5,28,5">
-                                <Border Style="{StaticResource Cap}"><TextBlock Text="{loc:T key.hotkey}" Foreground="#F0C95E"/></Border>
-                                <TextBlock Text="{loc:T welcome.globalShortcut}" Margin="6,0,0,0"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,5,28,5">
                                 <Border Style="{StaticResource Cap}"><TextBlock Text="Enter" Foreground="#F0C95E"/></Border>
                                 <TextBlock Text="{loc:T welcome.openInApp}" Margin="6,0,0,0"/>
                             </StackPanel>
