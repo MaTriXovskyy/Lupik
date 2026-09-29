@@ -319,7 +319,7 @@ public partial class MainWindow : Window
     private void ScheduleIdleRelease()
     {
         _idleTimer?.Stop();
-        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
         _idleTimer.Tick += (_, _) =>
         {
             _idleTimer!.Stop();
