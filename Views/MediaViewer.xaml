@@ -1,0 +1,105 @@
+﻿<UserControl x:Class="QuickPeek.Views.MediaViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:views="clr-namespace:QuickPeek.Views"
+             mc:Ignorable="d"
+             d:DesignHeight="450" d:DesignWidth="800"
+             Background="#131211">
+    <UserControl.Resources>
+        <!-- Thin dark slider: filled part in the accent color, round thumb -->
+        <Style x:Key="MediaSlider" TargetType="Slider">
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Height="16" Background="Transparent">
+                            <Border Height="4" CornerRadius="2" Background="#3B3631" VerticalAlignment="Center"/>
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent">
+                                                    <Border Height="4" CornerRadius="2" Background="#E3B341" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Focusable="False">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Width="12" Height="12" Fill="#FBF8F2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Video (or the cover art for audio); click toggles play/pause -->
+        <Grid Grid.Row="0" Background="Black" MouseLeftButtonUp="OnSurfaceClicked" Cursor="Hand">
+            <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Manual" Stretch="Uniform"
+                          MediaOpened="OnMediaOpened" MediaFailed="OnMediaFailed" MediaEnded="OnMediaEnded"/>
+
+            <StackPanel x:Name="AudioPanel" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Width="200" Height="200" CornerRadius="14" Background="#24211E" ClipToBounds="True">
+                    <Grid>
+                        <views:LucideIcon x:Name="AudioIcon" Kind="music" Size="72" StrokeWidth="1.5"
+                                          HorizontalAlignment="Center" TextElement.Foreground="#E3B341"/>
+                        <Image x:Name="CoverImage" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </Grid>
+                </Border>
+                <TextBlock x:Name="AudioTitleText" Foreground="#FBF8F2" FontSize="15" FontWeight="SemiBold" Margin="0,16,0,0"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="440"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Transport bar -->
+        <Border Grid.Row="1" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,1,0,0" Padding="8,0,12,0" Height="44">
+            <DockPanel VerticalAlignment="Center">
+                <Button x:Name="PlayButton" DockPanel.Dock="Left" Style="{StaticResource IconButton}" ToolTip="Odtwórz / pauza (K)" Click="OnPlayClicked">
+                    <views:LucideIcon x:Name="PlayIcon" Kind="pause" Size="16"/>
+                </Button>
+                <TextBlock x:Name="TimeText" DockPanel.Dock="Left" Text="0:00 / 0:00" Foreground="#B5AB9D" FontSize="12"
+                           VerticalAlignment="Center" Margin="6,0,12,0" MinWidth="84"/>
+
+                <Slider x:Name="VolumeSlider" DockPanel.Dock="Right" Style="{StaticResource MediaSlider}" Width="80"
+                        Minimum="0" Maximum="1" Value="0.8" ValueChanged="OnVolumeChanged"/>
+                <Button x:Name="MuteButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" ToolTip="Wycisz (M)" Click="OnMuteClicked" Margin="12,0,4,0">
+                    <views:LucideIcon x:Name="MuteIcon" Kind="volume-2" Size="16"/>
+                </Button>
+                <TextBlock DockPanel.Dock="Right" Text="J / L  ±5 s" Foreground="#5A534B" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0"/>
+
+                <Slider x:Name="SeekSlider" Style="{StaticResource MediaSlider}" Minimum="0" Maximum="1"
+                        ValueChanged="OnSeekChanged"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

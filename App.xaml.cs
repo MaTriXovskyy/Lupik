@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,9 +35,22 @@ public partial class App : Application
         };
     }
 
+    private readonly HashSet<System.Windows.Interop.HwndSource> _automationRefused = new();
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Every window of the app refuses UI Automation queries (see NativeMethods.RefuseAutomation)
+        EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler((sender, _) =>
+        {
+            if (sender is Window w && PresentationSource.FromVisual(w) is System.Windows.Interop.HwndSource src && _automationRefused.Add(src))
+                src.AddHook((IntPtr _, int msg, IntPtr _, IntPtr _, ref bool handled) =>
+                {
+                    Core.NativeMethods.RefuseAutomation(msg, ref handled);
+                    return IntPtr.Zero;
+                });
+        }));
 
         Log("QuickPeek starting...");
 

@@ -19,7 +19,7 @@ public partial class MainWindow : Window
     private int _showToken;
     private static readonly string[] ImageExtensions =
     {
-        ".png", ".jpg", ".jpeg", ".jfif", ".heic", ".heif", ".psd", ".avif", ".bmp", ".gif", ".webp", ".ico", ".tiff", ".tif"
+        ".png", ".jpg", ".jpeg", ".jfif", ".heic", ".heif", ".psd", ".avif", ".bmp", ".gif", ".webp", ".ico", ".tiff", ".tif", ".svg", ".eps", ".epsf", ".epsi", ".ps"
     };
 
     private static readonly string[] CodeExtensions =
@@ -104,6 +104,12 @@ public partial class MainWindow : Window
         const int GWL_STYLE = -16, WS_MINIMIZEBOX = 0x20000;
         SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_MINIMIZEBOX);
 
+        // Never activated: Explorer keeps the focus (see BringToFront)
+        const int GWL_EXSTYLE = -20, WS_EX_NOACTIVATE = 0x08000000;
+        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+        ShowActivated = false;
+        WatchForeground();
+
         ApplyModernStyling(hwnd);
     }
 
@@ -149,6 +155,7 @@ public partial class MainWindow : Window
 
     private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (NativeMethods.RefuseAutomation(msg, ref handled)) return IntPtr.Zero;
         if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == 9001)
         {
             App.Log("[MainWindow] WM_HOTKEY Ctrl+Space triggered!");
@@ -165,7 +172,7 @@ public partial class MainWindow : Window
         TitleFileNameText.Text = "QuickPeek - Gotowy do działania";
         TitleIconImage.Source = null;
         Title = "QuickPeek";
-        FileActions.Visibility = SaveAsButton.Visibility = Visibility.Collapsed; // nothing to act on
+        FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // nothing to act on
 
         _showToken++; // cancel any image still loading
         CancelIdleRelease();
@@ -211,7 +218,35 @@ public partial class MainWindow : Window
                 SetBounds(ComputeImageBounds(ImageViewerControl.NaturalWidth, ImageViewerControl.NaturalHeight));
                 PreloadNeighbors(filePath);
             }
-            else if (ext == ".pdf")
+            else if (Views.MediaViewer.IsMedia(ext))
+            {
+                ApplyFileHeader(filePath);
+                ShowOnlyViewer(MediaViewerControl); // the player has to be in the visual tree to open the file
+                // ...and on screen: MediaElement doesn't open anything in a hidden window. Showing it now also keeps
+                // the loading overlay from kicking in (it would collapse the player, which stops the file opening).
+                if (!IsVisible) SetBounds(ComputeDefaultBounds(ext));
+                BringToFront();
+                bool opened = await MediaViewerControl.LoadAsync(filePath);
+                if (token != _showToken) return;
+
+                if (!opened)
+                {
+                    // No codec for it: the file info card instead of a black box
+                    GenericViewerControl.LoadFile(filePath);
+                    ShowOnlyViewer(GenericViewerControl);
+                    SetBounds(ComputeDefaultBounds(ext));
+                }
+                else if (MediaViewerControl.IsVideo && MediaViewerControl.NaturalWidth > 0)
+                {
+                    const double transportBar = 44 - 36; // taller than the image footer ComputeImageBounds assumes
+                    SetBounds(ComputeImageBounds(MediaViewerControl.NaturalWidth, MediaViewerControl.NaturalHeight + transportBar));
+                }
+                else
+                {
+                    SetBounds(ComputeAudioBounds());
+                }
+            }
+            else if (ext == ".pdf" || (ext == ".ai" && IsPdfCompatible(filePath)))
             {
                 ApplyFileHeader(filePath);
                 ShowOnlyViewer(PdfViewerControl);
@@ -299,7 +334,8 @@ public partial class MainWindow : Window
             if (!IsVisible)
             {
                 TitleFileNameText.Text = Path.GetFileName(filePath);
-                ShowOnlyViewer(LoadingOverlay); // nothing stale behind the overlay
+                // Nothing stale behind the overlay; but a player that's opening its file stays (collapsing it stops it)
+                if (MediaViewerControl.Visibility != Visibility.Visible) ShowOnlyViewer(LoadingOverlay);
                 SetBounds(ComputeDefaultBounds(ext));
                 BringToFront();
             }
@@ -335,6 +371,8 @@ public partial class MainWindow : Window
         UpdateTitleIcon(filePath);
         FileActions.Visibility = Visibility.Visible;
         PrintActionButton.Visibility = CanPrintCurrent() ? Visibility.Visible : Visibility.Collapsed;
+        CropButton.Visibility = File.Exists(filePath) && IsImagePath(filePath) ? Visibility.Visible : Visibility.Collapsed;
+        ImageViewerControl.CancelCrop();
 
         // Folders: "show in folder" and "open" (in Explorer) make sense; save-as / open-with don't
         bool isFolder = Directory.Exists(filePath);
@@ -351,14 +389,20 @@ public partial class MainWindow : Window
     /// <summary>Switches viewers without ever collapsing the one that stays, so nothing blinks.</summary>
     private void ShowOnlyViewer(UIElement target)
     {
-        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, FolderViewerControl, SystemPreviewControl })
+        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, FolderViewerControl, SystemPreviewControl, MediaViewerControl })
         {
             var visibility = viewer == target ? Visibility.Visible : Visibility.Collapsed;
-            // Release the system previewer (it may hold the file open) as soon as it's not shown
+            // Release the system previewer / player (they hold the file open) as soon as they're not shown
             if (viewer == SystemPreviewControl && visibility == Visibility.Collapsed) SystemPreviewControl.Close();
+            if (viewer == MediaViewerControl && visibility == Visibility.Collapsed && viewer.Visibility == Visibility.Visible) MediaViewerControl.Stop();
             if (viewer.Visibility != visibility) viewer.Visibility = visibility;
         }
+        UpdateFooter();
+        CopyInPreview = target == ImageViewerControl || target == CsvViewerControl;
     }
+
+    /// <summary>Whether Ctrl+C / Ctrl+A mean something in the current preview (read by the keyboard hook thread).</summary>
+    public volatile bool CopyInPreview;
 
     /// <summary>
     /// Shows the window above everything else. Topmost is only held for the moment of opening,
@@ -368,7 +412,9 @@ public partial class MainWindow : Window
     /// For automated tests only: show the window without activating it, so a test never steals
     /// keyboard focus from whatever the user is doing.
     /// </summary>
+#pragma warning disable CS0649 // set by automated tests (e.g. via reflection)
     internal static bool SuppressActivationForTests;
+#pragma warning restore CS0649
 
     private void BringToFront()
     {
@@ -383,34 +429,67 @@ public partial class MainWindow : Window
         if (WindowState == WindowState.Minimized)
             WindowState = _isFullScreen ? WindowState.Maximized : WindowState.Normal;
 
+        // The preview never takes the focus: activating it makes Windows wait until the previous foreground window
+        // (Explorer) acknowledges losing it, up to 5 s whenever Explorer is busy. Like Quick Look on the Mac, Explorer
+        // keeps the focus; the preview floats above it and gets its keys through the keyboard hook.
         IntPtr foreground = NativeMethods.GetForegroundWindow();
-        App.Log($"[MainWindow] BringToFront: IsVisible={IsVisible}, IsActive={IsActive}, foreground={DescribeWindow(foreground)}");
-
-        // Already in front (e.g. arrow-key navigation). Ask Windows, not WPF: WPF's IsActive can stay "true"
-        // after Explorer took the focus (seen in the log), which left the preview stuck behind Explorer.
-        if (IsVisible && foreground == Hwnd) return;
-
-        if (foreground != Hwnd && foreground != IntPtr.Zero) _returnFocusTo = foreground;
-        Topmost = true;
-
-        if (!IsVisible)
+        if (foreground != Hwnd && foreground != IntPtr.Zero)
         {
-            Show();
+            SourceWindow = GetAncestor(foreground, GA_ROOT);
         }
 
-        ForceForeground();
-        Activate();
-        Keyboard.Focus(this); // arrow keys work immediately, without clicking the preview first
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Topmost = true; // stays on top while its Explorer window is in front (see OnForegroundChanged)
+        if (!IsVisible) Show();
+        // WPF skips Topmost when the property didn't change, and a window shown without activation keeps its old
+        // place in the z-order (seen: behind Explorer). Put it on top explicitly, every time, without activating.
+        SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        App.Log($"[MainWindow] BringToFront: shown in {sw.ElapsedMilliseconds} ms, source={DescribeWindow(SourceWindow)}");
 
-        App.Log($"[MainWindow] BringToFront: after activation foreground={DescribeWindow(NativeMethods.GetForegroundWindow())}");
-
-        // Dropping Topmost keeps the window at the top of the normal z-order
+        // First frame on screen: log how long it took and whether anything covers the preview
         Dispatcher.InvokeAsync(() =>
-        {
-            Topmost = false;
-            App.Log($"[MainWindow] BringToFront: topmost dropped, foreground={DescribeWindow(NativeMethods.GetForegroundWindow())}, covered by: {WindowsAbove()}");
-        }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            App.Log($"[MainWindow] BringToFront: first frame after {sw.ElapsedMilliseconds} ms, covered by: {WindowsAbove()}"),
+            System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
+
+    private static readonly IntPtr HWND_TOPMOST = new(-1);
+    private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_SHOWWINDOW = 0x0040;
+
+    /// <summary>The Explorer (or other) window the preview was opened from; its keys are routed to the preview.</summary>
+    public volatile IntPtr SourceWindowField;
+    public IntPtr SourceWindow { get => SourceWindowField; private set => SourceWindowField = value; }
+
+    [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hWnd, uint flags);
+    private const uint GA_ROOT = 2;
+
+    private delegate void WinEventProc(IntPtr hook, uint evt, IntPtr hwnd, int idObject, int idChild, uint thread, uint time);
+    [DllImport("user32.dll")] private static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr hmod, WinEventProc proc, uint pid, uint tid, uint flags);
+    private WinEventProc? _foregroundProc; // kept alive: the hook calls into it
+
+    /// <summary>
+    /// Foreground changes (out-of-context WinEvent: delivered asynchronously, never waits on anyone). The preview stays
+    /// on top while its source window or QuickPeek itself is in front, and lets other apps cover it otherwise.
+    /// </summary>
+    private void WatchForeground()
+    {
+        const uint EVENT_SYSTEM_FOREGROUND = 3, WINEVENT_OUTOFCONTEXT = 0;
+        _foregroundProc = (_, _, hwnd, _, _, _, _) => OnForegroundChanged(hwnd);
+        SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, _foregroundProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+    }
+
+    private void OnForegroundChanged(IntPtr hwnd)
+    {
+        if (!IsVisible) return;
+        IntPtr root = GetAncestor(hwnd, GA_ROOT);
+        GetWindowThreadProcessId(root, out uint pid);
+        bool ours = pid == (uint)Environment.ProcessId;
+        bool keepOnTop = ours || root == SourceWindow;
+        if (Topmost != keepOnTop) Topmost = keepOnTop;
+        // Back to its Explorer window: make sure the preview is really above it again
+        if (keepOnTop) SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
     // --- Diagnostics for z-order problems ---
 
@@ -419,8 +498,6 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hWnd);
 
-    /// <summary>The window that had the focus before the preview opened (Explorer / Desktop).</summary>
-    private IntPtr _returnFocusTo;
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
     [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left, Top, Right, Bottom; }
 
@@ -452,29 +529,6 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
     [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
-
-    /// <summary>
-    /// Windows refuses SetForegroundWindow when the key press belonged to another app (Explorer),
-    /// so the preview would open without focus and arrows would keep going to Explorer.
-    /// Briefly joining the foreground thread's input queue lets us take focus.
-    /// </summary>
-    private void ForceForeground()
-    {
-        IntPtr fg = NativeMethods.GetForegroundWindow();
-        if (fg == Hwnd) return;
-
-        uint fgThread = fg == IntPtr.Zero ? 0 : GetWindowThreadProcessId(fg, IntPtr.Zero);
-        uint ourThread = GetCurrentThreadId();
-        bool attached = fgThread != 0 && fgThread != ourThread && AttachThreadInput(ourThread, fgThread, true);
-        try
-        {
-            NativeMethods.SetForegroundWindow(Hwnd);
-        }
-        finally
-        {
-            if (attached) AttachThreadInput(ourThread, fgThread, false);
-        }
-    }
 
     // --- Idle cleanup ---
     // After the preview has been closed for a while, drop everything it holds (images, preloads, PDF pages,
@@ -508,6 +562,7 @@ public partial class MainWindow : Window
         CsvViewerControl.Release();
         ArchiveViewerControl.Release();
         CompareViewerControl.Release();
+        MediaViewerControl.Stop();
         TitleIconImage.Source = null;
         _selectionSet = Array.Empty<string>();
 
@@ -530,29 +585,7 @@ public partial class MainWindow : Window
     {
         App.Log("[MainWindow] HideWindow called");
 
-        // Hand the focus back to the window Space was pressed in (Explorer / Desktop). Otherwise Windows picks
-        // "the next window in z-order", which after our Topmost toggle can be any app (e.g. seen: Claude).
-        // Only while we're the foreground window: if the user already switched elsewhere, leave it alone.
-        IntPtr back = _returnFocusTo;
-        _returnFocusTo = IntPtr.Zero;
-        if (back != IntPtr.Zero && NativeMethods.GetForegroundWindow() == Hwnd && IsWindow(back) && IsWindowVisible(back))
-        {
-            // Plain SetForegroundWindow is refused here (the Space went to our hook, not to a window, so Windows
-            // doesn't count it as "input to us"); joining the target's input queue lifts that restriction.
-            uint targetThread = GetWindowThreadProcessId(back, IntPtr.Zero);
-            uint ourThread = GetCurrentThreadId();
-            bool attached = targetThread != 0 && targetThread != ourThread && AttachThreadInput(ourThread, targetThread, true);
-            bool ok;
-            try
-            {
-                ok = NativeMethods.SetForegroundWindow(back);
-            }
-            finally
-            {
-                if (attached) AttachThreadInput(ourThread, targetThread, false);
-            }
-            App.Log($"[MainWindow] HideWindow: focus returned to {DescribeWindow(back)} (ok={ok})");
-        }
+        // Nothing to hand back: the preview never took the focus from Explorer
         Hide();
         _showToken++; // cancel any image still loading
         EndLoading();
@@ -560,6 +593,8 @@ public partial class MainWindow : Window
         ResetFolderHistory();
         SystemPreviewControl.Close();
         SystemPreviewControl.Visibility = Visibility.Collapsed;
+        MediaViewerControl.Stop(); // no music playing from a hidden window
+        MediaViewerControl.Visibility = Visibility.Collapsed;
         ScheduleIdleRelease();
         _currentFilePath = "";
         WelcomeView.Visibility = Visibility.Collapsed;
@@ -585,7 +620,12 @@ public partial class MainWindow : Window
             new[] { a, b }.Order(StringComparer.OrdinalIgnoreCase).SequenceEqual(
                 new[] { CompareViewerControl.PathA, CompareViewerControl.PathB }.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
 
-        if (!string.IsNullOrEmpty(selected) && PathExists(selected) && !samePairShown &&
+        // Arrow keys change the file in the preview only (Explorer keeps its selection, the preview has no focus).
+        // So Space with the same Explorer selection as before means "close", not "go back to that file".
+        bool selectionChanged = !string.Equals(selected, _explorerSelection, StringComparison.OrdinalIgnoreCase);
+        _explorerSelection = selected;
+
+        if (selectionChanged && !string.IsNullOrEmpty(selected) && PathExists(selected) && !samePairShown &&
             (ComparePair() != null || !string.Equals(selected, _currentFilePath, StringComparison.OrdinalIgnoreCase)))
         {
             ShowSelection(selected);
@@ -595,6 +635,9 @@ public partial class MainWindow : Window
             HideWindow();
         }
     }
+
+    /// <summary>What Explorer had selected when the preview last looked (to tell "Space again" from "picked another file").</summary>
+    private string? _explorerSelection;
 
     public void ToggleWindow()
     {
@@ -609,6 +652,7 @@ public partial class MainWindow : Window
         CaptureSelection();
         ResetFolderHistory(); // opened from Explorer, not from a folder preview
             App.Log($"[MainWindow] ExplorerService returned: '{selected}'");
+            _explorerSelection = selected;
             if (!string.IsNullOrEmpty(selected) && PathExists(selected))
             {
                 ShowSelection(selected);
@@ -651,13 +695,13 @@ public partial class MainWindow : Window
     {
         if (!TryGetWorkArea(out var work, out _, out _)) return new Rect(Left, Top, Width, Height);
 
-        double w = Math.Min(960, work.Width * 0.85);
-        double h = Math.Min(680, work.Height * 0.85);
+        double w = Math.Min(1104, work.Width * 0.92);
+        double h = Math.Min(810, work.Height * 0.92);
 
         if (ext == ".pdf")
         {
-            w = Math.Min(880, work.Width * 0.80);
-            h = Math.Min(900, work.Height * 0.90);
+            w = Math.Min(1012, work.Width * 0.90);
+            h = Math.Min(1035, work.Height * 0.95);
         }
 
         return Centered(work, w, h);
@@ -668,10 +712,10 @@ public partial class MainWindow : Window
         if (imgWidth <= 0 || imgHeight <= 0) return ComputeDefaultBounds("");
         if (!TryGetWorkArea(out var work, out _, out _)) return new Rect(Left, Top, Width, Height);
 
-        double maxW = work.Width * 0.85;
-        double maxH = work.Height * 0.85;
+        double maxW = work.Width * 0.95;
+        double maxH = work.Height * 0.95;
 
-        const double chrome = 38 + 36; // title bar + image footer
+        const double chrome = 38 + 36; // title bar + image footer (the key hints live in it)
         double w = imgWidth;
         double h = imgHeight + chrome;
 
@@ -682,7 +726,7 @@ public partial class MainWindow : Window
             h = (imgHeight * scaleFactor) + chrome;
         }
 
-        return Centered(work, Math.Max(w, 480), Math.Max(h, 360));
+        return Centered(work, Math.Max(w, 552), Math.Max(h, 414));
     }
 
     private static Rect Centered(Rect work, double w, double h) =>
@@ -763,122 +807,197 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
     {
+        if (HandleKey(e.Key == Key.System ? e.SystemKey : e.Key, KeyState.Modifiers)) e.Handled = true;
+    }
+
+    /// <summary>
+    /// A key from the global keyboard hook (virtual-key code). The preview is never the focused window (taking the
+    /// focus from Explorer makes Windows wait on it, up to 5 s when it's busy), so its keys arrive this way.
+    /// </summary>
+    public void HandleHookKey(int vk, ModifierKeys mods)
+    {
+        var key = KeyInterop.KeyFromVirtualKey(vk);
+        // The delete confirmation doesn't take the focus either: Enter / Esc answer it
+        if (Views.ConfirmDeleteWindow.Current is { } confirm)
+        {
+            if (key == Key.Enter) confirm.Answer(true);
+            else if (key == Key.Escape) confirm.Answer(false);
+            return;
+        }
+        if (key is Key.LeftShift or Key.RightShift or Key.LeftAlt or Key.RightAlt or Key.System)
+        {
+            ImageViewerControl.CropModifiersChanged();
+            return;
+        }
+        HandleKey(key, mods);
+    }
+
+    /// <summary>All preview shortcuts. Returns true if the key did something.</summary>
+    private bool HandleKey(Key key, ModifierKeys mods)
+    {
+        bool handled = false;
         bool imageShown = ImageViewerControl.Visibility == Visibility.Visible;
         bool csvShown = CsvViewerControl.Visibility == Visibility.Visible;
+        bool mediaShown = MediaViewerControl.Visibility == Visibility.Visible;
 
-        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+        if (imageShown && ImageViewerControl.IsCropping)
+        {
+            // Crop mode owns the keyboard: Enter saves the crop, Esc leaves; nothing else (no file switching)
+            if (key is Key.Enter or Key.Return) SaveCrop();
+            else if (key == Key.Escape) ImageViewerControl.CancelCrop();
+            else ImageViewerControl.CropModifiersChanged(); // Shift / Alt pressed mid-drag
+            return true;
+        }
+
+        if (imageShown && key == Key.K && mods == 0)
+        {
+            ImageViewerControl.BeginCrop();
+            handled = true;
+        }
+        else if (key == Key.Delete && mods == 0 && !string.IsNullOrEmpty(_currentFilePath))
+        {
+            DeleteCurrent();
+            handled = true;
+        }
+        else if (mediaShown && mods == 0 && key is Key.K or Key.J or Key.L or Key.M)
+        {
+            // YouTube-style: K play/pause, J/L back/forward, M mute (Space and arrows keep closing/navigating)
+            if (key == Key.K) MediaViewerControl.TogglePlay();
+            else if (key == Key.J) MediaViewerControl.SeekBy(-5);
+            else if (key == Key.L) MediaViewerControl.SeekBy(5);
+            else MediaViewerControl.ToggleMute();
+            handled = true;
+        }
+        else if (key == Key.S && mods == ModifierKeys.Control)
         {
             SaveAs();
-            e.Handled = true;
+            handled = true;
         }
-        else if (e.Key == Key.P && Keyboard.Modifiers == ModifierKeys.Control)
+        else if (key == Key.P && mods == ModifierKeys.Control)
         {
             OpenPrintDialog();
-            e.Handled = true;
+            handled = true;
         }
-        else if (imageShown && e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        else if (imageShown && key == Key.C && mods == ModifierKeys.Control)
         {
             ImageViewerControl.CopyImageToClipboard();
-            e.Handled = true;
+            handled = true;
         }
-        else if (imageShown && e.Key == Key.R && (Keyboard.Modifiers & ~ModifierKeys.Shift) == 0)
+        else if (imageShown && key == Key.R && (mods & ~ModifierKeys.Shift) == 0)
         {
-            ImageViewerControl.Rotate(Keyboard.Modifiers == ModifierKeys.Shift ? -90 : 90);
-            e.Handled = true;
+            ImageViewerControl.Rotate(mods == ModifierKeys.Shift ? -90 : 90);
+            handled = true;
         }
-        else if (imageShown && Keyboard.Modifiers == 0 && e.Key is Key.OemPlus or Key.Add)
+        else if (imageShown && mods == 0 && key is Key.OemPlus or Key.Add)
         {
             ImageViewerControl.ZoomBy(1.25);
-            e.Handled = true;
+            handled = true;
         }
-        else if (imageShown && Keyboard.Modifiers == 0 && e.Key is Key.OemMinus or Key.Subtract)
+        else if (imageShown && mods == 0 && key is Key.OemMinus or Key.Subtract)
         {
             ImageViewerControl.ZoomBy(1 / 1.25);
-            e.Handled = true;
+            handled = true;
         }
-        else if (imageShown && e.Key == Key.I && Keyboard.Modifiers == 0)
+        else if (imageShown && key == Key.I && mods == 0)
         {
             ImageViewerControl.ToggleInfo();
-            e.Handled = true;
+            handled = true;
         }
-        else if (Keyboard.Modifiers == 0 && e.Key == Key.C && (CompareViewerControl.Visibility == Visibility.Visible || (imageShown && ComparePair() != null)))
+        else if (mods == 0 && key == Key.C && (CompareViewerControl.Visibility == Visibility.Visible || (imageShown && ComparePair() != null)))
         {
             ToggleCompare(); // 2 images selected: side by side ⇄ single
-            e.Handled = true;
+            handled = true;
         }
-        else if (CompareViewerControl.Visibility == Visibility.Visible && CompareViewerControl.HandleKey(e.Key))
+        else if (CompareViewerControl.Visibility == Visibility.Visible && CompareViewerControl.HandleKey(key, mods))
         {
-            e.Handled = true; // +/−/0, S (mode), X (swap); arrows do nothing here
+            handled = true; // +/−/0, S (mode), X (swap); arrows do nothing here
         }
-        else if (imageShown && Keyboard.Modifiers == 0 && e.Key is Key.D0 or Key.NumPad0)
+        else if (imageShown && mods == 0 && key is Key.D0 or Key.NumPad0)
         {
             ImageViewerControl.ResetZoom();
-            e.Handled = true;
+            handled = true;
         }
-        else if (csvShown && e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        else if (csvShown && key == Key.C && mods == ModifierKeys.Control)
         {
             CsvViewerControl.CopySelection();
-            e.Handled = true;
+            handled = true;
         }
-        else if (csvShown && e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
+        else if (csvShown && key == Key.A && mods == ModifierKeys.Control)
         {
             CsvViewerControl.SelectAll();
-            e.Handled = true;
+            handled = true;
         }
-        else if (csvShown && e.Key == Key.Escape && CsvViewerControl.HasSelection)
+        else if (csvShown && key == Key.Escape && CsvViewerControl.HasSelection)
         {
             CsvViewerControl.ClearSelection(); // first Esc clears the selection, the next one closes
-            e.Handled = true;
+            handled = true;
         }
-        else if (Keyboard.Modifiers == ModifierKeys.Alt && (e.SystemKey == Key.Left || e.SystemKey == Key.Right))
+        else if (mods == ModifierKeys.Alt && (key == Key.Left || key == Key.Right))
         {
-            if (e.SystemKey == Key.Left) GoBackToFolder(); else GoForward(); // Alt+←/→ like in Explorer
-            e.Handled = true;
+            if (key == Key.Left) GoBackToFolder(); else GoForward(); // Alt+←/→ like in Explorer
+            handled = true;
         }
-        else if ((e.Key == Key.Back || e.Key == Key.Escape) && Keyboard.Modifiers == 0 && _folderHistory.Count > 0 && !_isFullScreen)
+        else if ((key == Key.Back || key == Key.Escape) && mods == 0 && _folderHistory.Count > 0 && !_isFullScreen)
         {
             GoBackToFolder(); // opened from a folder preview: back to the folder instead of closing
-            e.Handled = true;
+            handled = true;
         }
-        else if (e.Key == Key.Escape && _isFullScreen)
+        else if (key == Key.Escape && _isFullScreen)
         {
             ToggleFullScreen(); // first Esc leaves full screen, the next one closes
-            e.Handled = true;
+            handled = true;
         }
-        else if (e.Key == Key.F && Keyboard.Modifiers == 0 && !string.IsNullOrEmpty(_currentFilePath))
+        else if (key == Key.F && mods == 0 && !string.IsNullOrEmpty(_currentFilePath))
         {
             ToggleFullScreen();
-            e.Handled = true;
+            handled = true;
         }
-        else if (e.Key == Key.Enter && Keyboard.Modifiers == 0)
+        else if (key == Key.Enter && mods == 0)
         {
             OpenInDefaultApp();
-            e.Handled = true;
+            handled = true;
         }
-        else if (e.Key == Key.Space || e.Key == Key.Escape)
+        else if (key == Key.Space || key == Key.Escape)
         {
             HideWindow();
-            e.Handled = true;
+            handled = true;
         }
-        else if ((e.Key == Key.Up || e.Key == Key.Down) && CodeViewerControl.Visibility == Visibility.Visible)
+        else if ((key == Key.Up || key == Key.Down) && CodeViewerControl.Visibility == Visibility.Visible)
         {
             // In the code preview ↑/↓ scroll the text; ←/→ still switch files
-            CodeViewerControl.ScrollLines(e.Key == Key.Up ? -1 : 1);
-            e.Handled = true;
+            CodeViewerControl.ScrollLines(key == Key.Up ? -1 : 1);
+            handled = true;
         }
-        else if (e.Key == Key.Up || e.Key == Key.Left)
+        else if (key == Key.Up || key == Key.Left)
         {
             NavigateAdjacent(-1);
-            e.Handled = true;
+            handled = true;
         }
-        else if (e.Key == Key.Down || e.Key == Key.Right)
+        else if (key == Key.Down || key == Key.Right)
         {
             NavigateAdjacent(1);
-            e.Handled = true;
+            handled = true;
         }
+        return handled;
+    }
+
+    /// <summary>Releasing Shift / Alt while dragging the crop frame applies at once; Alt alone must not open a menu.</summary>
+    private void OnWindowKeyUp(object sender, KeyEventArgs e)
+    {
+        if (!ImageViewerControl.IsCropping) return;
+        ImageViewerControl.CropModifiersChanged();
+        e.Handled = true;
     }
 
     private bool _isFullScreen;
+
+    /// <summary>The key-hint footer; the image preview shows the hints in its own footer instead.</summary>
+    private void UpdateFooter()
+    {
+        bool show = !_isFullScreen && ImageViewerControl.Visibility != Visibility.Visible;
+        FooterRow.Height = new GridLength(show ? 30 : 0);
+        FooterBar.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     /// <summary>
     /// Full screen for a slideshow feel: no title bar, window covers the whole monitor (incl. taskbar).
@@ -889,8 +1008,12 @@ public partial class MainWindow : Window
         _isFullScreen = !_isFullScreen;
         TitleRow.Height = new GridLength(_isFullScreen ? 0 : 38);
         TitleBar.Visibility = _isFullScreen ? Visibility.Collapsed : Visibility.Visible;
-        Background = _isFullScreen ? System.Windows.Media.Brushes.Black : new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x18, 0x18, 0x1B));
+        UpdateFooter();
+        Background = _isFullScreen ? System.Windows.Media.Brushes.Black : new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x13, 0x12, 0x11));
+        // Full screen needs a frameless window (a captioned one maximizes to the work area, leaving the taskbar)
+        if (_isFullScreen) WindowStyle = WindowStyle.None;
         WindowState = _isFullScreen ? WindowState.Maximized : WindowState.Normal;
+        if (!_isFullScreen) WindowStyle = WindowStyle.SingleBorderWindow;
 
         if (!_isFullScreen && !string.IsNullOrEmpty(_currentFilePath))
         {
@@ -901,6 +1024,69 @@ public partial class MainWindow : Window
     }
 
     private void OnSaveAsClicked(object sender, RoutedEventArgs e) => SaveAs();
+
+    private void OnCropClicked(object sender, RoutedEventArgs e)
+    {
+        if (ImageViewerControl.Visibility != Visibility.Visible) return;
+        if (ImageViewerControl.IsCropping) SaveCrop(); else ImageViewerControl.BeginCrop();
+        Keyboard.Focus(this);
+    }
+
+    /// <summary>Saves the selected part of the image as a new file (the original is never changed).</summary>
+    private async void SaveCrop()
+    {
+        string source = _currentFilePath;
+        if (!File.Exists(source)) return;
+        var f = ImageViewerControl.CropFraction;
+        int rotation = ImageViewerControl.Rotation;
+        ImageViewerControl.CancelCrop();
+
+        string ext = Path.GetExtension(source).ToLowerInvariant();
+        // Vector and exotic formats are saved as PNG; common raster formats keep their own
+        string targetExt = ext is ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" or ".tif" or ".tiff" ? ext : ".png";
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Zapisz kadr",
+            InitialDirectory = Path.GetDirectoryName(source),
+            FileName = Path.GetFileNameWithoutExtension(source) + " (kadr)" + targetExt,
+            Filter = $"{targetExt.TrimStart('.').ToUpperInvariant()}|*{targetExt}|PNG|*.png|JPEG|*.jpg",
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        string target = dialog.FileName;
+        if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show(this, "Wybierz inną nazwę niż oryginalny plik.", "QuickPeek");
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                using var image = Views.ImageViewer.OpenForExport(source);
+                image.AutoOrient();
+                if (rotation != 0) image.Rotate(rotation);
+                // The selection is relative to the image as shown (rotated), in the full-resolution pixels
+                int x = (int)Math.Round(f.X * image.Width), y = (int)Math.Round(f.Y * image.Height);
+                int w = (int)Math.Round(f.Width * image.Width), h = (int)Math.Round(f.Height * image.Height);
+                w = Math.Clamp(w, 1, (int)image.Width - x);
+                h = Math.Clamp(h, 1, (int)image.Height - y);
+                image.Crop(new ImageMagick.MagickGeometry(x, y, (uint)w, (uint)h));
+                image.ResetPage();
+                if (Path.GetExtension(target).ToLowerInvariant() is ".jpg" or ".jpeg") image.Quality = 95;
+                image.Write(target);
+            });
+            App.Log($"[MainWindow] Cropped '{source}' to '{target}'");
+            ShowToast($"Zapisano kadr: {Path.GetFileName(target)}");
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[MainWindow] Crop failed: {ex}");
+            MessageBox.Show(this, $"Nie udało się zapisać kadru:\n{ex.Message}", "QuickPeek");
+        }
+    }
 
     private void OnPrintClicked(object sender, RoutedEventArgs e) => OpenPrintDialog();
 
@@ -1032,7 +1218,7 @@ public partial class MainWindow : Window
             {
                 await Task.Run(() =>
                 {
-                    using var image = new ImageMagick.MagickImage(source);
+                    using var image = Views.ImageViewer.OpenForExport(source);
                     image.AutoOrient();
                     if (rotation != 0) image.Rotate(rotation);
                     if (format.Label != null)
@@ -1124,7 +1310,7 @@ public partial class MainWindow : Window
             ApplyFileHeader(a);
             TitleFileNameText.Text = $"{Path.GetFileName(a)}  ⇄  {Path.GetFileName(b)}";
             Title = $"Porównanie — QuickPeek";
-            FileActions.Visibility = SaveAsButton.Visibility = Visibility.Collapsed; // which file would they act on?
+            FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // which file would they act on?
             ShowOnlyViewer(CompareViewerControl);
             SetBounds(ComputeCompareBounds());
             BringToFront();
@@ -1139,7 +1325,7 @@ public partial class MainWindow : Window
     private Rect ComputeCompareBounds()
     {
         if (!TryGetWorkArea(out var work, out _, out _)) return new Rect(Left, Top, Width, Height);
-        return Centered(work, Math.Min(1500, work.Width * 0.9), Math.Min(900, work.Height * 0.88));
+        return Centered(work, Math.Min(1725, work.Width * 0.97), Math.Min(1035, work.Height * 0.97));
     }
 
     private string? GetNeighbor(string path, int direction)
@@ -1184,12 +1370,90 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Illustrator files saved with "PDF compatible" (the default) are PDFs inside.</summary>
+    private static bool IsPdfCompatible(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            Span<byte> header = stackalloc byte[5];
+            return stream.Read(header) == 5 && header.SequenceEqual("%PDF-"u8);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Audio: just the cover and the transport bar, no need for a big window.</summary>
+    private Rect ComputeAudioBounds()
+    {
+        if (!TryGetWorkArea(out var work, out _, out _)) return new Rect(Left, Top, Width, Height);
+        return Centered(work, Math.Min(644, work.Width * 0.9), Math.Min(483, work.Height * 0.9));
+    }
+
+    // --- Delete: to the Recycle Bin, then on to the next file (like Peek) ---
+
+    private void OnDeleteClicked(object sender, RoutedEventArgs e) => DeleteCurrent();
+
+    private void DeleteCurrent()
+    {
+        string path = _currentFilePath;
+        if (!PathExists(path) || CompareViewerControl.Visibility == Visibility.Visible) return;
+
+        bool isFolder = Directory.Exists(path);
+        if (!Views.ConfirmDeleteWindow.Confirm(this, path)) return;
+
+        // Where to go afterwards: decided before the file disappears from Explorer's view
+        string? next = GetNeighbor(path, 1);
+        if (next == null || string.Equals(next, path, StringComparison.OrdinalIgnoreCase)) next = GetNeighbor(path, -1);
+        if (next != null && string.Equals(next, path, StringComparison.OrdinalIgnoreCase)) next = null;
+
+        // Viewers that keep the file open must let go of it first
+        MediaViewerControl.Stop();
+        SystemPreviewControl.Close();
+        if (PdfViewerControl.Visibility == Visibility.Visible) PdfViewerControl.Release();
+
+        try
+        {
+            if (isFolder)
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+            else
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+            App.Log($"[MainWindow] Moved to Recycle Bin: '{path}'");
+        }
+        catch (OperationCanceledException)
+        {
+            _ = ShowFile(path); // cancelled in the Windows error dialog: show it again
+            return;
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[MainWindow] Delete failed: {ex}");
+            MessageBox.Show(this, $"Nie udało się usunąć:\n{ex.Message}", "QuickPeek");
+            _ = ShowFile(path);
+            return;
+        }
+
+        _selectionSet = _selectionSet.Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (next != null && PathExists(next)) _ = ShowFile(next);
+        else HideWindow();
+    }
+
     private static string SamplePath(string fileName) =>
         Path.Combine(AppContext.BaseDirectory, "test_samples", fileName);
 
     private void OnSampleImageClicked(object sender, RoutedEventArgs e)
     {
         string sample = SamplePath("sample_image.png");
+        if (File.Exists(sample)) _ = ShowFile(sample);
+    }
+
+    private void OnSampleVectorClicked(object sender, RoutedEventArgs e)
+    {
+        string sample = SamplePath("sample_vector.eps");
         if (File.Exists(sample)) _ = ShowFile(sample);
     }
 

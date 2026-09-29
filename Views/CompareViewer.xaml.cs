@@ -16,9 +16,9 @@ namespace QuickPeek.Views;
 /// </summary>
 public partial class CompareViewer : UserControl
 {
-    private static readonly Brush Accent = Frozen(Color.FromRgb(0xCB, 0xA6, 0xF7));
+    private static readonly Brush Accent = Frozen(Color.FromRgb(0xE3, 0xB3, 0x41));
     private static readonly Brush Warning = Frozen(Color.FromRgb(0xF9, 0xE2, 0xAF));
-    private static readonly Brush Muted = Frozen(Color.FromRgb(0xA1, 0xA1, 0xAA));
+    private static readonly Brush Muted = Frozen(Color.FromRgb(0xB5, 0xAB, 0x9D));
 
     private readonly ScaleTransform _scale = new();
     private readonly TranslateTransform _translate = new();
@@ -118,9 +118,9 @@ public partial class CompareViewer : UserControl
     }
 
     /// <summary>Keys while comparing. Returns true when handled.</summary>
-    public bool HandleKey(Key key)
+    public bool HandleKey(Key key, ModifierKeys mods)
     {
-        if (Keyboard.Modifiers != 0) return false;
+        if (mods != 0) return false;
         switch (key)
         {
             case Key.S: _sliderMode = !_sliderMode; ApplyMode(); return true;

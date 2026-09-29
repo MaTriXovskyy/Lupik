@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Point = System.Windows.Point;
 
@@ -41,7 +42,10 @@ public partial class ImageViewer : UserControl
         int token = ++_loadToken;
         try
         {
-            var (bitmap, size, width, height) = await GetDecodeTask(filePath);
+            // The shown image stays cached too: reopening it (Space, Space) is instant instead of a fresh decode
+            var decoding = GetDecodeTask(filePath);
+            Remember(filePath, decoding);
+            var (bitmap, size, width, height) = await decoding;
 
             if (token != _loadToken) return false;
 
@@ -75,6 +79,8 @@ public partial class ImageViewer : UserControl
     private static (BitmapSource, long, int, int) Decode(string filePath)
     {
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext == ".svg") return DecodeSvg(filePath);
+        if (IsPostScript(ext)) return DecodeEps(filePath);
         if (MagickOnlyFormats.Contains(ext)) return DecodeWithMagick(filePath);
         try
         {
@@ -115,8 +121,22 @@ public partial class ImageViewer : UserControl
             var decoding = Task.Run(() => Decode(filePath));
             decoding.ContinueWith(t => App.Log($"[ImageViewer] Preload failed: {t.Exception?.InnerException?.Message}"),
                 TaskContinuationOptions.OnlyOnFaulted);
+            Remember(filePath, decoding, lastWrite);
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[ImageViewer] Preload skipped: {ex.Message}");
+        }
+    }
 
-            _cache[filePath] = new CacheEntry(lastWrite, decoding);
+    /// <summary>Puts a decode (finished or running) into the small most-recently-used cache.</summary>
+    private void Remember(string filePath, Task<(BitmapSource, long, int, int)> decoding, DateTime? lastWrite = null)
+    {
+        try
+        {
+            var stamp = lastWrite ?? File.GetLastWriteTimeUtc(filePath);
+            if (!_cache.TryGetValue(filePath, out var existing) || existing.Decoding != decoding)
+                _cache[filePath] = new CacheEntry(stamp, decoding);
             _cacheOrder.Remove(filePath);
             _cacheOrder.AddFirst(filePath);
             while (_cacheOrder.Count > MaxCachedImages)
@@ -127,7 +147,7 @@ public partial class ImageViewer : UserControl
         }
         catch (Exception ex)
         {
-            App.Log($"[ImageViewer] Preload skipped: {ex.Message}");
+            App.Log($"[ImageViewer] Cache skipped: {ex.Message}");
         }
     }
 
@@ -173,6 +193,65 @@ public partial class ImageViewer : UserControl
         bmp.EndInit();
         bmp.Freeze();
         return (bmp, stream.Length, w, h);
+    }
+
+    internal static bool IsPostScript(string ext) => ext is ".eps" or ".epsf" or ".epsi" or ".ps";
+
+    /// <summary>EPS / PS: drawn by QuickPeek's own PostScript interpreter (Core/PostScript), no Ghostscript needed.</summary>
+    private static (BitmapSource, long, int, int) DecodeEps(string filePath)
+    {
+        byte[] data = File.ReadAllBytes(filePath);
+        var result = Core.PostScript.EpsRenderer.Render(data, minSize: 1024, maxSize: MaxDecodeSize);
+        return (result.Bitmap, data.Length, result.PixelWidth, result.PixelHeight);
+    }
+
+    /// <summary>
+    /// For Save As / print: a Magick image of the file. Formats Magick can't read without extra software
+    /// (EPS needs Ghostscript) are rendered here first and handed over as PNG.
+    /// </summary>
+    internal static ImageMagick.MagickImage OpenForExport(string filePath)
+    {
+        if (!IsPostScript(Path.GetExtension(filePath).ToLowerInvariant())) return new ImageMagick.MagickImage(filePath);
+        var (bitmap, _, _, _) = DecodeEps(filePath);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var png = new MemoryStream();
+        encoder.Save(png);
+        return new ImageMagick.MagickImage(png.ToArray());
+    }
+
+    /// <summary>
+    /// SVG is rendered by Magick.NET's bundled librsvg. Vectors have no pixel size of their own, so small ones
+    /// (icons, logos) are rasterized at a higher density to stay sharp; the reported size is the rendered one.
+    /// </summary>
+    private static (BitmapSource, long, int, int) DecodeSvg(string filePath)
+    {
+        const int MinRenderSize = 1024;
+        byte[] data = File.ReadAllBytes(filePath);
+
+        var settings = new ImageMagick.MagickReadSettings
+        {
+            Format = ImageMagick.MagickFormat.Svg,
+            BackgroundColor = ImageMagick.MagickColors.Transparent,
+            Density = new ImageMagick.Density(96),
+        };
+        var probe = new ImageMagick.MagickImageInfo(data, settings); // nominal size at 96 DPI
+        double longest = Math.Max(1, Math.Max(probe.Width, probe.Height));
+        double scale = Math.Clamp(MinRenderSize / longest, 1, MaxDecodeSize / longest);
+        settings.Density = new ImageMagick.Density(96 * scale);
+
+        using var image = new ImageMagick.MagickImage(data, settings);
+        using var buffer = new MemoryStream();
+        image.Write(buffer, ImageMagick.MagickFormat.Png32);
+        buffer.Position = 0;
+
+        var bmp = new BitmapImage();
+        bmp.BeginInit();
+        bmp.StreamSource = buffer;
+        bmp.CacheOption = BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        return (bmp, data.Length, (int)image.Width, (int)image.Height);
     }
 
     /// <summary>
@@ -363,6 +442,223 @@ public partial class ImageViewer : UserControl
     private static bool _infoOpen; // stays open while flipping through images
     private int _infoToken;
 
+    // --- Crop ---
+
+    private enum CropDrag { None, New, Move, TopLeft, TopRight, BottomLeft, BottomRight, Top, Bottom, Left, Right }
+    private CropDrag _cropDrag;
+    private Rect _imageBounds; // the displayed image, in CropLayer coordinates
+    private Rect _crop;
+    private Point _cropAnchor;
+    private Point _lastCropPoint;
+    private Rect _cropAtDragStart;
+
+    public bool IsCropping => CropLayer.Visibility == Visibility.Visible;
+
+    /// <summary>Starts crop mode on the whole (fitted) image.</summary>
+    public void BeginCrop()
+    {
+        if (PreviewImage.Source == null) return;
+        ResetZoom();
+        CropLayer.Visibility = Visibility.Visible;
+        UpdateLayout();
+        _imageBounds = DisplayedImageBounds();
+        _crop = _imageBounds;
+        RedrawCrop();
+    }
+
+    public void CancelCrop() => CropLayer.Visibility = Visibility.Collapsed;
+
+    /// <summary>The selection as fractions (0..1) of the image as shown, i.e. after rotation.</summary>
+    public Rect CropFraction =>
+        _imageBounds.Width <= 0 || _imageBounds.Height <= 0 ? new Rect(0, 0, 1, 1) : new Rect(
+            (_crop.X - _imageBounds.X) / _imageBounds.Width, (_crop.Y - _imageBounds.Y) / _imageBounds.Height,
+            _crop.Width / _imageBounds.Width, _crop.Height / _imageBounds.Height);
+
+    private Rect DisplayedImageBounds() =>
+        PreviewImage.TransformToVisual(CropLayer).TransformBounds(new Rect(PreviewImage.RenderSize));
+
+    private void OnCropLayerSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!IsCropping) return;
+        var f = CropFraction; // keep the same part of the image selected
+        _imageBounds = DisplayedImageBounds();
+        _crop = new Rect(_imageBounds.X + f.X * _imageBounds.Width, _imageBounds.Y + f.Y * _imageBounds.Height,
+            f.Width * _imageBounds.Width, f.Height * _imageBounds.Height);
+        RedrawCrop();
+    }
+
+    /// <summary>What the mouse is over: a corner, an edge (anywhere along it), the inside, or nothing.</summary>
+    private CropDrag HitCrop(Point p)
+    {
+        const double corner = 18, edge = 10;
+        var r = _crop;
+        bool Near(Point c) => Math.Abs(p.X - c.X) <= corner && Math.Abs(p.Y - c.Y) <= corner;
+        if (Near(r.TopLeft)) return CropDrag.TopLeft;
+        if (Near(r.TopRight)) return CropDrag.TopRight;
+        if (Near(r.BottomLeft)) return CropDrag.BottomLeft;
+        if (Near(r.BottomRight)) return CropDrag.BottomRight;
+        bool withinX = p.X >= r.Left - edge && p.X <= r.Right + edge;
+        bool withinY = p.Y >= r.Top - edge && p.Y <= r.Bottom + edge;
+        if (withinX && Math.Abs(p.Y - r.Top) <= edge) return CropDrag.Top;
+        if (withinX && Math.Abs(p.Y - r.Bottom) <= edge) return CropDrag.Bottom;
+        if (withinY && Math.Abs(p.X - r.Left) <= edge) return CropDrag.Left;
+        if (withinY && Math.Abs(p.X - r.Right) <= edge) return CropDrag.Right;
+        return r.Contains(p) ? CropDrag.Move : CropDrag.New;
+    }
+
+    private void OnCropMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var p = e.GetPosition(CropLayer);
+        _cropDrag = HitCrop(p);
+        _cropAnchor = _cropDrag == CropDrag.New ? ClampToImage(p) : p;
+        _cropAtDragStart = _crop;
+        _lastCropPoint = p;
+        CropLayer.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void OnCropMouseMove(object sender, MouseEventArgs e)
+    {
+        var p = e.GetPosition(CropLayer);
+        if (_cropDrag == CropDrag.None)
+        {
+            CropLayer.Cursor = HitCrop(p) switch
+            {
+                CropDrag.TopLeft or CropDrag.BottomRight => Cursors.SizeNWSE,
+                CropDrag.TopRight or CropDrag.BottomLeft => Cursors.SizeNESW,
+                CropDrag.Top or CropDrag.Bottom => Cursors.SizeNS,
+                CropDrag.Left or CropDrag.Right => Cursors.SizeWE,
+                CropDrag.Move => Cursors.SizeAll,
+                _ => Cursors.Cross,
+            };
+            return;
+        }
+        _lastCropPoint = p;
+        UpdateCropDrag();
+    }
+
+    /// <summary>Shift / Alt pressed or released mid-drag: apply them right away, like Photoshop.</summary>
+    public void CropModifiersChanged()
+    {
+        if (IsCropping && _cropDrag != CropDrag.None) UpdateCropDrag();
+    }
+
+    private void UpdateCropDrag()
+    {
+        var p = _lastCropPoint;
+        var s = _cropAtDragStart;
+        if (_cropDrag == CropDrag.Move)
+        {
+            double x = Math.Clamp(s.X + p.X - _cropAnchor.X, _imageBounds.Left, _imageBounds.Right - s.Width);
+            double y = Math.Clamp(s.Y + p.Y - _cropAnchor.Y, _imageBounds.Top, _imageBounds.Bottom - s.Height);
+            _crop = new Rect(x, y, s.Width, s.Height);
+        }
+        else
+        {
+            var mods = Core.KeyState.Modifiers;
+            _crop = ResizeCrop(ClampToImage(p), keepRatio: (mods & ModifierKeys.Shift) != 0, fromCenter: (mods & ModifierKeys.Alt) != 0);
+        }
+        RedrawCrop();
+    }
+
+    /// <summary>
+    /// Resizes from the grabbed corner/edge. Shift keeps the proportions (a square when drawing a new frame),
+    /// Alt resizes around the center (around the click point for a new frame); both together combine.
+    /// </summary>
+    private Rect ResizeCrop(Point q, bool keepRatio, bool fromCenter)
+    {
+        var s = _cropAtDragStart;
+        bool isNew = _cropDrag == CropDrag.New;
+        bool movesLeft = _cropDrag is CropDrag.TopLeft or CropDrag.BottomLeft or CropDrag.Left;
+        bool movesTop = _cropDrag is CropDrag.TopLeft or CropDrag.TopRight or CropDrag.Top;
+        bool horizontal = isNew || _cropDrag is not (CropDrag.Top or CropDrag.Bottom);
+        bool vertical = isNew || _cropDrag is not (CropDrag.Left or CropDrag.Right);
+        double ratio = isNew || s.Height <= 0 ? 1 : s.Width / s.Height;
+
+        var center = isNew ? _cropAnchor : new Point(s.X + s.Width / 2, s.Y + s.Height / 2);
+        // The fixed side: the opposite corner/edge (or the click point for a new frame)
+        double fixedX = isNew ? _cropAnchor.X : movesLeft ? s.Right : s.Left;
+        double fixedY = isNew ? _cropAnchor.Y : movesTop ? s.Bottom : s.Top;
+
+        double w, h;
+        if (fromCenter)
+        {
+            w = horizontal ? 2 * Math.Abs(q.X - center.X) : s.Width;
+            h = vertical ? 2 * Math.Abs(q.Y - center.Y) : s.Height;
+        }
+        else
+        {
+            w = horizontal ? Math.Abs(q.X - fixedX) : s.Width;
+            h = vertical ? Math.Abs(q.Y - fixedY) : s.Height;
+        }
+
+        if (keepRatio)
+        {
+            if (horizontal && vertical) { if (w / ratio > h) h = w / ratio; else w = h * ratio; }
+            else if (horizontal) h = w / ratio;
+            else w = h * ratio;
+        }
+
+        double x, y;
+        if (fromCenter)
+        {
+            x = center.X - w / 2;
+            y = center.Y - h / 2;
+        }
+        else
+        {
+            x = horizontal ? (q.X < fixedX ? fixedX - w : fixedX) : center.X - w / 2;
+            y = vertical ? (q.Y < fixedY ? fixedY - h : fixedY) : center.Y - h / 2;
+        }
+
+        var r = new Rect(x, y, w, h);
+        r.Intersect(_imageBounds);
+        return r.IsEmpty ? new Rect(q, q) : r;
+    }
+
+    private void OnCropMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        CropLayer.ReleaseMouseCapture();
+        _cropDrag = CropDrag.None;
+        if (_crop.Width < 4 || _crop.Height < 4) _crop = _imageBounds; // a click, not a drag: back to everything
+        RedrawCrop();
+    }
+
+    private Point ClampToImage(Point p) => new(
+        Math.Clamp(p.X, _imageBounds.Left, _imageBounds.Right),
+        Math.Clamp(p.Y, _imageBounds.Top, _imageBounds.Bottom));
+
+    private void RedrawCrop()
+    {
+        var full = new RectangleGeometry(new Rect(0, 0, CropLayer.ActualWidth, CropLayer.ActualHeight));
+        CropShade.Data = new CombinedGeometry(GeometryCombineMode.Exclude, full, new RectangleGeometry(_crop));
+
+        Canvas.SetLeft(CropFrame, _crop.X);
+        Canvas.SetTop(CropFrame, _crop.Y);
+        CropFrame.Width = _crop.Width;
+        CropFrame.Height = _crop.Height;
+
+        void Place(FrameworkElement h, Point c) { Canvas.SetLeft(h, c.X - h.Width / 2); Canvas.SetTop(h, c.Y - h.Height / 2); }
+        Place(HandleTL, _crop.TopLeft);
+        Place(HandleTR, _crop.TopRight);
+        Place(HandleBL, _crop.BottomLeft);
+        Place(HandleBR, _crop.BottomRight);
+        Place(HandleT, new Point(_crop.X + _crop.Width / 2, _crop.Top));
+        Place(HandleB, new Point(_crop.X + _crop.Width / 2, _crop.Bottom));
+        Place(HandleL, new Point(_crop.Left, _crop.Y + _crop.Height / 2));
+        Place(HandleR, new Point(_crop.Right, _crop.Y + _crop.Height / 2));
+
+        // Pixel size of the selection, next to the key hints
+        var f = CropFraction;
+        bool sideways = Rotation is 90 or 270;
+        double w = (sideways ? _naturalHeight : _naturalWidth) * f.Width, h = (sideways ? _naturalWidth : _naturalHeight) * f.Height;
+        CropSizeRun.Text = $"{w:0} × {h:0} px";
+
+        CropHint.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(CropHint, Math.Max(8, (CropLayer.ActualWidth - CropHint.DesiredSize.Width) / 2));
+        Canvas.SetTop(CropHint, 12);
+    }
+
     private void OnInfoClicked(object sender, RoutedEventArgs e) => ToggleInfo();
 
     public void ToggleInfo()
@@ -376,7 +672,7 @@ public partial class ImageViewer : UserControl
     private async Task LoadInfoAsync(string path)
     {
         int token = ++_infoToken;
-        InfoButton.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xCB, 0xA6, 0xF7));
+        InfoButton.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE3, 0xB3, 0x41));
         List<QuickPeek.Core.InfoItem> items;
         try { items = await Task.Run(() => QuickPeek.Core.ImageInfo.Read(path)); }
         catch (Exception ex) { App.Log($"[ImageViewer] Info failed: {ex.Message}"); return; }
@@ -387,6 +683,17 @@ public partial class ImageViewer : UserControl
         double width = Math.Max(100, InfoPanel.ActualWidth > 0 ? InfoPanel.ActualWidth : ActualWidth);
         InfoItems.Measure(new Size(width - InfoItems.Margin.Left - InfoItems.Margin.Right, double.PositiveInfinity));
         AnimateInfo(InfoItems.DesiredSize.Height + InfoItems.Margin.Top + InfoItems.Margin.Bottom + 1);
+    }
+
+    /// <summary>The centered key hints only show when they fit between the left and right footer groups.</summary>
+    private void OnFooterLayoutChanged(object sender, SizeChangedEventArgs e)
+    {
+        const double gap = 16;
+        double hints = FooterHints.ActualWidth;
+        double half = (FooterGrid.ActualWidth - hints) / 2; // space on each side of the centered hints
+        bool fits = half >= FooterLeft.ActualWidth + gap && half >= FooterRight.ActualWidth + gap;
+        var visibility = fits ? Visibility.Visible : Visibility.Hidden; // Hidden keeps its size for this check
+        if (FooterHints.Visibility != visibility) FooterHints.Visibility = visibility;
     }
 
     private void AnimateInfo(double to)

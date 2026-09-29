@@ -33,6 +33,7 @@ public partial class PdfViewer : UserControl
     public async Task LoadPdfAsync(string filePath)
     {
         int token = ++_renderToken; // also stops a previous file's background rendering
+        FormatBadgeText.Text = Path.GetExtension(filePath).Equals(".ai", StringComparison.OrdinalIgnoreCase) ? "AI" : "PDF";
         try
         {
             _currentFilePath = filePath;
@@ -185,7 +186,7 @@ public partial class PdfViewer : UserControl
 
     private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (Keyboard.Modifiers == ModifierKeys.Control)
+        if (Core.KeyState.Modifiers == ModifierKeys.Control)
         {
             if (e.Delta > 0)
                 OnZoomInClicked(sender, e);

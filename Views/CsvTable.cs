@@ -18,17 +18,17 @@ public class CsvTable : FrameworkElement
     private const double HeaderHeight = 30;
     private const double CellPadding = 10;
 
-    private static readonly Brush RowBrush = Frozen(Color.FromRgb(0x18, 0x18, 0x1B));
-    private static readonly Brush AltRowBrush = Frozen(Color.FromRgb(0x1C, 0x1C, 0x20));
-    private static readonly Brush HeaderBrush = Frozen(Color.FromRgb(0x1F, 0x1F, 0x23));
-    private static readonly Brush TextBrush = Frozen(Color.FromRgb(0xE4, 0xE4, 0xE7));
-    private static readonly Brush HeaderTextBrush = Frozen(Color.FromRgb(0xA1, 0xA1, 0xAA));
-    private static readonly Pen GridPen = FrozenPen(Color.FromRgb(0x27, 0x27, 0x2A));
-    private static readonly Pen HeaderPen = FrozenPen(Color.FromRgb(0x2E, 0x2E, 0x33));
-    private static readonly Brush SelectionFill = Frozen(Color.FromArgb(0x38, 0xCB, 0xA6, 0xF7));
-    private static readonly Pen SelectionPen = FrozenPen(Color.FromArgb(0x90, 0xCB, 0xA6, 0xF7));
-    private static readonly Pen ActivePen = FrozenPen(Color.FromRgb(0xCB, 0xA6, 0xF7), 2);
-    private static readonly Brush HeaderSelectedBrush = Frozen(Color.FromArgb(0x30, 0xCB, 0xA6, 0xF7));
+    private static readonly Brush RowBrush = Frozen(Color.FromRgb(0x13, 0x12, 0x11));
+    private static readonly Brush AltRowBrush = Frozen(Color.FromRgb(0x18, 0x16, 0x14));
+    private static readonly Brush HeaderBrush = Frozen(Color.FromRgb(0x1B, 0x19, 0x17));
+    private static readonly Brush TextBrush = Frozen(Color.FromRgb(0xEC, 0xE6, 0xDC));
+    private static readonly Brush HeaderTextBrush = Frozen(Color.FromRgb(0xB5, 0xAB, 0x9D));
+    private static readonly Pen GridPen = FrozenPen(Color.FromRgb(0x24, 0x21, 0x1E));
+    private static readonly Pen HeaderPen = FrozenPen(Color.FromRgb(0x2F, 0x2B, 0x27));
+    private static readonly Brush SelectionFill = Frozen(Color.FromArgb(0x38, 0xE3, 0xB3, 0x41));
+    private static readonly Pen SelectionPen = FrozenPen(Color.FromArgb(0x90, 0xE3, 0xB3, 0x41));
+    private static readonly Pen ActivePen = FrozenPen(Color.FromRgb(0xE3, 0xB3, 0x41), 2);
+    private static readonly Brush HeaderSelectedBrush = Frozen(Color.FromArgb(0x30, 0xE3, 0xB3, 0x41));
 
     private readonly Typeface _typeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
     private readonly Typeface _headerTypeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
@@ -293,7 +293,7 @@ public class CsvTable : FrameworkElement
         if (HitTestCell(e.GetPosition(this)) is not { } hit) return;
         var (row, col) = hit;
 
-        bool extend = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift) && _selection != null;
+        bool extend = QuickPeek.Core.KeyState.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift) && _selection != null;
         _dragColumns = row < 0;
 
         if (_dragColumns)

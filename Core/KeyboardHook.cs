@@ -189,11 +189,67 @@ public class KeyboardHook : IDisposable
                     // Space in any other app is left alone: the preview stays open (e.g. parked on the taskbar)
                 }
             }
-            // Esc is handled by the preview window itself when it has focus (full screen, selection, close);
-            // in other apps it's left alone, so it doesn't close a preview waiting on the taskbar
+            // The preview's own keys, while it's open over the window it came from
+            if (RouteToPreview(kb.vkCode, keyUp: false)) return (IntPtr)1;
+        }
+        else if (nCode >= 0 && (wParam == (IntPtr)NativeMethods.WM_KEYUP || wParam == (IntPtr)NativeMethods.WM_SYSKEYUP))
+        {
+            var kb = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+            RouteToPreview(kb.vkCode, keyUp: true); // Shift / Alt released: the crop frame reacts; never swallowed
         }
 
         return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+    }
+
+    private const int VK_SHIFT = 0x10, VK_LSHIFT = 0xA0, VK_RSHIFT = 0xA1, VK_MENU = 0x12, VK_LMENU = 0xA4, VK_RMENU = 0xA5;
+
+    /// <summary>
+    /// The preview never takes the focus (that makes Windows wait on Explorer), so the keys it uses are taken here
+    /// while it's open and its source window (or QuickPeek) is in front, and handed to it asynchronously.
+    /// Other keys, and every key in other apps, pass through untouched.
+    /// </summary>
+    private static bool RouteToPreview(uint vk, bool keyUp)
+    {
+        var window = MainWindowRef;
+        if (window == null || !window.IsShown) return false;
+
+        IntPtr fg = NativeMethods.GetForegroundWindow();
+        IntPtr root = GetAncestor(fg, GA_ROOT);
+        if (root == IntPtr.Zero) root = fg;
+        if (root != window.Hwnd && root != window.SourceWindow) return false;
+
+        var mods = Core.KeyState.Modifiers;
+        bool modifier = vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT or VK_MENU or VK_LMENU or VK_RMENU;
+        if (modifier)
+        {
+            // Only informs the crop frame (Shift = proportions, Alt = from the center); the key itself goes on
+            window.Dispatcher.InvokeAsync(() => window.HandleHookKey((int)vk, mods));
+            return false;
+        }
+        if (keyUp || (mods & System.Windows.Input.ModifierKeys.Windows) != 0) return false;
+        if (!IsPreviewKey(vk, mods, window) || IsUserEditingText(fg)) return false;
+
+        window.Dispatcher.InvokeAsync(() => window.HandleHookKey((int)vk, mods));
+        return true;
+    }
+
+    private static bool IsPreviewKey(uint vk, System.Windows.Input.ModifierKeys mods, MainWindow window)
+    {
+        const System.Windows.Input.ModifierKeys Ctrl = System.Windows.Input.ModifierKeys.Control;
+        switch (vk)
+        {
+            case 0x25: case 0x26: case 0x27: case 0x28: // arrows (Alt+←/→ = back / forward)
+            case 0x1B: case 0x0D: case 0x2E: case 0x08: // Esc, Enter, Delete, Backspace
+                return (mods & Ctrl) == 0;
+            case 0x43: return (mods & Ctrl) == 0 || window.CopyInPreview; // C: compare; Ctrl+C only where the preview copies something
+            case 0x41: return (mods & Ctrl) != 0 && window.CopyInPreview; // Ctrl+A (table)
+            case 0x53: case 0x50: return true; // Ctrl+S / Ctrl+P, S (compare mode)
+            case 0x46: case 0x52: case 0x49: case 0x4B: case 0x4A: case 0x4C: case 0x4D: case 0x58: // F R I K J L M X
+            case 0x30: case 0x60: case 0xBB: case 0xBD: case 0x6B: case 0x6D: // 0, +, −
+                return (mods & Ctrl) == 0;
+            default:
+                return false;
+        }
     }
 
     private static bool IsUserEditingText(IntPtr fgWnd)

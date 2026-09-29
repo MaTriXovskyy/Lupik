@@ -89,7 +89,7 @@ public sealed class ImagePrintSource : IPrintSource
     public ImagePrintSource(string path, int rotationDegrees)
     {
         Name = Path.GetFileName(path);
-        using var image = new ImageMagick.MagickImage(path);
+        using var image = Views.ImageViewer.OpenForExport(path);
         image.AutoOrient();
         if (rotationDegrees != 0) image.Rotate(rotationDegrees);
 
