@@ -12,6 +12,10 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <StartupObject>Lupik.Program</StartupObject>
+    <!-- Windows x64 only: without it every build also copies Magick.NET and PDFium for Linux, macOS, ARM and x86 (~125 MB) -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <Version>1.0.0</Version>
     <Product>Lupik</Product>
   </PropertyGroup>
