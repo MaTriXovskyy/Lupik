@@ -5,7 +5,7 @@
         Title="Drukuj" Width="1000" Height="700" MinWidth="820" MinHeight="560"
         WindowStyle="None" ResizeMode="CanResize" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
-        Background="#18181B" Foreground="#E4E4E7"
+        Background="#131211" Foreground="#ECE6DC"
         PreviewKeyDown="OnKeyDown">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
@@ -13,24 +13,24 @@
 
     <Window.Resources>
         <Style x:Key="Label" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#A1A1AA"/>
+            <Setter Property="Foreground" Value="#B5AB9D"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="0,14,0,6"/>
         </Style>
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Foreground" Value="#1E1E2E"/>
+            <Setter Property="Foreground" Value="#161412"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="#CBA6F7" CornerRadius="6" Padding="18,8">
+                        <Border x:Name="Bd" Background="#E3B341" CornerRadius="6" Padding="18,8">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#D8BBFA"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#F0C95E"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
@@ -42,7 +42,7 @@
         </Style>
     </Window.Resources>
 
-    <Border BorderBrush="#2E2E33" BorderThickness="1">
+    <Border BorderBrush="#2F2B27" BorderThickness="1">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -50,7 +50,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- ===== Preview ===== -->
-            <Grid Grid.Column="0" Background="#111113">
+            <Grid Grid.Column="0" Background="#0E0D0C">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
@@ -67,7 +67,7 @@
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
-                    <TextBlock x:Name="PreviewStatus" Text="Przygotowywanie podglądu…" Foreground="#71717A" FontSize="12"
+                    <TextBlock x:Name="PreviewStatus" Text="Przygotowywanie podglądu…" Foreground="#8A8074" FontSize="12"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
 
@@ -75,7 +75,7 @@
                     <Button x:Name="PrevPageButton" Style="{StaticResource IconButton}" ToolTip="Poprzednia strona" Click="OnPrevPage">
                         <views:LucideIcon Kind="chevron-left" Size="16"/>
                     </Button>
-                    <TextBlock x:Name="PageIndicator" Text="Strona 1 z 1" Foreground="#A1A1AA" FontSize="12"
+                    <TextBlock x:Name="PageIndicator" Text="Strona 1 z 1" Foreground="#B5AB9D" FontSize="12"
                                VerticalAlignment="Center" Margin="10,0" MinWidth="90" TextAlignment="Center"/>
                     <Button x:Name="NextPageButton" Style="{StaticResource IconButton}" ToolTip="Następna strona" Click="OnNextPage">
                         <views:LucideIcon Kind="chevron-right" Size="16"/>
@@ -84,7 +84,7 @@
             </Grid>
 
             <!-- ===== Settings ===== -->
-            <Grid Grid.Column="1" Background="#1C1C20">
+            <Grid Grid.Column="1" Background="#181614">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -95,10 +95,10 @@
                 <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="OnHeaderMouseDown" Margin="22,16,12,4">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <views:LucideIcon Kind="printer" Size="18" Margin="0,0,10,0" TextElement.Foreground="#CBA6F7"/>
-                            <TextBlock Text="Drukuj" FontSize="18" FontWeight="SemiBold" Foreground="#FAFAFA" VerticalAlignment="Center"/>
+                            <views:LucideIcon Kind="printer" Size="18" Margin="0,0,10,0" TextElement.Foreground="#E3B341"/>
+                            <TextBlock Text="Drukuj" FontSize="18" FontWeight="SemiBold" Foreground="#FBF8F2" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock x:Name="SheetsText" Foreground="#71717A" FontSize="12" Margin="28,4,0,0"/>
+                        <TextBlock x:Name="SheetsText" Foreground="#8A8074" FontSize="12" Margin="28,4,0,0"/>
                     </StackPanel>
                     <Button Style="{StaticResource IconButton}" HorizontalAlignment="Right" VerticalAlignment="Top"
                             ToolTip="Zamknij (Esc)" Click="OnCancel">
@@ -111,7 +111,7 @@
                         <TextBlock Text="Drukarka" Style="{StaticResource Label}"/>
                         <ComboBox x:Name="PrinterBox" Style="{StaticResource DarkComboBox}" MaxDropDownHeight="320"
                                   SelectionChanged="OnPrinterChanged"/>
-                        <TextBlock x:Name="PrinterInfo" Foreground="#71717A" FontSize="11" Margin="2,5,0,0" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="PrinterInfo" Foreground="#8A8074" FontSize="11" Margin="2,5,0,0" TextWrapping="Wrap"/>
 
                         <TextBlock Text="Strony" Style="{StaticResource Label}"/>
                         <ComboBox x:Name="PagesModeBox" Style="{StaticResource DarkComboBox}" SelectionChanged="OnPagesModeChanged">
@@ -140,7 +140,7 @@
                                 </Button>
                             </StackPanel>
                         </Grid>
-                        <CheckBox x:Name="CollateBox" Content="Sortuj kopie (1,2,3 · 1,2,3)" IsChecked="True" Foreground="#A1A1AA"
+                        <CheckBox x:Name="CollateBox" Content="Sortuj kopie (1,2,3 · 1,2,3)" IsChecked="True" Foreground="#B5AB9D"
                                   FontSize="12" Margin="2,8,0,0" Visibility="Collapsed" Checked="OnSettingChanged" Unchecked="OnSettingChanged"/>
 
                         <TextBlock Text="Układ" Style="{StaticResource Label}"/>
@@ -177,9 +177,9 @@
                 </ScrollViewer>
 
                 <!-- Footer -->
-                <Border Grid.Row="2" BorderBrush="#2E2E33" BorderThickness="0,1,0,0" Padding="22,14">
+                <Border Grid.Row="2" BorderBrush="#2F2B27" BorderThickness="0,1,0,0" Padding="22,14">
                     <Grid>
-                        <TextBlock x:Name="StatusText" Foreground="#A1A1AA" FontSize="12" VerticalAlignment="Center"
+                        <TextBlock x:Name="StatusText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center"
                                    TextWrapping="Wrap" Margin="0,0,190,0"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Style="{StaticResource PillButton}" Content="Anuluj" Padding="16,8" Margin="0,0,8,0" Click="OnCancel"/>

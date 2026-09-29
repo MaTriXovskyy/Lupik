@@ -11,14 +11,14 @@ namespace QuickPeek.Views;
 /// </summary>
 public static class CodeTheme
 {
-    public static readonly Color Text = C("#CDD6F4");
+    public static readonly Color Text = C("#E9E2D6");
     public static readonly Color Subtext = C("#A6ADC8");
-    public static readonly Color Overlay = C("#6C7086");
-    public static readonly Color Surface = C("#313244");
-    public static readonly Color Base = C("#1E1E2E");
-    public static readonly Color Mantle = C("#181825");
+    public static readonly Color Overlay = C("#665C50");
+    public static readonly Color Surface = C("#2E2A25");
+    public static readonly Color Base = C("#161412");
+    public static readonly Color Mantle = C("#121110");
 
-    private static readonly Color Mauve = C("#CBA6F7");
+    private static readonly Color Mauve = C("#E3B341");
     private static readonly Color Blue = C("#89B4FA");
     private static readonly Color Sapphire = C("#74C7EC");
     private static readonly Color Teal = C("#94E2D5");

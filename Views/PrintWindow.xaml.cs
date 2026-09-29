@@ -168,7 +168,7 @@ public partial class PrintWindow : Window
         _pages = pages!;
         _previewPosition = Math.Clamp(_previewPosition, 0, _pages.Count - 1);
         StatusText.Text = "";
-        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xA1, 0xA1, 0xAA));
+        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xB5, 0xAB, 0x9D));
         PrintButton.IsEnabled = _printer?.Valid == true;
 
         int sidesPerSheet = DuplexBox.SelectedIndex > 0 ? 2 : 1;
@@ -282,7 +282,7 @@ public partial class PrintWindow : Window
 
         PrintButton.IsEnabled = false;
         IsEnabledSettings(false);
-        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xA1, 0xA1, 0xAA));
+        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xB5, 0xAB, 0x9D));
         StatusText.Text = "Wysyłanie do drukarki…";
 
         try

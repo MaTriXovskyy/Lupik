@@ -2,7 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:QuickPeek.Views"
-             Background="#18181B">
+             Background="#131211">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -11,7 +11,7 @@
         </Grid.RowDefinitions>
 
         <!-- Summary bar -->
-        <Border Grid.Row="0" Background="#1F1F23" BorderBrush="#2E2E33" BorderThickness="0,0,0,1" Padding="14,8">
+        <Border Grid.Row="0" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,0,0,1" Padding="14,8">
             <DockPanel LastChildFill="True">
                 <!-- Extract: button, then progress, then result -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -25,10 +25,10 @@
 
                     <StackPanel x:Name="ExtractProgressPanel" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
                         <Grid Width="160" Height="6" VerticalAlignment="Center" Margin="0,0,10,0">
-                            <Border Background="#27272A" CornerRadius="3"/>
-                            <Border x:Name="ExtractProgressFill" Background="#CBA6F7" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
+                            <Border Background="#24211E" CornerRadius="3"/>
+                            <Border x:Name="ExtractProgressFill" Background="#E3B341" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
                         </Grid>
-                        <TextBlock x:Name="ExtractProgressText" Foreground="#A1A1AA" FontSize="12" VerticalAlignment="Center" MinWidth="120"/>
+                        <TextBlock x:Name="ExtractProgressText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center" MinWidth="120"/>
                         <Button Style="{StaticResource IconButton}" ToolTip="Anuluj rozpakowywanie" Click="OnExtractCancel" Margin="4,0,0,0">
                             <views:LucideIcon Kind="x" Size="14"/>
                         </Button>
@@ -45,19 +45,19 @@
                 </StackPanel>
 
             <StackPanel Orientation="Horizontal">
-                <Border Background="#2A2540" BorderBrush="#4B3F6B" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
-                    <StackPanel Orientation="Horizontal" TextElement.Foreground="#CBA6F7">
+                <Border Background="#2E2618" BorderBrush="#5C4A20" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" TextElement.Foreground="#E3B341">
                         <views:LucideIcon Kind="archive" Size="12" Margin="0,0,5,0"/>
                         <TextBlock x:Name="FormatText" Text="ZIP" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
-                <TextBlock x:Name="SummaryText" Foreground="#A1A1AA" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="SummaryText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
             </DockPanel>
         </Border>
 
         <!-- Column headers -->
-        <Grid Grid.Row="1" Margin="14,8,14,4" TextElement.Foreground="#71717A" TextElement.FontSize="11">
+        <Grid Grid.Row="1" Margin="14,8,14,4" TextElement.Foreground="#8A8074" TextElement.FontSize="11">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="100"/>
@@ -83,7 +83,7 @@
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#232327"/>
+                                        <Setter TargetName="Bd" Property="Background" Value="#1F1C1A"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -102,11 +102,11 @@
                         <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
                             <views:LucideIcon Kind="{Binding Icon}" Size="15" Margin="0,0,8,0"
                                               TextElement.Foreground="{Binding IconBrush}"/>
-                            <TextBlock Text="{Binding Name}" Foreground="#E4E4E7" FontSize="12.5" VerticalAlignment="Center"
+                            <TextBlock Text="{Binding Name}" Foreground="#ECE6DC" FontSize="12.5" VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <TextBlock Grid.Column="1" Text="{Binding SizeText}" Foreground="#A1A1AA" FontSize="12" TextAlignment="Right" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="2" Text="{Binding DateText}" Foreground="#71717A" FontSize="12" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding SizeText}" Foreground="#B5AB9D" FontSize="12" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding DateText}" Foreground="#8A8074" FontSize="12" TextAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
