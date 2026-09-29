@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 public class KeyboardHook : IDisposable
 {
@@ -82,7 +82,7 @@ public class KeyboardHook : IDisposable
         })
         {
             IsBackground = true,
-            Name = "QuickPeek_KeyboardHook_Thread"
+            Name = "Lupik_KeyboardHook_Thread"
         };
 
         _hookThread.SetApartmentState(ApartmentState.STA);
@@ -205,7 +205,7 @@ public class KeyboardHook : IDisposable
 
     /// <summary>
     /// The preview never takes the focus (that makes Windows wait on Explorer), so the keys it uses are taken here
-    /// while it's open and its source window (or QuickPeek) is in front, and handed to it asynchronously.
+    /// while it's open and its source window (or Lupik) is in front, and handed to it asynchronously.
     /// Other keys, and every key in other apps, pass through untouched.
     /// </summary>
     private static bool RouteToPreview(uint vk, bool keyUp)

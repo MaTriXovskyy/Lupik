@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 public enum GlobalHotkey
 {
@@ -11,7 +11,7 @@ public enum GlobalHotkey
     None,
 }
 
-/// <summary>User preferences, stored in %AppData%\QuickPeek\settings.json.</summary>
+/// <summary>User preferences, stored in %AppData%\Lupik\settings.json.</summary>
 public class Settings
 {
     /// <summary>Space on a selected file in Explorer/Desktop opens the preview.</summary>
@@ -23,7 +23,7 @@ public class Settings
     public string? LastPrinter { get; set; }
 
     private static readonly string FilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuickPeek", "settings.json");
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lupik", "settings.json");
 
     public static Settings Current { get; private set; } = Load();
 
@@ -33,6 +33,14 @@ public class Settings
     {
         try
         {
+            // The app used to be called QuickPeek: carry its settings over once
+            string old = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuickPeek", "settings.json");
+            if (!File.Exists(FilePath) && File.Exists(old))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+                File.Copy(old, FilePath);
+            }
+
             if (File.Exists(FilePath))
                 return JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath)) ?? new Settings();
         }

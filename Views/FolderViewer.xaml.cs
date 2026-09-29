@@ -12,9 +12,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using QuickPeek.Core;
+using Lupik.Core;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>One tile in the folder grid.</summary>
 public sealed class FolderTile : INotifyPropertyChanged
@@ -137,7 +137,7 @@ public partial class FolderViewer : UserControl
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
-    /// <summary>Stops background work and drops thumbnails (folder closed or QuickPeek idle).</summary>
+    /// <summary>Stops background work and drops thumbnails (folder closed or Lupik idle).</summary>
     public void Release()
     {
         ShellThumbnails.NewGeneration();
@@ -209,7 +209,7 @@ public partial class FolderViewer : UserControl
             App.Log($"[FolderViewer] Zip failed: {ex}");
             ResetZipUi();
             if (!MainWindow.SuppressActivationForTests) // tests: log only, a message box would grab focus
-                MessageBox.Show(Window.GetWindow(this)!, $"Nie udało się spakować folderu:\n{ex.Message}", "QuickPeek");
+                MessageBox.Show(Window.GetWindow(this)!, $"Nie udało się spakować folderu:\n{ex.Message}", "Lupik");
         }
         finally
         {

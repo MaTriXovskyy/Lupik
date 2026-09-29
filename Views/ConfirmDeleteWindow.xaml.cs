@@ -3,9 +3,9 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
-using QuickPeek.Core;
+using Lupik.Core;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>"Move to Recycle Bin?" card: shows what is about to go, Enter confirms, Esc cancels.</summary>
 public partial class ConfirmDeleteWindow : Window

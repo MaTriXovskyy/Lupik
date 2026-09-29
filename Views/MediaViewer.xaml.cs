@@ -5,9 +5,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
-using QuickPeek.Core;
+using Lupik.Core;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>
 /// Audio / video player on WPF's MediaElement (Windows Media Foundation), so it plays whatever codecs Windows has.

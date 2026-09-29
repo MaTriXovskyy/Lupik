@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit.Highlighting;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>
 /// Recolors AvalonEdit's built-in (light-theme) highlighting definitions to a Catppuccin Mocha palette.

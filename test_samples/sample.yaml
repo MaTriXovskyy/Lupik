@@ -1,0 +1,6 @@
+app: Lupik
+hotkey: Ctrl+Space
+formats:
+  - png
+  - pdf
+  - mp4

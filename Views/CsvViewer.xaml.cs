@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>Shows .csv / .tsv files as a table (delimiter detected automatically).</summary>
 public partial class CsvViewer : UserControl
@@ -31,7 +31,7 @@ public partial class CsvViewer : UserControl
         SummaryText.Text = cells > 1 ? $"{_summary}  •  zaznaczono {cells} komórek (Ctrl+C kopiuje)" : _summary;
     }
 
-    /// <summary>Drops the loaded rows (called when QuickPeek goes idle).</summary>
+    /// <summary>Drops the loaded rows (called when Lupik goes idle).</summary>
     public void Release()
     {
         _loadToken++;

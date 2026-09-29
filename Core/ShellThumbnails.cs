@@ -7,7 +7,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 /// <summary>
 /// Thumbnails the way Explorer shows them (same shell cache: fast, and icons for folders/other files).
@@ -25,7 +25,7 @@ public static class ShellThumbnails
 
     static ShellThumbnails()
     {
-        var worker = new Thread(Work) { IsBackground = true, Name = "QuickPeek thumbnails" };
+        var worker = new Thread(Work) { IsBackground = true, Name = "Lupik thumbnails" };
         worker.SetApartmentState(ApartmentState.STA);
         worker.Start();
     }

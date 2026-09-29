@@ -1,0 +1,13 @@
+# Source files: normal line-ending handling
+* text=auto
+
+# Sample files are test data and must stay byte-for-byte (a PDF's xref offsets break if line endings change)
+test_samples/** -text
+
+# Binary formats wherever they appear
+*.pdf binary
+*.ai binary
+*.eps binary
+*.ps binary
+*.ico binary
+*.png binary

@@ -1,0 +1,31 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%Creator: Lupik sample (hand written PostScript)
+%%Title: Lupik sample
+%%BoundingBox: 0 0 400 260
+%%EndComments
+/bd { bind def } bind def
+/box { 4 dict begin /h exch def /w exch def /y exch def /x exch def
+  newpath x y moveto w 0 rlineto 0 h rlineto w neg 0 rlineto closepath end } bd
+gsave
+  0 0 400 260 box clip newpath
+  << /ShadingType 2 /ColorSpace /DeviceRGB /Coords [0 0 400 260]
+     /Function << /FunctionType 2 /Domain [0 1] /C0 [0.10 0.09 0.08] /C1 [0.35 0.27 0.10] /N 1 >> >> shfill
+grestore
+0.05 0.25 0.85 0 setcmykcolor
+120 140 70 0 360 arc closepath fill
+1 1 1 setrgbcolor 4 setlinewidth
+120 140 70 0 360 arc stroke
+gsave 300 150 translate
+  1 0.85 0.3 setrgbcolor newpath 0 60 moveto
+  4 { 144 rotate 0 60 lineto } repeat closepath fill
+grestore
+[12 6] 0 setdash 3 setlinewidth 0.9 setgray 1 setlinecap
+newpath 20 30 moveto 120 120 220 -40 380 40 curveto stroke
+[] 0 setdash
+/Helvetica-Bold findfont 30 scalefont setfont
+1 setgray 212 215 moveto (Lupik) show
+/Times-Italic findfont 14 scalefont setfont
+0.9 0.8 0.5 setrgbcolor 212 195 moveto (sample vector \(EPS\)) show
+0 1 9 { /i exch def i 10 div 0.5 1 i 10 div sub setrgbcolor 210 i 18 mul add 70 12 12 box fill } for
+showpage
+%%EOF

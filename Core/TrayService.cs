@@ -8,7 +8,7 @@ using Microsoft.Win32;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 public class TrayService : IDisposable
 {
@@ -29,14 +29,14 @@ public class TrayService : IDisposable
         {
             _notifyIcon = new NotifyIcon
             {
-                Text = "QuickPeek (Spacja = podgląd)",
+                Text = "Lupik (Spacja = podgląd)",
                 Icon = LoadAppIcon(),
                 Visible = true
             };
 
             var contextMenu = new ContextMenuStrip();
 
-            var statusItem = new ToolStripMenuItem("QuickPeek: Aktywny")
+            var statusItem = new ToolStripMenuItem("Lupik: Aktywny")
             {
                 Enabled = false,
                 Font = new Font(contextMenu.Font, System.Drawing.FontStyle.Bold)
@@ -178,12 +178,28 @@ public class TrayService : IDisposable
         return (Icon)Icon.FromHandle(hIcon).Clone();
     }
 
+    /// <summary>Autostart entry left by the old name (QuickPeek): replaced by one for this exe.</summary>
+    public static void MigrateAutostart()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+            if (key?.GetValue("QuickPeek") == null) return;
+            key.DeleteValue("QuickPeek", false);
+            if (Environment.ProcessPath is { } exe) key.SetValue("Lupik", $"\"{exe}\" --tray");
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[TrayService] Autostart migration failed: {ex.Message}");
+        }
+    }
+
     public static bool IsAutostartEnabled()
     {
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
-            return key?.GetValue("QuickPeek") != null;
+            return key?.GetValue("Lupik") != null;
         }
         catch
         {
@@ -203,18 +219,18 @@ public class TrayService : IDisposable
 
             if (IsAutostartEnabled())
             {
-                key.DeleteValue("QuickPeek", false);
+                key.DeleteValue("Lupik", false);
                 if (_autostartMenuItem != null) _autostartMenuItem.Checked = false;
             }
             else
             {
-                key.SetValue("QuickPeek", $"\"{exePath}\" --tray"); // --tray: start silently in the tray
+                key.SetValue("Lupik", $"\"{exePath}\" --tray"); // --tray: start silently in the tray
                 if (_autostartMenuItem != null) _autostartMenuItem.Checked = true;
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Nie udało się zmienić ustawienia autostartu:\n{ex.Message}", "QuickPeek");
+            MessageBox.Show($"Nie udało się zmienić ustawienia autostartu:\n{ex.Message}", "Lupik");
         }
     }
 

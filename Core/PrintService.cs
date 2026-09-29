@@ -10,7 +10,7 @@ using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 /// <summary>Something printable: a PDF (many pages) or an image (one page).</summary>
 public interface IPrintSource : IDisposable
@@ -85,7 +85,7 @@ public sealed class ImagePrintSource : IPrintSource
     public string Name { get; }
     public int PageCount => 1;
 
-    /// <summary>Loads any format QuickPeek can show (incl. HEIC/PSD), with the preview's rotation applied.</summary>
+    /// <summary>Loads any format Lupik can show (incl. HEIC/PSD), with the preview's rotation applied.</summary>
     public ImagePrintSource(string path, int rotationDegrees)
     {
         Name = Path.GetFileName(path);

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace QuickPeek.Core.PostScript;
+namespace Lupik.Core.PostScript;
 
 // PostScript values. Integers are long, reals double, booleans bool; everything else is one of the classes below.
 

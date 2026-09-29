@@ -9,9 +9,9 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using QuickPeek.Core;
+using Lupik.Core;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>Chrome-style print dialog: settings on the right, live preview of the sheet on the left.</summary>
 public partial class PrintWindow : Window

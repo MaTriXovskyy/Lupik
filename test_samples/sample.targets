@@ -1,0 +1,5 @@
+<Project>
+  <Target Name="SayHello" AfterTargets="Build">
+    <Message Text="Built with Lupik samples" Importance="high" />
+  </Target>
+</Project>

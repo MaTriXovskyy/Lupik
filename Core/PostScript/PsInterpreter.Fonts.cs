@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 
-namespace QuickPeek.Core.PostScript;
+namespace Lupik.Core.PostScript;
 
 /// <summary>
 /// Text. Fonts embedded in the file (Type 1 with eexec-encrypted outlines, Type 3 procedures) are drawn from their

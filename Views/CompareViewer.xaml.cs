@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Point = System.Windows.Point;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>
 /// Two images compared either side by side or with a before/after slider.

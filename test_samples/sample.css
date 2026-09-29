@@ -1,0 +1,7 @@
+.card {
+  background: #1b1917;
+  color: #fbf8f2;
+  border-radius: 12px;
+}
+
+.card:hover { outline: 1px solid #e3b341; }

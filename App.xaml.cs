@@ -3,15 +3,15 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using QuickPeek.Core;
+using Lupik.Core;
 
-namespace QuickPeek;
+namespace Lupik;
 
 public partial class App : Application
 {
     private static Mutex? _mutex;
-    private const string MutexName = "QuickPeek_SingleInstance_App_Mutex";
-    private const string WakeEventName = "QuickPeek_Wake_Event";
+    private const string MutexName = "Lupik_SingleInstance_App_Mutex";
+    private const string WakeEventName = "Lupik_Wake_Event";
     private static EventWaitHandle? _wakeEvent;
     private static CancellationTokenSource? _wakeCts;
 
@@ -52,7 +52,7 @@ public partial class App : Application
                 });
         }));
 
-        Log("QuickPeek starting...");
+        Log("Lupik starting...");
 
         // 1. Single instance check with wake signaling
         _mutex = new Mutex(true, MutexName, out bool isNewInstance);
@@ -116,6 +116,7 @@ public partial class App : Application
 
             // 5. Setup System Tray Icon
             _trayService = new TrayService(_mainWindow);
+            TrayService.MigrateAutostart();
             _trayService.Initialize();
             _trayService.DoubleClicked += () =>
             {
@@ -127,11 +128,11 @@ public partial class App : Application
             if (!startInTray)
             {
                 _trayService.ShowBalloonNotification(
-                    "QuickPeek jest gotowy!",
+                    "Lupik jest gotowy!",
                     "Wciśnij SPACJĘ na dowolnym pliku w Eksploratorze lub na Pulpicie.");
             }
 
-            Log($"QuickPeek initialized successfully and running (startInTray={startInTray}).");
+            Log($"Lupik initialized successfully and running (startInTray={startInTray}).");
 
             // 6. Immediately toggle/show window so user sees it right away (unless autostarted)
             if (!startInTray)
@@ -145,7 +146,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Log("Initialization error: " + ex);
-            MessageBox.Show($"Błąd uruchamiania QuickPeek:\n{ex.Message}", "QuickPeek");
+            MessageBox.Show($"Błąd uruchamiania Lupik:\n{ex.Message}", "Lupik");
             Shutdown();
         }
     }
@@ -164,9 +165,9 @@ public partial class App : Application
     {
         try
         {
-            string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "QuickPeek.log");
+            string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lupik.log");
 
-            // Keep the log from growing forever: past 2 MB it becomes QuickPeek.old.log (one generation)
+            // Keep the log from growing forever: past 2 MB it becomes Lupik.old.log (one generation)
             var info = new FileInfo(logPath);
             if (info.Exists && info.Length > 2 * 1024 * 1024)
                 File.Move(logPath, Path.ChangeExtension(logPath, ".old.log"), overwrite: true);
@@ -181,7 +182,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        Log("QuickPeek exiting.");
+        Log("Lupik exiting.");
         Core.PendingCleanup.CancelAllAndClean(); // unfinished zip / extraction outputs
 
         _wakeCts?.Cancel();

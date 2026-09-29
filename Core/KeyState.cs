@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Input;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 /// <summary>
 /// Modifier keys read from the system. The preview window never takes the keyboard focus (so WPF's

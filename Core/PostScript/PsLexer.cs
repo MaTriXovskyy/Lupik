@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace QuickPeek.Core.PostScript;
+namespace Lupik.Core.PostScript;
 
 /// <summary>Turns PostScript source bytes into objects: numbers, names, strings, procedures.</summary>
 internal sealed class PsLexer

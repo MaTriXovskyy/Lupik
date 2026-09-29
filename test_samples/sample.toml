@@ -1,0 +1,6 @@
+[app]
+name = "Lupik"
+hotkey = "Ctrl+Space"
+
+[preview]
+formats = ["png", "pdf", "mp4"]

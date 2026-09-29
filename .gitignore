@@ -1,12 +1,84 @@
-# Build output
-bin/
-obj/
+# --- Build output ---
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]64/
+[Pp]ublish/
+artifacts/
 *_wpftmp.csproj
+*.nupkg
+*.snupkg
+*.pdb
+*.ilk
+*.exp
+*.lib
 
-# IDE
+# --- IDEs and editors ---
 .vs/
 .vscode/
+.idea/
 *.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+*.swp
+*~
 
-# Runtime logs
+# --- Tests and diagnostics ---
+TestResults/
+[Tt]est[Rr]esult*/
+coverage*/
+*.coverage
+*.trx
+*.dmp
+*.nettrace
+*.speedscope.json
+*.diagsession
+*.etl
+
+# --- Runtime files written next to the exe ---
 *.log
+
+# --- Secrets and local configuration: never commit these ---
+.env
+.env.*
+*.pfx
+*.p12
+*.snk
+*.pem
+*.key
+secrets.json
+appsettings.*.local.json
+*.local.json
+
+# --- OS junk ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# --- Stray files at the repo root ---
+# Only project files belong at the top level; sample files go to test_samples/.
+/*.ai
+/*.pdf
+/*.psd
+/*.png
+/*.jpg
+/*.jpeg
+/*.zip
+/*.rar
+/*.7z
+/*.mp4
+/*.mkv
+/*.docx
+/*.xlsx
+
+# --- Sample files are test data: keep all of them, whatever the patterns above say ---
+!test_samples/
+!test_samples/**

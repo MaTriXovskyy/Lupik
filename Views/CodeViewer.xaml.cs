@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit.Highlighting;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 public partial class CodeViewer : UserControl
 {
@@ -129,7 +129,7 @@ public partial class CodeViewer : UserControl
         LanguageText.Text = langName;
     }
 
-    /// <summary>Drops the loaded text (called when QuickPeek goes idle).</summary>
+    /// <summary>Drops the loaded text (called when Lupik goes idle).</summary>
     public void Release()
     {
         _loadToken++;

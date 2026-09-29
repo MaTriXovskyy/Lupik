@@ -9,7 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Point = System.Windows.Point;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 public partial class ImageViewer : UserControl
 {
@@ -102,7 +102,7 @@ public partial class ImageViewer : UserControl
     private readonly Dictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<string> _cacheOrder = new();
 
-    /// <summary>Drops the shown image and all preloaded ones (called when QuickPeek goes idle).</summary>
+    /// <summary>Drops the shown image and all preloaded ones (called when Lupik goes idle).</summary>
     public void Release()
     {
         _loadToken++;
@@ -197,7 +197,7 @@ public partial class ImageViewer : UserControl
 
     internal static bool IsPostScript(string ext) => ext is ".eps" or ".epsf" or ".epsi" or ".ps";
 
-    /// <summary>EPS / PS: drawn by QuickPeek's own PostScript interpreter (Core/PostScript), no Ghostscript needed.</summary>
+    /// <summary>EPS / PS: drawn by Lupik's own PostScript interpreter (Core/PostScript), no Ghostscript needed.</summary>
     private static (BitmapSource, long, int, int) DecodeEps(string filePath)
     {
         byte[] data = File.ReadAllBytes(filePath);
@@ -673,8 +673,8 @@ public partial class ImageViewer : UserControl
     {
         int token = ++_infoToken;
         InfoButton.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE3, 0xB3, 0x41));
-        List<QuickPeek.Core.InfoItem> items;
-        try { items = await Task.Run(() => QuickPeek.Core.ImageInfo.Read(path)); }
+        List<Lupik.Core.InfoItem> items;
+        try { items = await Task.Run(() => Lupik.Core.ImageInfo.Read(path)); }
         catch (Exception ex) { App.Log($"[ImageViewer] Info failed: {ex.Message}"); return; }
         if (token != _infoToken || !_infoOpen) return;
 

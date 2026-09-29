@@ -3,7 +3,7 @@ using System.IO.Compression;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace QuickPeek.Core.PostScript;
+namespace Lupik.Core.PostScript;
 
 /// <summary>A byte stream PostScript reads from: the program itself, a string, a procedure or a decode filter.</summary>
 internal interface IByteSource

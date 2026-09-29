@@ -8,7 +8,7 @@ using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Win32;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>
 /// Hosts a Windows shell preview handler (the same previewers Explorer's preview pane uses):

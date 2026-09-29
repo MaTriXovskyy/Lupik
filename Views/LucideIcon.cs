@@ -6,7 +6,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>
 /// Lucide icon (https://lucide.dev, ISC license) drawn as a stroked 24×24 path.

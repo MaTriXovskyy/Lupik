@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using ImageMagick;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 /// <summary>One label/value cell of the image info panel.</summary>
 public sealed record InfoItem(string Label, string Value, bool Accent = false);

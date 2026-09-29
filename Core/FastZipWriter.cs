@@ -9,7 +9,7 @@ using System.IO.Compression;
 using System.IO.Hashing;
 using System.Text;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 /// <summary>
 /// ZIP writer that compresses each file on all CPU cores at once (the "pigz" technique):

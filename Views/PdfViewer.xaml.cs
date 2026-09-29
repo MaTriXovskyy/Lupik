@@ -10,7 +10,7 @@ using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 public partial class PdfViewer : UserControl
 {
@@ -67,7 +67,7 @@ public partial class PdfViewer : UserControl
         }
     }
 
-    /// <summary>Drops rendered pages and the open document (called when QuickPeek goes idle).</summary>
+    /// <summary>Drops rendered pages and the open document (called when Lupik goes idle).</summary>
     public void Release()
     {
         _renderToken++; // stops background rendering

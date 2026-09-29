@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 
-namespace QuickPeek.Core.PostScript;
+namespace Lupik.Core.PostScript;
 
 /// <summary>
-/// A PostScript interpreter written for QuickPeek: enough of the language (Level 2/3 core) to run the
+/// A PostScript interpreter written for Lupik: enough of the language (Level 2/3 core) to run the
 /// prologs that Illustrator, CorelDRAW, Inkscape, Photoshop, etc. put into EPS files, and to draw them.
 /// This part holds the execution model and the non-graphics operators; drawing is in PsInterpreter.Graphics.cs.
 /// </summary>
@@ -639,7 +639,7 @@ internal sealed partial class PsInterpreter
         Op("currentpacking", () => Push(false));
         _systemDict.Put("languagelevel", 3L); // Adobe prologs read it with "systemdict /languagelevel get"
         Op("version", () => Push(new PsString("3010")));
-        Op("product", () => Push(new PsString("QuickPeek")));
+        Op("product", () => Push(new PsString("Lupik")));
         Op("revision", () => Push(1L));
         Op("serialnumber", () => Push(0L));
         Op("realtime", () => Push((long)_clock.ElapsedMilliseconds));

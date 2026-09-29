@@ -1,0 +1,6 @@
+{
+  "name": "Lupik",
+  "formats": ["png", "pdf", "mp4"],
+  "hotkey": "Ctrl+Space",
+  "startInTray": true
+}

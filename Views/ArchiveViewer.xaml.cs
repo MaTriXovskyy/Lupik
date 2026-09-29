@@ -4,13 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using QuickPeek.Core;
+using Lupik.Core;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using SharpCompress.Archives;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>One visible row of the archive listing.</summary>
 public sealed record ArchiveEntryRow(string Name, string Icon, Brush IconBrush, Thickness Indent, string SizeText, string DateText);
@@ -43,7 +43,7 @@ public partial class ArchiveViewer : UserControl
         InitializeComponent();
     }
 
-    /// <summary>Drops the listing (called when QuickPeek goes idle).</summary>
+    /// <summary>Drops the listing (called when Lupik goes idle).</summary>
     public void Release()
     {
         _loadToken++;
@@ -226,7 +226,7 @@ public partial class ArchiveViewer : UserControl
             App.Log($"[ArchiveViewer] Extract failed: {ex}");
             ResetExtractUi();
             if (!MainWindow.SuppressActivationForTests) // tests: log only, a message box would grab focus
-                MessageBox.Show(Window.GetWindow(this)!, $"Nie udało się rozpakować archiwum:\n{ex.Message}", "QuickPeek");
+                MessageBox.Show(Window.GetWindow(this)!, $"Nie udało się rozpakować archiwum:\n{ex.Message}", "Lupik");
         }
         finally
         {

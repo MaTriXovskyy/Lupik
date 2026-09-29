@@ -9,9 +9,9 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using QuickPeek.Core;
+using Lupik.Core;
 
-namespace QuickPeek;
+namespace Lupik;
 
 public partial class MainWindow : Window
 {
@@ -169,9 +169,9 @@ public partial class MainWindow : Window
     {
         App.Log("[MainWindow] ShowWelcome called.");
         _currentFilePath = "";
-        TitleFileNameText.Text = "QuickPeek - Gotowy do działania";
+        TitleFileNameText.Text = "Lupik - Gotowy do działania";
         TitleIconImage.Source = null;
-        Title = "QuickPeek";
+        Title = "Lupik";
         FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // nothing to act on
 
         _showToken++; // cancel any image still loading
@@ -314,7 +314,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Arms the loading overlay. It only appears if loading takes longer than a blink, so fast files don't flash.
     /// If the window is still hidden at that point, it's shown right away with the overlay, so a slow file
-    /// never looks like QuickPeek ignored the key press.
+    /// never looks like Lupik ignored the key press.
     /// </summary>
     private void BeginLoading(string filePath, string ext, int token)
     {
@@ -367,7 +367,7 @@ public partial class MainWindow : Window
     {
         _currentFilePath = filePath;
         TitleFileNameText.Text = Path.GetFileName(filePath);
-        Title = $"{Path.GetFileName(filePath)} — QuickPeek"; // taskbar / Alt+Tab label
+        Title = $"{Path.GetFileName(filePath)} — Lupik"; // taskbar / Alt+Tab label
         UpdateTitleIcon(filePath);
         FileActions.Visibility = Visibility.Visible;
         PrintActionButton.Visibility = CanPrintCurrent() ? Visibility.Visible : Visibility.Collapsed;
@@ -468,7 +468,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Foreground changes (out-of-context WinEvent: delivered asynchronously, never waits on anyone). The preview stays
-    /// on top while its source window or QuickPeek itself is in front, and lets other apps cover it otherwise.
+    /// on top while its source window or Lupik itself is in front, and lets other apps cover it otherwise.
     /// </summary>
     private void WatchForeground()
     {
@@ -504,7 +504,7 @@ public partial class MainWindow : Window
     private string DescribeWindow(IntPtr hwnd)
     {
         if (hwnd == IntPtr.Zero) return "none";
-        if (hwnd == Hwnd) return "QuickPeek";
+        if (hwnd == Hwnd) return "Lupik";
         var sb = new System.Text.StringBuilder(64);
         NativeMethods.GetClassName(hwnd, sb, sb.Capacity);
         return $"0x{hwnd:X} ({sb})";
@@ -1057,7 +1057,7 @@ public partial class MainWindow : Window
         string target = dialog.FileName;
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Wybierz inną nazwę niż oryginalny plik.", "QuickPeek");
+            MessageBox.Show(this, "Wybierz inną nazwę niż oryginalny plik.", "Lupik");
             return;
         }
 
@@ -1084,7 +1084,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Crop failed: {ex}");
-            MessageBox.Show(this, $"Nie udało się zapisać kadru:\n{ex.Message}", "QuickPeek");
+            MessageBox.Show(this, $"Nie udało się zapisać kadru:\n{ex.Message}", "Lupik");
         }
     }
 
@@ -1114,7 +1114,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Could not open print dialog: {ex}");
-            MessageBox.Show(this, $"Nie udało się przygotować wydruku:\n{ex.Message}", "QuickPeek");
+            MessageBox.Show(this, $"Nie udało się przygotować wydruku:\n{ex.Message}", "Lupik");
         }
     }
 
@@ -1201,7 +1201,7 @@ public partial class MainWindow : Window
 
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Wybierz inną nazwę lub folder niż oryginalny plik.", "QuickPeek");
+            MessageBox.Show(this, "Wybierz inną nazwę lub folder niż oryginalny plik.", "Lupik");
             return;
         }
 
@@ -1243,7 +1243,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Save As failed: {ex}");
-            MessageBox.Show(this, $"Nie udało się zapisać pliku:\n{ex.Message}", "QuickPeek");
+            MessageBox.Show(this, $"Nie udało się zapisać pliku:\n{ex.Message}", "Lupik");
         }
     }
 
@@ -1309,7 +1309,7 @@ public partial class MainWindow : Window
 
             ApplyFileHeader(a);
             TitleFileNameText.Text = $"{Path.GetFileName(a)}  ⇄  {Path.GetFileName(b)}";
-            Title = $"Porównanie — QuickPeek";
+            Title = $"Porównanie — Lupik";
             FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // which file would they act on?
             ShowOnlyViewer(CompareViewerControl);
             SetBounds(ComputeCompareBounds());
@@ -1432,7 +1432,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Delete failed: {ex}");
-            MessageBox.Show(this, $"Nie udało się usunąć:\n{ex.Message}", "QuickPeek");
+            MessageBox.Show(this, $"Nie udało się usunąć:\n{ex.Message}", "Lupik");
             _ = ShowFile(path);
             return;
         }
@@ -1447,25 +1447,25 @@ public partial class MainWindow : Window
 
     private void OnSampleImageClicked(object sender, RoutedEventArgs e)
     {
-        string sample = SamplePath("sample_image.png");
+        string sample = SamplePath("sample.png");
         if (File.Exists(sample)) _ = ShowFile(sample);
     }
 
     private void OnSampleVectorClicked(object sender, RoutedEventArgs e)
     {
-        string sample = SamplePath("sample_vector.eps");
+        string sample = SamplePath("sample.eps");
         if (File.Exists(sample)) _ = ShowFile(sample);
     }
 
     private void OnSampleCodeClicked(object sender, RoutedEventArgs e)
     {
-        string sample = SamplePath("sample_code.cs");
+        string sample = SamplePath("sample.cs");
         if (File.Exists(sample)) _ = ShowFile(sample);
     }
 
     private void OnSamplePdfClicked(object sender, RoutedEventArgs e)
     {
-        string sample = SamplePath("sample_document.pdf");
+        string sample = SamplePath("sample.pdf");
         if (File.Exists(sample)) _ = ShowFile(sample);
     }
 }

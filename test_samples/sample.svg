@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1917"/>
+      <stop offset="1" stop-color="#5a4312"/>
+    </linearGradient>
+    <radialGradient id="gold" cx="0.35" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#f5d27a"/>
+      <stop offset="1" stop-color="#b8861f"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="400" rx="24" fill="url(#bg)"/>
+  <circle cx="190" cy="200" r="110" fill="url(#gold)"/>
+  <circle cx="190" cy="200" r="46" fill="none" stroke="#1a1407" stroke-width="10"/>
+  <path d="M222 232 L262 272" stroke="#1a1407" stroke-width="14" stroke-linecap="round"/>
+  <text x="340" y="215" font-family="Segoe UI, Arial" font-size="64" font-weight="600" fill="#fbf8f2">Lupik</text>
+  <text x="342" y="252" font-family="Segoe UI, Arial" font-size="20" fill="#b5ab9d">sample vector (SVG)</text>
+</svg>

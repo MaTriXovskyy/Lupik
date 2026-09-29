@@ -1,4 +1,4 @@
-namespace QuickPeek.Core.PostScript;
+namespace Lupik.Core.PostScript;
 
 /// <summary>Standard PostScript encodings and glyph-name → Unicode mapping (for drawing text with system fonts).</summary>
 internal static class PsEncodings

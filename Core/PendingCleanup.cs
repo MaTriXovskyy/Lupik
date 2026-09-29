@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 /// <summary>
 /// Tracks half-written outputs (the "*.part" zip / extraction folder) of jobs still running.
@@ -14,7 +14,7 @@ namespace QuickPeek.Core;
 public static class PendingCleanup
 {
     private static readonly string ListPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuickPeek", "pending.txt");
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lupik", "pending.txt");
 
     private static readonly Dictionary<string, CancellationTokenSource> Jobs = new(StringComparer.OrdinalIgnoreCase);
 

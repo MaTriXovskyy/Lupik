@@ -6,9 +6,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
-using QuickPeek.Core;
+using Lupik.Core;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 public partial class GenericViewer : UserControl
 {

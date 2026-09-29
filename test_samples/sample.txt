@@ -1,0 +1,4 @@
+Lupik sample text file.
+
+Plain text, shown with line numbers.
+Nothing in here is real data.

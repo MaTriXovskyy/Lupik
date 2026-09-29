@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Runtime.InteropServices;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 public static class NativeMethods
 {

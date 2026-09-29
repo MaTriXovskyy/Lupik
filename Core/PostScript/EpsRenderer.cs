@@ -6,10 +6,10 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace QuickPeek.Core.PostScript;
+namespace Lupik.Core.PostScript;
 
 /// <summary>
-/// Renders EPS / PS files with QuickPeek's own PostScript interpreter (no Ghostscript needed).
+/// Renders EPS / PS files with Lupik's own PostScript interpreter (no Ghostscript needed).
 /// Binary "DOS EPS" files (Photoshop, older Illustrator) carry the PostScript plus a TIFF preview;
 /// the preview is used only if the PostScript itself draws nothing.
 /// </summary>

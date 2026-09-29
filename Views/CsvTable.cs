@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace QuickPeek.Views;
+namespace Lupik.Views;
 
 /// <summary>
 /// Lightweight read-only table: draws only the cells currently in view, straight to the DrawingContext.
@@ -293,7 +293,7 @@ public class CsvTable : FrameworkElement
         if (HitTestCell(e.GetPosition(this)) is not { } hit) return;
         var (row, col) = hit;
 
-        bool extend = QuickPeek.Core.KeyState.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift) && _selection != null;
+        bool extend = Lupik.Core.KeyState.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift) && _selection != null;
         _dragColumns = row < 0;
 
         if (_dragColumns)

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using SharpCompress.Archives;
 using SharpCompress.Common;
 
-namespace QuickPeek.Core;
+namespace Lupik.Core;
 
 /// <summary>
 /// Unpacks an archive next to itself, as fast as the format allows:
