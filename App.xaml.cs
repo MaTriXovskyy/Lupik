@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Lupik.Core;
 
+using Lupik.Localization;
 namespace Lupik;
 
 public partial class App : Application
@@ -40,6 +41,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        Localization.Loc.Instance.SetLanguage(Core.Settings.Current.Language);
+        foreach (var missing in Localization.Loc.MissingKeys()) Log($"[Loc] Missing translation: {missing}");
 
         // Every window of the app refuses UI Automation queries (see NativeMethods.RefuseAutomation)
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler((sender, _) =>
@@ -128,8 +132,8 @@ public partial class App : Application
             if (!startInTray)
             {
                 _trayService.ShowBalloonNotification(
-                    "Lupik jest gotowy!",
-                    "Wciśnij SPACJĘ na dowolnym pliku w Eksploratorze lub na Pulpicie.");
+                    Loc.T("tray.readyTitle"),
+                    Loc.T("tray.readyBody", Loc.T("key.space")));
             }
 
             Log($"Lupik initialized successfully and running (startInTray={startInTray}).");
@@ -146,7 +150,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Log("Initialization error: " + ex);
-            MessageBox.Show($"Błąd uruchamiania Lupik:\n{ex.Message}", "Lupik");
+            MessageBox.Show(Loc.T("app.startError", ex.Message), "Lupik");
             Shutdown();
         }
     }

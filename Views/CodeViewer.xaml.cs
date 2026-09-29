@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit.Highlighting;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 public partial class CodeViewer : UserControl
@@ -85,17 +86,17 @@ public partial class CodeViewer : UserControl
 
             FileSizeText.Text = FormatFileSize(size);
             LinesCountText.Text = truncated
-                ? $"pokazano pierwsze {TextEditorControl.Document.LineCount} linii (plik jest za duży na cały podgląd)"
-                : $"{TextEditorControl.Document.LineCount} linii";
+                ? Loc.T("code.truncated", TextEditorControl.Document.LineCount)
+                : Loc.Plural("count.lines", TextEditorControl.Document.LineCount);
             return true;
         }
         catch (Exception ex)
         {
             if (token != _loadToken) return false;
             TextEditorControl.SyntaxHighlighting = null;
-            TextEditorControl.Text = $"Błąd podczas odczytu pliku:\n{ex.Message}";
+            TextEditorControl.Text = Loc.T("code.readError", ex.Message);
             _codeBlocks.Analyze(TextEditorControl.Document, false);
-            LinesCountText.Text = "Błąd";
+            LinesCountText.Text = Loc.T("common.error");
             LanguageText.Text = "!";
             FileSizeText.Text = "—";
             return true;
@@ -154,13 +155,13 @@ public partial class CodeViewer : UserControl
         {
             Clipboard.SetText(TextEditorControl.Text);
             CopyIcon.Kind = "check";
-            CopyText.Text = "Skopiowano";
+            CopyText.Text = Loc.T("common.copied");
             CopyButton.Foreground = new SolidColorBrush(Color.FromRgb(0xA6, 0xE3, 0xA1));
 
             await Task.Delay(1800);
 
             CopyIcon.Kind = "copy";
-            CopyText.Text = "Kopiuj";
+            CopyText.Text = Loc.T("common.copy");
             CopyButton.ClearValue(ForegroundProperty);
         }
         catch

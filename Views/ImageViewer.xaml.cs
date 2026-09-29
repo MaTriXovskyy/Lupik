@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Point = System.Windows.Point;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 public partial class ImageViewer : UserControl
@@ -70,7 +71,7 @@ public partial class ImageViewer : UserControl
 
             PreviewImage.Source = null;
             _naturalWidth = _naturalHeight = 0;
-            DimensionsText.Text = "Błąd odczytu";
+            DimensionsText.Text = Loc.T("image.readError");
             FileSizeText.Text = ex.Message;
             return true;
         }
@@ -405,7 +406,7 @@ public partial class ImageViewer : UserControl
     {
         ImageRotation.Angle = ((int)ImageRotation.Angle + degrees + 360) % 360;
         ResetZoom();
-        FormatText.Text = _formatLabel + (Rotation != 0 ? $"  ·  obrócono {Rotation}°" : "");
+        FormatText.Text = _formatLabel + (Rotation != 0 ? "  ·  " + Loc.T("image.rotated", Rotation) : "");
     }
 
     private void OnRotateLeftClicked(object sender, RoutedEventArgs e) => Rotate(-90);

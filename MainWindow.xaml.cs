@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Lupik.Core;
 
+using Lupik.Localization;
 namespace Lupik;
 
 public partial class MainWindow : Window
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
         InitNativeHandle();
         IsVisibleChanged += (_, _) => IsShown = IsVisible;
         FolderViewerControl.OpenRequested += OpenFromFolder;
+        Loc.Instance.LanguageChanged += UpdateWelcomeText;
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
     }
 
@@ -165,11 +167,15 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
+    /// <summary>Welcome text names the key that opens a preview.</summary>
+    private void UpdateWelcomeText() => WelcomeSubtitle.Text = Loc.T("welcome.subtitle", Loc.T("key.space"));
+
     public void ShowWelcome()
     {
         App.Log("[MainWindow] ShowWelcome called.");
+        UpdateWelcomeText();
         _currentFilePath = "";
-        TitleFileNameText.Text = "Lupik - Gotowy do działania";
+        TitleFileNameText.Text = Loc.T("main.readyTitle");
         TitleIconImage.Source = null;
         Title = "Lupik";
         FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // nothing to act on
@@ -1046,9 +1052,9 @@ public partial class MainWindow : Window
         string targetExt = ext is ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" or ".tif" or ".tiff" ? ext : ".png";
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "Zapisz kadr",
+            Title = Loc.T("crop.saveTitle"),
             InitialDirectory = Path.GetDirectoryName(source),
-            FileName = Path.GetFileNameWithoutExtension(source) + " (kadr)" + targetExt,
+            FileName = Path.GetFileNameWithoutExtension(source) + Loc.T("crop.fileSuffix") + targetExt,
             Filter = $"{targetExt.TrimStart('.').ToUpperInvariant()}|*{targetExt}|PNG|*.png|JPEG|*.jpg",
             AddExtension = true,
             OverwritePrompt = true,
@@ -1057,7 +1063,7 @@ public partial class MainWindow : Window
         string target = dialog.FileName;
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Wybierz inną nazwę niż oryginalny plik.", "Lupik");
+            MessageBox.Show(this, Loc.T("save.sameName"), "Lupik");
             return;
         }
 
@@ -1079,12 +1085,12 @@ public partial class MainWindow : Window
                 image.Write(target);
             });
             App.Log($"[MainWindow] Cropped '{source}' to '{target}'");
-            ShowToast($"Zapisano kadr: {Path.GetFileName(target)}");
+            ShowToast(Loc.T("crop.saved", Path.GetFileName(target)));
         }
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Crop failed: {ex}");
-            MessageBox.Show(this, $"Nie udało się zapisać kadru:\n{ex.Message}", "Lupik");
+            MessageBox.Show(this, Loc.T("crop.saveError", ex.Message), "Lupik");
         }
     }
 
@@ -1114,7 +1120,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Could not open print dialog: {ex}");
-            MessageBox.Show(this, $"Nie udało się przygotować wydruku:\n{ex.Message}", "Lupik");
+            MessageBox.Show(this, Loc.T("print.prepareError", ex.Message), "Lupik");
         }
     }
 
@@ -1175,7 +1181,7 @@ public partial class MainWindow : Window
 
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "Zapisz jako",
+            Title = Loc.T("save.title"),
             InitialDirectory = Path.GetDirectoryName(source),
             AddExtension = true,
             OverwritePrompt = true,
@@ -1183,17 +1189,17 @@ public partial class MainWindow : Window
 
         if (isImage)
         {
-            string original = $"Oryginał ({ext.TrimStart('.').ToUpperInvariant()})|*{ext}";
+            string original = Loc.T("save.original", ext.TrimStart('.').ToUpperInvariant()) + $"|*{ext}";
             dialog.Filter = string.Join("|", ExportFormats.Select(f => $"{f.Label} (*{f.Ext})|*{f.Ext}").Prepend(original));
             // HEIC/HEIF default to JPEG, since most apps can't open them
             bool preferJpeg = ext is ".heic" or ".heif";
             dialog.FilterIndex = preferJpeg ? 3 : 1;
-            dialog.FileName = baseName + (preferJpeg ? " (kopia).jpg" : " (kopia)" + ext);
+            dialog.FileName = baseName + Loc.T("save.copySuffix") + (preferJpeg ? ".jpg" : ext);
         }
         else
         {
-            dialog.Filter = $"{(ext.Length > 0 ? ext.TrimStart('.').ToUpperInvariant() : "Plik")}|*{(ext.Length > 0 ? ext : ".*")}|Wszystkie pliki|*.*";
-            dialog.FileName = baseName + " (kopia)" + ext;
+            dialog.Filter = $"{(ext.Length > 0 ? ext.TrimStart('.').ToUpperInvariant() : Loc.T("save.file"))}|*{(ext.Length > 0 ? ext : ".*")}|{Loc.T("save.allFiles")}|*.*";
+            dialog.FileName = baseName + Loc.T("save.copySuffix") + ext;
         }
 
         if (dialog.ShowDialog(this) != true) return;
@@ -1201,7 +1207,7 @@ public partial class MainWindow : Window
 
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Wybierz inną nazwę lub folder niż oryginalny plik.", "Lupik");
+            MessageBox.Show(this, Loc.T("save.sameNameOrFolder"), "Lupik");
             return;
         }
 
@@ -1238,12 +1244,12 @@ public partial class MainWindow : Window
             }
 
             App.Log($"[MainWindow] Saved '{source}' as '{target}'");
-            ShowToast($"Zapisano: {Path.GetFileName(target)}");
+            ShowToast(Loc.T("save.saved", Path.GetFileName(target)));
         }
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Save As failed: {ex}");
-            MessageBox.Show(this, $"Nie udało się zapisać pliku:\n{ex.Message}", "Lupik");
+            MessageBox.Show(this, Loc.T("save.error", ex.Message), "Lupik");
         }
     }
 
@@ -1256,7 +1262,7 @@ public partial class MainWindow : Window
         await Task.Delay(2200);
         SaveAsIcon.Kind = "save";
         SaveAsButton.ClearValue(ForegroundProperty);
-        SaveAsButton.ToolTip = "Zapisz jako… (Ctrl+S)";
+        SaveAsButton.SetBinding(ToolTipProperty, new System.Windows.Data.Binding("[main.saveAsTip]") { Source = Loc.Instance });
     }
 
     // Files selected in Explorer when the preview was opened; with 2+ files, arrows cycle only through them
@@ -1309,7 +1315,7 @@ public partial class MainWindow : Window
 
             ApplyFileHeader(a);
             TitleFileNameText.Text = $"{Path.GetFileName(a)}  ⇄  {Path.GetFileName(b)}";
-            Title = $"Porównanie — Lupik";
+            Title = Loc.T("compare.windowTitle");
             FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // which file would they act on?
             ShowOnlyViewer(CompareViewerControl);
             SetBounds(ComputeCompareBounds());
@@ -1432,7 +1438,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Delete failed: {ex}");
-            MessageBox.Show(this, $"Nie udało się usunąć:\n{ex.Message}", "Lupik");
+            MessageBox.Show(this, Loc.T("delete.error", ex.Message), "Lupik");
             _ = ShowFile(path);
             return;
         }

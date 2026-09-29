@@ -220,7 +220,7 @@ public static class PrintService
 
         var settings = document.PrinterSettings;
         settings.PrinterName = options.PrinterName;
-        if (!settings.IsValid) throw new InvalidOperationException($"Drukarka „{options.PrinterName}” jest niedostępna.");
+        if (!settings.IsValid) throw new InvalidOperationException(Lupik.Localization.Loc.T("print.printerUnavailableNamed", options.PrinterName));
 
         if (options.PrintToFile != null)
         {

@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Lupik.Core;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 /// <summary>Chrome-style print dialog: settings on the right, live preview of the sheet on the left.</summary>
@@ -42,7 +43,7 @@ public partial class PrintWindow : Window
                 ? last
                 : PrintService.DefaultPrinter();
             foreach (var name in printers)
-                PrinterBox.Items.Add(new ComboBoxItem { Content = name == PrintService.DefaultPrinter() ? $"{name}  (domyślna)" : name, Tag = name });
+                PrinterBox.Items.Add(new ComboBoxItem { Content = name == PrintService.DefaultPrinter() ? $"{name}  " + Loc.T("print.defaultPrinter") : name, Tag = name });
             PrinterBox.SelectedItem = PrinterBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == preferred)
                                       ?? PrinterBox.Items.Cast<ComboBoxItem>().FirstOrDefault();
 
@@ -60,7 +61,7 @@ public partial class PrintWindow : Window
     {
         if (SelectedPrinter is not { } name) return;
         int token = ++_printerToken;
-        PrinterInfo.Text = "Sprawdzanie drukarki…";
+        PrinterInfo.Text = Loc.T("print.checking");
         PrintButton.IsEnabled = false;
 
         // Network printers can take a moment to answer; don't freeze the dialog
@@ -79,8 +80,8 @@ public partial class PrintWindow : Window
         _printer = info;
         PrintButton.IsEnabled = info.Valid;
         PrinterInfo.Text = info.Valid
-            ? string.Join("  •  ", new[] { info.Color ? "kolor" : "tylko czarno-biała", info.Duplex ? "druk dwustronny" : null }.Where(s => s != null))
-            : "Drukarka jest niedostępna.";
+            ? string.Join("  •  ", new[] { Loc.T(info.Color ? "print.infoColor" : "print.infoMono"), info.Duplex ? Loc.T("print.infoDuplex") : null }.Where(s => s != null))
+            : Loc.T("print.printerUnavailable");
 
         // Color / duplex only where the printer supports them
         ColorBox.IsEnabled = info.Color;
@@ -159,7 +160,7 @@ public partial class PrintWindow : Window
         if (!rangeValid)
         {
             SheetsText.Text = "";
-            StatusText.Text = $"Nieprawidłowy zakres stron (dokument ma {_source.PageCount}).";
+            StatusText.Text = Loc.T("print.badRange", _source.PageCount);
             StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
             PrintButton.IsEnabled = false;
             return;
@@ -173,7 +174,7 @@ public partial class PrintWindow : Window
 
         int sidesPerSheet = DuplexBox.SelectedIndex > 0 ? 2 : 1;
         int sheets = (int)Math.Ceiling(_pages.Count / (double)sidesPerSheet) * Copies;
-        SheetsText.Text = $"{sheets} {Plural(sheets, "arkusz", "arkusze", "arkuszy")} papieru";
+        SheetsText.Text = Loc.Plural("count.sheets", sheets);
 
         _ = UpdatePreviewAsync();
     }
@@ -191,8 +192,8 @@ public partial class PrintWindow : Window
         int token = ++_previewToken;
         int page = _pages[_previewPosition];
 
-        PageIndicator.Text = $"Strona {_previewPosition + 1} z {_pages.Count}" +
-                             (_pages.Count != _source.PageCount ? $"  (str. {page + 1} dokumentu)" : "");
+        PageIndicator.Text = Loc.T("pdf.page", _previewPosition + 1, _pages.Count) +
+                             (_pages.Count != _source.PageCount ? "  " + Loc.T("print.documentPage", page + 1) : "");
         PrevPageButton.IsEnabled = _previewPosition > 0;
         NextPageButton.IsEnabled = _previewPosition < _pages.Count - 1;
 
@@ -283,7 +284,7 @@ public partial class PrintWindow : Window
         PrintButton.IsEnabled = false;
         IsEnabledSettings(false);
         StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xB5, 0xAB, 0x9D));
-        StatusText.Text = "Wysyłanie do drukarki…";
+        StatusText.Text = Loc.T("print.sending");
 
         try
         {
@@ -295,7 +296,7 @@ public partial class PrintWindow : Window
         {
             App.Log($"[PrintWindow] Print failed: {ex}");
             StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
-            StatusText.Text = $"Nie udało się wydrukować: {ex.Message}";
+            StatusText.Text = Loc.T("print.error", ex.Message);
             PrintButton.IsEnabled = true;
             IsEnabledSettings(true);
         }

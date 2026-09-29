@@ -10,6 +10,7 @@ using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 public partial class PdfViewer : UserControl
@@ -52,7 +53,7 @@ public partial class PdfViewer : UserControl
             _pdfDoc = doc;
             _totalPages = _pdfDoc.PageCount;
 
-            PageIndicatorText.Text = $"Strona 1 z {_totalPages}";
+            PageIndicatorText.Text = Loc.T("pdf.page", 1, _totalPages);
             _zoomScale = 1.0;
             ZoomPercentText.Text = "100%";
 
@@ -62,7 +63,7 @@ public partial class PdfViewer : UserControl
         catch (Exception ex)
         {
             if (token != _renderToken) return;
-            PageIndicatorText.Text = "Błąd PDF";
+            PageIndicatorText.Text = Loc.T("pdf.error");
             FileSizeText.Text = ex.Message;
         }
     }
@@ -160,7 +161,7 @@ public partial class PdfViewer : UserControl
         if (totalHeight > 0)
         {
             int pageIndex = (int)Math.Min(_totalPages, Math.Max(1, Math.Round((offset / totalHeight) * _totalPages) + 1));
-            PageIndicatorText.Text = $"Strona {pageIndex} z {_totalPages}";
+            PageIndicatorText.Text = Loc.T("pdf.page", pageIndex, _totalPages);
         }
     }
 

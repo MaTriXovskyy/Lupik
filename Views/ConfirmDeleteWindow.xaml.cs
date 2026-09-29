@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media.Animation;
 using Lupik.Core;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 /// <summary>"Move to Recycle Bin?" card: shows what is about to go, Enter confirms, Esc cancels.</summary>
@@ -20,7 +21,7 @@ public partial class ConfirmDeleteWindow : Window
         bool isFolder = Directory.Exists(path);
         NameText.Text = Path.GetFileName(path.TrimEnd('\\', '/'));
         NameText.ToolTip = path;
-        HeadingText.Text = isFolder ? "Przenieść folder do Kosza?" : "Przenieść do Kosza?";
+        HeadingText.Text = Loc.T(isFolder ? "delete.headingFolder" : "delete.heading");
         MetaText.Text = Describe(path, isFolder);
 
         // The shell thumbnail shows the picture itself for images, the file-type icon otherwise
@@ -78,7 +79,7 @@ public partial class ConfirmDeleteWindow : Window
                     if (entry is DirectoryInfo) folders++; else files++;
                     if (files + folders > 999) break;
                 }
-                return $"Folder · {Count(files, "plik", "pliki", "plików")}, {Count(folders, "folder", "foldery", "folderów")}";
+                return $"{Loc.T("delete.folderLabel")} · {Loc.Plural("count.files", files)}, {Loc.Plural("count.folders", folders)}";
             }
             var info = new FileInfo(path);
             string ext = info.Extension.TrimStart('.').ToUpperInvariant();

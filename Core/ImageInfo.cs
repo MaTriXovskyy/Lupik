@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using ImageMagick;
 
+using Lupik.Localization;
 namespace Lupik.Core;
 
 /// <summary>One label/value cell of the image info panel.</summary>
@@ -29,7 +30,7 @@ public static class ImageInfo
                 image.Ping(stream);
 
             uint w = image.Width, h = image.Height;
-            items.Add(new InfoItem("Wymiary", $"{w} × {h} px  ({w * (double)h / 1e6:0.#} MP)"));
+            items.Add(new InfoItem(Loc.T("info.dimensions"), $"{w} × {h} px  ({w * (double)h / 1e6:0.#} MP)"));
 
             // DPI: files store either pixels per inch or per centimetre (or nothing at all)
             double dpiX = image.Density.X, dpiY = image.Density.Y;
@@ -38,19 +39,19 @@ public static class ImageInfo
 
             if (hasDpi)
             {
-                items.Add(new InfoItem("Rozdzielczość", Math.Abs(dpiX - dpiY) < 0.5 ? $"{dpiX:0.#} DPI" : $"{dpiX:0.#} × {dpiY:0.#} DPI"));
-                items.Add(new InfoItem("Rozmiar wydruku", $"{Cm(w, dpiX)} × {Cm(h, dpiY)} cm", Accent: true));
+                items.Add(new InfoItem(Loc.T("info.resolution"), Math.Abs(dpiX - dpiY) < 0.5 ? $"{dpiX:0.#} DPI" : $"{dpiX:0.#} × {dpiY:0.#} DPI"));
+                items.Add(new InfoItem(Loc.T("info.printSize"), $"{Cm(w, dpiX)} × {Cm(h, dpiY)} cm", Accent: true));
             }
             else
             {
-                items.Add(new InfoItem("Rozdzielczość", "brak zapisanego DPI"));
-                items.Add(new InfoItem("Wydruk przy 300 DPI", $"{Cm(w, 300)} × {Cm(h, 300)} cm", Accent: true));
+                items.Add(new InfoItem(Loc.T("info.resolution"), Loc.T("info.noDpi")));
+                items.Add(new InfoItem(Loc.T("info.printAt300"), $"{Cm(w, 300)} × {Cm(h, 300)} cm", Accent: true));
             }
 
-            string color = $"{ColorSpaceName(image.ColorSpace)}, {image.Depth} bit" + (image.HasAlpha ? ", przezroczystość" : "");
-            items.Add(new InfoItem("Kolor", color));
+            string color = $"{ColorSpaceName(image.ColorSpace)}, {image.Depth} bit" + (image.HasAlpha ? ", " + Loc.T("info.transparency") : "");
+            items.Add(new InfoItem(Loc.T("info.color"), color));
             string? profile = image.GetColorProfile()?.Description;
-            if (!string.IsNullOrWhiteSpace(profile)) items.Add(new InfoItem("Profil ICC", profile.Trim()));
+            if (!string.IsNullOrWhiteSpace(profile)) items.Add(new InfoItem(Loc.T("info.iccProfile"), profile.Trim()));
 
             AddExif(image.GetExifProfile(), items);
         }
@@ -59,8 +60,8 @@ public static class ImageInfo
             App.Log($"[ImageInfo] Ping failed for '{path}': {ex.Message}");
         }
 
-        items.Add(new InfoItem("Utworzono", file.CreationTime.ToString("yyyy-MM-dd HH:mm")));
-        items.Add(new InfoItem("Zmodyfikowano", file.LastWriteTime.ToString("yyyy-MM-dd HH:mm")));
+        items.Add(new InfoItem(Loc.T("info.created"), file.CreationTime.ToString("yyyy-MM-dd HH:mm")));
+        items.Add(new InfoItem(Loc.T("info.modified"), file.LastWriteTime.ToString("yyyy-MM-dd HH:mm")));
         return items;
     }
 
@@ -74,11 +75,11 @@ public static class ImageInfo
         {
             // "Canon Canon EOS 80D" → "Canon EOS 80D"
             string camera = !string.IsNullOrEmpty(make) && !model.StartsWith(make, StringComparison.OrdinalIgnoreCase) ? $"{make} {model}" : model;
-            items.Add(new InfoItem("Aparat", camera));
+            items.Add(new InfoItem(Loc.T("info.camera"), camera));
         }
 
         string? lens = exif.GetValue(ExifTag.LensModel)?.Value?.Trim();
-        if (!string.IsNullOrEmpty(lens)) items.Add(new InfoItem("Obiektyw", lens));
+        if (!string.IsNullOrEmpty(lens)) items.Add(new InfoItem(Loc.T("info.lens"), lens));
 
         var settings = new List<string>();
         if (exif.GetValue(ExifTag.FNumber)?.Value is { } f && f.Denominator != 0) settings.Add($"f/{f.ToDouble():0.#}");
@@ -89,21 +90,21 @@ public static class ImageInfo
         }
         if (exif.GetValue(ExifTag.ISOSpeedRatings)?.Value is { Length: > 0 } iso) settings.Add($"ISO {iso[0]}");
         if (exif.GetValue(ExifTag.FocalLength)?.Value is { } fl && fl.Denominator != 0) settings.Add($"{fl.ToDouble():0.#} mm");
-        if (settings.Count > 0) items.Add(new InfoItem("Ustawienia", string.Join("  ·  ", settings)));
+        if (settings.Count > 0) items.Add(new InfoItem(Loc.T("info.exposure"), string.Join("  ·  ", settings)));
 
         string? taken = exif.GetValue(ExifTag.DateTimeOriginal)?.Value;
         if (!string.IsNullOrEmpty(taken) &&
             DateTime.TryParseExact(taken.Trim('\0', ' '), "yyyy:MM:dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var when))
-            items.Add(new InfoItem("Data wykonania", when.ToString("yyyy-MM-dd HH:mm")));
+            items.Add(new InfoItem(Loc.T("info.taken"), when.ToString("yyyy-MM-dd HH:mm")));
     }
 
-    private static string Cm(uint pixels, double dpi) => (pixels / dpi * 2.54).ToString("0.#", Pl);
+    private static string Cm(uint pixels, double dpi) => (pixels / dpi * 2.54).ToString("0.#", Loc.Instance.Culture);
 
     private static string ColorSpaceName(ColorSpace space) => space switch
     {
         ColorSpace.sRGB or ColorSpace.RGB => "RGB",
         ColorSpace.CMYK => "CMYK",
-        ColorSpace.Gray or ColorSpace.LinearGray => "Skala szarości",
+        ColorSpace.Gray or ColorSpace.LinearGray => Loc.T("info.grayscale"),
         ColorSpace.Lab => "Lab",
         _ => space.ToString(),
     };

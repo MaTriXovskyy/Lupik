@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 /// <summary>Shows .csv / .tsv files as a table (delimiter detected automatically).</summary>
@@ -28,7 +29,7 @@ public partial class CsvViewer : UserControl
     private void UpdateSummary()
     {
         int cells = Table.SelectedCellCount;
-        SummaryText.Text = cells > 1 ? $"{_summary}  •  zaznaczono {cells} komórek (Ctrl+C kopiuje)" : _summary;
+        SummaryText.Text = cells > 1 ? $"{_summary}  •  " + Loc.T("csv.selected", Loc.Plural("count.cells", cells)) : _summary;
     }
 
     /// <summary>Drops the loaded rows (called when Lupik goes idle).</summary>
@@ -53,7 +54,7 @@ public partial class CsvViewer : UserControl
         {
             Clipboard.SetText(text);
             int cells = Table.SelectedCellCount;
-            SummaryText.Text = $"{_summary}  •  skopiowano {cells} {(cells == 1 ? "komórkę" : "komórek")}";
+            SummaryText.Text = $"{_summary}  •  " + Loc.T("csv.copied", Loc.Plural("count.cells", cells));
             await Task.Delay(1800);
             UpdateSummary();
         }
@@ -74,21 +75,21 @@ public partial class CsvViewer : UserControl
             int columns = rows.Count == 0 ? 0 : rows.Max(r => r.Length);
             string[] firstRow = rows.Count > 0 ? rows[0] : Array.Empty<string>();
             var header = Enumerable.Range(0, columns)
-                .Select(i => i < firstRow.Length && firstRow[i].Length > 0 ? firstRow[i] : $"Kolumna {i + 1}")
+                .Select(i => i < firstRow.Length && firstRow[i].Length > 0 ? firstRow[i] : Loc.T("csv.column", i + 1))
                 .ToArray();
             var body = rows.Skip(1).ToList();
             Table.SetData(header, body);
 
-            string delimiterName = delimiter switch { '\t' => "tabulator", ';' => "średnik", _ => "przecinek" };
-            _summary = $"{body.Count} wierszy  •  {columns} kolumn  •  separator: {delimiterName}" +
-                               (truncated ? $"  •  pokazano pierwsze {MaxRows} wierszy" : "");
+            string delimiterName = Loc.T(delimiter switch { '\t' => "csv.tab", ';' => "csv.semicolon", _ => "csv.comma" });
+            _summary = $"{Loc.Plural("count.rows", body.Count)}  •  {Loc.Plural("count.columns", columns)}  •  {Loc.T("csv.separator", delimiterName)}" +
+                               (truncated ? "  •  " + Loc.T("csv.truncated", MaxRows) : "");
             UpdateSummary();
         }
         catch (Exception ex)
         {
             if (token != _loadToken) return false;
             Table.SetData(Array.Empty<string>(), Array.Empty<string[]>());
-            _summary = $"Nie udało się odczytać pliku: {ex.Message}";
+            _summary = Loc.T("common.readError", ex.Message);
             UpdateSummary();
         }
         return true;

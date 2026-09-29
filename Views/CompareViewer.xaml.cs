@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Point = System.Windows.Point;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 /// <summary>
@@ -86,7 +87,7 @@ public partial class CompareViewer : UserControl
         // Footer: highlight what differs (dimensions matter most when comparing versions)
         bool sameSize = _a.Width == _b.Width && _a.Height == _b.Height;
         InfoTextA.Text = $"A: {_a.Width} × {_a.Height} px · {FormatSize(_a.Size)}";
-        InfoTextB.Text = $"B: {_b.Width} × {_b.Height} px · {FormatSize(_b.Size)}" + (sameSize ? "" : "  (inne wymiary)");
+        InfoTextB.Text = $"B: {_b.Width} × {_b.Height} px · {FormatSize(_b.Size)}" + (sameSize ? "" : "  " + Loc.T("compare.differentSize"));
         InfoTextA.Foreground = Muted;
         InfoTextB.Foreground = sameSize ? Muted : Warning;
         UpdateSplit();

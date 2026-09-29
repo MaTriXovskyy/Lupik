@@ -1,6 +1,7 @@
 <UserControl x:Class="Lupik.Views.CompareViewer"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Lupik.Localization"
              xmlns:views="clr-namespace:Lupik.Views"
              Background="#131211" ClipToBounds="True">
     <UserControl.Resources>
@@ -83,39 +84,39 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="SideButton" Style="{StaticResource ModeButton}" ToolTip="Obok siebie (S)" Click="OnSideClicked">
+                    <Button x:Name="SideButton" Style="{StaticResource ModeButton}" ToolTip="{loc:T compare.sideBySideTip}" Click="OnSideClicked">
                         <StackPanel Orientation="Horizontal">
                             <views:LucideIcon Kind="columns-2" Size="15" Margin="0,0,6,0"/>
-                            <TextBlock Text="Obok siebie" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:T compare.sideBySide}" FontSize="12" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="SliderButton" Style="{StaticResource ModeButton}" ToolTip="Suwak przed/po (S)" Click="OnSliderClicked">
+                    <Button x:Name="SliderButton" Style="{StaticResource ModeButton}" ToolTip="{loc:T compare.sliderTip}" Click="OnSliderClicked">
                         <StackPanel Orientation="Horizontal">
                             <views:LucideIcon Kind="square-split-horizontal" Size="15" Margin="0,0,6,0"/>
-                            <TextBlock Text="Suwak" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:T compare.slider}" FontSize="12" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource IconButton}" ToolTip="Zamień strony (X)" Click="OnSwapClicked">
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T compare.swapTip}" Click="OnSwapClicked">
                         <views:LucideIcon Kind="arrow-left-right" Size="15"/>
                     </Button>
 
                     <Rectangle Width="1" Height="16" Fill="#3B3631" Margin="8,0"/>
 
-                    <Button Style="{StaticResource IconButton}" ToolTip="Pomniejsz" Click="OnZoomOutClicked">
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.out}" Click="OnZoomOutClicked">
                         <views:LucideIcon Kind="zoom-out" Size="15"/>
                     </Button>
                     <TextBlock x:Name="ZoomText" Text="100%" Foreground="#E3B341" FontSize="12" FontWeight="Medium"
                                Width="44" TextAlignment="Center" VerticalAlignment="Center"/>
-                    <Button Style="{StaticResource IconButton}" ToolTip="Powiększ" Click="OnZoomInClicked">
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.in}" Click="OnZoomInClicked">
                         <views:LucideIcon Kind="zoom-in" Size="15"/>
                     </Button>
-                    <Button Style="{StaticResource IconButton}" ToolTip="Dopasuj (0)" Click="OnFitClicked">
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.fit}" Click="OnFitClicked">
                         <views:LucideIcon Kind="scan" Size="15"/>
                     </Button>
 
                     <Rectangle Width="1" Height="16" Fill="#3B3631" Margin="8,0"/>
 
-                    <Button Style="{StaticResource IconButton}" ToolTip="Pojedynczo (C)" Click="OnSingleClicked">
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T compare.singleTip}" Click="OnSingleClicked">
                         <views:LucideIcon Kind="image" Size="15"/>
                     </Button>
                 </StackPanel>

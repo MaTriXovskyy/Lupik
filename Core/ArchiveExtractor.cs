@@ -189,7 +189,7 @@ public static class ArchiveExtractor
                 string key = entry.Key ?? ArchiveStem(archivePath); // bare .gz has no stored name
                 string? target = SafeTarget(dest, key);
                 if (target == null) continue;
-                if (entry.IsEncrypted) throw new NotSupportedException("Archiwum jest zaszyfrowane hasłem.");
+                if (entry.IsEncrypted) throw new NotSupportedException(Lupik.Localization.Loc.T("archive.passwordProtected"));
 
                 if (entry.IsDirectory)
                 {

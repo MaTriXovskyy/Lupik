@@ -14,6 +14,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Lupik.Core;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 /// <summary>One tile in the folder grid.</summary>
@@ -85,7 +86,7 @@ public partial class FolderViewer : UserControl
         }
         catch (Exception ex)
         {
-            SummaryText.Text = $"Nie można otworzyć folderu: {ex.Message}";
+            SummaryText.Text = Loc.T("folder.openError", ex.Message);
             Tiles.ItemsSource = null;
             return;
         }
@@ -95,8 +96,8 @@ public partial class FolderViewer : UserControl
             Path = e.FullName,
             Name = e.Name,
             IsDirectory = e is DirectoryInfo,
-            Detail = e is FileInfo f ? FormatSize(f.Length) : "folder",
-            ToolTip = $"{e.Name}\nZmodyfikowano: {e.LastWriteTime:yyyy-MM-dd HH:mm}" + (e is FileInfo fi ? $"\nRozmiar: {FormatSize(fi.Length)}" : ""),
+            Detail = e is FileInfo f ? FormatSize(f.Length) : Loc.T("folder.tileFolder"),
+            ToolTip = $"{e.Name}\n{Loc.T("info.modifiedLabel")} {e.LastWriteTime:yyyy-MM-dd HH:mm}" + (e is FileInfo fi ? $"\n{Loc.T("info.sizeLabel")} {FormatSize(fi.Length)}" : ""),
         }).ToList();
 
         Tiles.ItemsSource = tiles;
@@ -111,9 +112,9 @@ public partial class FolderViewer : UserControl
         }
 
         int files = entries.Count(e => e is FileInfo), dirs = entries.Count - files;
-        string shown = entries.Count > MaxTiles ? $"  •  pokazano pierwsze {MaxTiles}" : "";
-        string counts = $"{files} {Plural(files, "plik", "pliki", "plików")}  •  {dirs} {Plural(dirs, "folder", "foldery", "folderów")}";
-        SummaryText.Text = $"{counts}  •  liczenie rozmiaru…{shown}";
+        string shown = entries.Count > MaxTiles ? "  •  " + Loc.T("folder.truncated", MaxTiles) : "";
+        string counts = $"{Loc.Plural("count.files", files)}  •  {Loc.Plural("count.folders", dirs)}";
+        SummaryText.Text = $"{counts}  •  {Loc.T("folder.measuring")}{shown}";
 
         // Total size including subfolders, in the background
         _statsCts = new CancellationTokenSource();
@@ -131,7 +132,7 @@ public partial class FolderViewer : UserControl
             if (t.IsCompletedSuccessfully && !token.IsCancellationRequested)
             {
                 var (total, allFiles) = t.Result;
-                string nested = allFiles != files ? $" ({allFiles} plików z podfolderami)" : "";
+                string nested = allFiles != files ? " (" + Loc.T("folder.withSubfolders", Loc.Plural("count.files", allFiles)) + ")" : "";
                 SummaryText.Text = $"{counts}  •  {FormatSize(total)}{nested}{shown}";
             }
         }, TaskScheduler.FromCurrentSynchronizationContext());
@@ -178,13 +179,13 @@ public partial class FolderViewer : UserControl
         ZipDonePanel.Visibility = Visibility.Collapsed;
         ZipProgressPanel.Visibility = Visibility.Visible;
         ZipProgressFill.Width = 0;
-        ZipProgressText.Text = "Przygotowywanie…";
+        ZipProgressText.Text = Loc.T("common.preparing");
 
         var progress = new Progress<(long done, long total, int files)>(p =>
         {
             double fraction = p.total > 0 ? (double)p.done / p.total : 1;
             ZipProgressFill.Width = 160 * fraction;
-            ZipProgressText.Text = $"{fraction:P0}  •  {p.files} {Plural(p.files, "plik", "pliki", "plików")}";
+            ZipProgressText.Text = $"{fraction.ToString("P0", Loc.Instance.Culture)}  •  {Loc.Plural("count.files", p.files)}";
         });
 
         try
@@ -209,7 +210,7 @@ public partial class FolderViewer : UserControl
             App.Log($"[FolderViewer] Zip failed: {ex}");
             ResetZipUi();
             if (!MainWindow.SuppressActivationForTests) // tests: log only, a message box would grab focus
-                MessageBox.Show(Window.GetWindow(this)!, $"Nie udało się spakować folderu:\n{ex.Message}", "Lupik");
+                MessageBox.Show(Window.GetWindow(this)!, Loc.T("folder.zipError", ex.Message), "Lupik");
         }
         finally
         {

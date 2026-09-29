@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Resource Include="app.ico" />
+    <EmbeddedResource Include="Localization\Strings\*.json" />
   </ItemGroup>
 
   <ItemGroup>

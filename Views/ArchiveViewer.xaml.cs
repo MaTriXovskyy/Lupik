@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using SharpCompress.Archives;
 
+using Lupik.Localization;
 namespace Lupik.Views;
 
 /// <summary>One visible row of the archive listing.</summary>
@@ -64,16 +65,16 @@ public partial class ArchiveViewer : UserControl
             if (token != _loadToken) return false;
 
             EntriesList.ItemsSource = rows;
-            SummaryText.Text = $"{files} {Plural(files, "plik", "pliki", "plików")}  •  {folders} {Plural(folders, "folder", "foldery", "folderów")}" +
-                               $"  •  po rozpakowaniu {FormatFileSize(unpacked)}" +
-                               (encrypted ? "  •  zaszyfrowane" : "");
+            SummaryText.Text = $"{Loc.Plural("count.files", files)}  •  {Loc.Plural("count.folders", folders)}" +
+                               "  •  " + Loc.T("archive.unpackedSize", FormatFileSize(unpacked)) +
+                               (encrypted ? "  •  " + Loc.T("archive.encrypted") : "");
         }
         catch (Exception ex)
         {
             if (token != _loadToken) return false;
             App.Log($"[ArchiveViewer] Failed to read '{filePath}': {ex}");
             EntriesList.ItemsSource = null;
-            SummaryText.Text = $"Nie udało się odczytać archiwum: {ex.Message}";
+            SummaryText.Text = Loc.T("archive.readError", ex.Message);
         }
         return true;
     }
@@ -202,7 +203,7 @@ public partial class ArchiveViewer : UserControl
             if (_extractCts == null) return; // late report after finishing
             double fraction = p.total > 0 ? Math.Min(1, (double)p.done / p.total) : 1;
             ExtractProgressFill.Width = 160 * fraction;
-            ExtractProgressText.Text = $"{fraction:P0}  •  {p.files} {Plural(p.files, "plik", "pliki", "plików")}";
+            ExtractProgressText.Text = $"{fraction.ToString("P0", Loc.Instance.Culture)}  •  {Loc.Plural("count.files", p.files)}";
         });
 
         try
@@ -226,7 +227,7 @@ public partial class ArchiveViewer : UserControl
             App.Log($"[ArchiveViewer] Extract failed: {ex}");
             ResetExtractUi();
             if (!MainWindow.SuppressActivationForTests) // tests: log only, a message box would grab focus
-                MessageBox.Show(Window.GetWindow(this)!, $"Nie udało się rozpakować archiwum:\n{ex.Message}", "Lupik");
+                MessageBox.Show(Window.GetWindow(this)!, Loc.T("archive.extractError", ex.Message), "Lupik");
         }
         finally
         {
