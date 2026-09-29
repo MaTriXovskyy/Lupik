@@ -123,6 +123,7 @@ public partial class App : Application
             Autostart.Refresh();
             _trayService.Initialize();
             Updater.ScheduleChecks();
+            Task.Run(Views.ArchiveViewer.CleanTemp); // peeks / drags out of archives from last time
             _trayService.DoubleClicked += () =>
             {
                 Dispatcher.InvokeAsync(() => _mainWindow.ToggleWindow());

@@ -1,4 +1,4 @@
-<UserControl x:Class="Lupik.Views.ArchiveViewer"
+﻿<UserControl x:Class="Lupik.Views.ArchiveViewer"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:Lupik.Localization"
@@ -9,6 +9,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Summary bar -->
@@ -63,6 +64,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="36"/>
             </Grid.ColumnDefinitions>
             <TextBlock Text="{loc:T list.name}" FontWeight="SemiBold"/>
             <TextBlock Grid.Column="1" Text="{loc:T list.size}" FontWeight="SemiBold" TextAlignment="Right"/>
@@ -71,6 +73,7 @@
 
         <!-- Entries (virtualized: archives can hold thousands of files) -->
         <ListBox Grid.Row="2" x:Name="EntriesList" Background="Transparent" BorderThickness="0" Padding="6,0,6,8"
+                 PreviewMouseLeftButtonDown="OnRowMouseDown" PreviewMouseMove="OnRowMouseMove" PreviewMouseLeftButtonUp="OnRowMouseUp"
                  Focusable="False" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemContainerStyle>
@@ -99,18 +102,33 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="100"/>
                             <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="36"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
-                            <views:LucideIcon Kind="{Binding Icon}" Size="15" Margin="0,0,8,0"
-                                              TextElement.Foreground="{Binding IconBrush}"/>
-                            <TextBlock Text="{Binding Name}" Foreground="#ECE6DC" FontSize="12.5" VerticalAlignment="Center"
+                            <!-- Windows' own icon for the file type / folder -->
+                            <Image Source="{Binding Icon}" Width="18" Height="18" Margin="0,0,8,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="12.5" VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="{Binding SizeText}" Foreground="#B5AB9D" FontSize="12" TextAlignment="Right" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="2" Text="{Binding DateText}" Foreground="#8A8074" FontSize="12" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <!-- Extract just this one, next to the archive (shown on hover) -->
+                        <Button x:Name="RowExtract" Grid.Column="3" Style="{StaticResource IconButton}" Width="26" Height="24" Padding="0"
+                                HorizontalAlignment="Right" Click="OnExtractOneClicked" ToolTip="{loc:T archive.extractOneTip}" Visibility="Hidden">
+                            <views:LucideIcon Kind="download" Size="13"/>
+                        </Button>
                     </Grid>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                            <Setter TargetName="RowExtract" Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+
+        <!-- How to get single files out -->
+        <TextBlock Grid.Row="3" Text="{loc:T archive.itemHint}" Foreground="#6B6259" FontSize="11.5" HorizontalAlignment="Center"
+                   Margin="0,4,0,8" TextTrimming="CharacterEllipsis"/>
     </Grid>
 </UserControl>

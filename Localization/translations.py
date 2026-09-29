@@ -292,6 +292,8 @@ T = {
 "tray.settings":          ["Ustawienia…", "Settings…", "Einstellungen…", "Ajustes…", "Paramètres…", "Impostazioni…", "Настройки…", "Налаштування…"],
 "tray.update":            ["Zainstaluj aktualizację {0}", "Install update {0}", "Update {0} installieren", "Instalar la actualización {0}", "Installer la mise à jour {0}", "Installa l'aggiornamento {0}", "Установить обновление {0}", "Встановити оновлення {0}"],
 "tray.exit":              ["Wyjście", "Exit", "Beenden", "Salir", "Quitter", "Esci", "Выход", "Вихід"],
+"archive.extractOneTip": ["Wypakuj obok archiwum", "Extract next to the archive", "Neben dem Archiv entpacken", "Extraer junto al archivo", "Extraire à côté de l'archive", "Estrai accanto all'archivio", "Извлечь рядом с архивом", "Видобути поруч з архівом"],
+"archive.itemHint":      ["Przytrzymaj plik, aby go podejrzeć  •  przeciągnij, aby wypakować", "Hold a file to peek at it  •  drag it out to extract", "Datei gedrückt halten für eine Vorschau  •  herausziehen zum Entpacken", "Mantén pulsado un archivo para verlo  •  arrástralo fuera para extraerlo", "Maintenez un fichier pour l'aperçu  •  faites-le glisser pour l'extraire", "Tieni premuto un file per l'anteprima  •  trascinalo fuori per estrarlo", "Удерживайте файл для просмотра  •  перетащите, чтобы извлечь", "Утримуйте файл для перегляду  •  перетягніть, щоб видобути"],
 }
 
 if __name__ == "__main__":

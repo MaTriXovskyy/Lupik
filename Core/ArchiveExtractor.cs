@@ -212,6 +212,89 @@ public static class ArchiveExtractor
         reporter.Flush();
     }
 
+    // ---------- One file or folder out of the archive ----------
+
+    /// <summary>The name an entry is listed under: '/' separators, no leading/trailing slash.</summary>
+    public static string NormalizeKey(string archivePath, string? key)
+    {
+        string k = (key ?? ArchiveStem(archivePath)).Replace('\\', '/').Trim('/'); // bare .gz has no stored name
+        return k;
+    }
+
+    /// <summary>
+    /// Extracts one entry (a file, or a folder with everything under it) into <paramref name="destDir"/>,
+    /// keeping only its own name (like dragging a file out of WinRAR). Returns the created file/folder.
+    /// </summary>
+    public static Task<string> ExtractPartAsync(string archivePath, string key, bool isFolder, string destDir, CancellationToken token = default) =>
+        Task.Run(() =>
+        {
+            string name = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
+            string output = UniqueFilePath(Path.Combine(destDir, name));
+            string prefix = key + "/";
+            bool found = false;
+            Directory.CreateDirectory(destDir);
+
+            void Write(string entryKey, bool isDirectory, bool encrypted, DateTime? modified, Func<Stream> open)
+            {
+                string? target;
+                if (entryKey.Equals(key, StringComparison.OrdinalIgnoreCase)) target = output;
+                else if (isFolder && entryKey.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) target = SafeTarget(output, entryKey[prefix.Length..]);
+                else return;
+                if (target == null) return;
+                found = true;
+                if (isDirectory) { Directory.CreateDirectory(target); return; }
+                if (encrypted) throw new NotSupportedException(Lupik.Localization.Loc.T("archive.passwordProtected"));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                using (var input = open())
+                using (var outFile = File.Create(target))
+                    input.CopyTo(outFile);
+                if (modified is DateTime time) TrySetTime(target, time);
+            }
+
+            IArchive? archive = null;
+            try { archive = ArchiveFactory.OpenArchive(archivePath, ReaderOptions()); }
+            catch (SharpCompress.Common.ArchiveOperationException) { }
+
+            if (archive != null)
+            {
+                using (archive)
+                    foreach (var entry in archive.Entries)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        var e = entry;
+                        Write(NormalizeKey(archivePath, e.Key), e.IsDirectory, e.IsEncrypted, e.LastModifiedTime, () => e.OpenEntryStream());
+                    }
+            }
+            else
+            {
+                // Compressed tarballs: one streaming pass
+                using var file = File.OpenRead(archivePath);
+                using var reader = SharpCompress.Readers.ReaderFactory.OpenReader(file, ReaderOptions());
+                while (reader.MoveToNextEntry())
+                {
+                    token.ThrowIfCancellationRequested();
+                    var e = reader.Entry;
+                    Write(NormalizeKey(archivePath, e.Key), e.IsDirectory, e.IsEncrypted, e.LastModifiedTime, () => reader.OpenEntryStream());
+                }
+            }
+
+            if (isFolder && !found) Directory.CreateDirectory(output); // folder with no entries of its own
+            else if (!found) throw new FileNotFoundException(key);
+            return output;
+        }, token);
+
+    /// <summary>"name.txt" → "name (2).txt" when it's taken.</summary>
+    public static string UniqueFilePath(string path)
+    {
+        if (!File.Exists(path) && !Directory.Exists(path)) return path;
+        string dir = Path.GetDirectoryName(path)!, stem = Path.GetFileNameWithoutExtension(path), ext = Path.GetExtension(path);
+        for (int i = 2; ; i++)
+        {
+            string candidate = Path.Combine(dir, $"{stem} ({i}){ext}");
+            if (!File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
+        }
+    }
+
     // ---------- Helpers ----------
 
     private static void WriteFile(string path, Stream input, long size, byte[] buffer, Reporter reporter, CancellationToken token)

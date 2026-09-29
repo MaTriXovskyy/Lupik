@@ -42,6 +42,7 @@ public partial class MainWindow : Window
         InitNativeHandle();
         IsVisibleChanged += (_, _) => IsShown = IsVisible;
         FolderViewerControl.OpenRequested += OpenFromFolder;
+        ArchiveViewerControl.PeekRequested += PeekFromArchive;
         Loc.Instance.LanguageChanged += UpdateWelcomeText;
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
     }
@@ -58,6 +59,32 @@ public partial class MainWindow : Window
         _folderHistory.Push(FolderViewerControl.FolderPath);
         _forwardHistory.Clear(); // a new path, like following a link in a browser
         _ = ShowFile(path);
+    }
+
+    /// <summary>
+    /// Mouse held on a file inside an archive: show it (extracted to a temp folder) until the button is released,
+    /// then back to the archive listing.
+    /// </summary>
+    private void PeekFromArchive(string path)
+    {
+        string archive = _currentFilePath;
+        _folderHistory.Push(archive);
+        _forwardHistory.Clear();
+        _ = ShowFile(path);
+
+        var poll = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
+        poll.Tick += (_, _) =>
+        {
+            if (System.Windows.Forms.Control.MouseButtons.HasFlag(System.Windows.Forms.MouseButtons.Left)) return;
+            poll.Stop();
+            // Still showing the peeked file (not closed or moved on in the meantime)
+            if (IsVisible && _currentFilePath == path && _folderHistory.Count > 0 && _folderHistory.Peek() == archive)
+            {
+                _folderHistory.Pop();
+                _ = ShowFile(archive);
+            }
+        };
+        poll.Start();
     }
 
     private void GoBackToFolder()
