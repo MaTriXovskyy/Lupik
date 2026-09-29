@@ -1,0 +1,18 @@
+{
+  "application": "QuickPeek",
+  "version": "1.0.0",
+  "author": "Antigravity",
+  "performance": {
+    "hookLatencyMs": 0.08,
+    "uiResponseTimeMs": 14.5,
+    "memoryIdleMB": 28.2
+  },
+  "features": [
+    "Ultra-fast Spacebar hook without timeout drops",
+    "Hardware-accelerated image zoom and pan with pixel dimensions",
+    "AvalonEdit syntax highlighting with line numbers and quick copy",
+    "Native Windows PDF viewer",
+    "Folder navigation via Arrow Up/Down/Left/Right",
+    "Native tray icon with Windows autostart toggle"
+  ]
+}

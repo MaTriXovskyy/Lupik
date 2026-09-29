@@ -1,0 +1,12 @@
+# Build output
+bin/
+obj/
+*_wpftmp.csproj
+
+# IDE
+.vs/
+.vscode/
+*.user
+
+# Runtime logs
+*.log

@@ -1,0 +1,119 @@
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows.Shapes;
+
+namespace QuickPeek.Views;
+
+/// <summary>
+/// Lucide icon (https://lucide.dev, ISC license) drawn as a stroked 24×24 path.
+/// Takes its color from the inherited Foreground, so it matches the surrounding text.
+/// Path data comes from lucide-static; &lt;circle&gt;/&lt;rect&gt; elements are converted to equivalent paths.
+/// </summary>
+public class LucideIcon : Viewbox
+{
+    private static readonly Dictionary<string, string> Icons = new()
+    {
+        ["x"] = "M18 6 6 18 M6 6l12 12",
+        ["save"] = "M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7 M7 3v4a1 1 0 0 0 1 1h7",
+        ["eye"] = "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0 M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0",
+        ["keyboard"] = "M10 8h.01 M12 12h.01 M14 8h.01 M16 12h.01 M18 8h.01 M6 8h.01 M7 16h10 M8 12h.01 M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+        ["image"] = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M7 9a2 2 0 1 0 4 0a2 2 0 1 0-4 0 M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21",
+        ["code"] = "M16 18l6-6-6-6 M8 6l-6 6 6 6",
+        ["file-text"] = "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5 M10 9H8 M16 13H8 M16 17H8",
+        ["check"] = "M20 6 9 17l-5-5",
+        ["copy"] = "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
+        ["wrap-text"] = "M16 16l-3 3 3 3 M3 12h14.5a1 1 0 0 1 0 7H13 M3 19h6 M3 5h18",
+        ["external-link"] = "M15 3h6v6 M10 14 21 3 M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6",
+        ["minus"] = "M5 12h14",
+        ["plus"] = "M5 12h14 M12 5v14",
+        ["rotate-ccw"] = "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5",
+        ["arrow-left-right"] = "M8 3 4 7l4 4 M4 7h16 M16 21l4-4-4-4 M20 17H4",
+        ["space"] = "M22 17v1c0 .5-.5 1-1 1H3c-.5 0-1-.5-1-1v-1",
+        ["rotate-cw"] = "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8 M21 3v5h-5",
+        ["folder-open"] = "M6 14l1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2",
+        ["maximize"] = "M8 3H5a2 2 0 0 0-2 2v3 M21 8V5a2 2 0 0 0-2-2h-3 M3 16v3a2 2 0 0 0 2 2h3 M16 21h3a2 2 0 0 0 2-2v-3",
+        ["minimize"] = "M8 3v3a2 2 0 0 1-2 2H3 M21 8h-3a2 2 0 0 1-2-2V3 M3 16h3a2 2 0 0 1 2 2v3 M16 21v-3a2 2 0 0 1 2-2h3",
+        ["scan"] = "M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2",
+        ["archive"] = "M3 3h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8 M10 12h4",
+        ["info"] = "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 16v-4 M12 8h.01",
+        ["columns-2"] = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M12 3v18",
+        ["square-split-horizontal"] = "M8 19H5c-1 0-2-1-2-2V7c0-1 1-2 2-2h3 M16 5h3c1 0 2 1 2 2v10c0 1-1 2-2 2h-3 M12 4v16",
+        ["package-open"] ="M12 22v-9 M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13 M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z",
+        ["folder"] ="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
+        ["file"] = "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5",
+        ["settings"] = "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915 M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0",
+        ["sheet"] = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M3 9h18 M3 15h18 M9 9v12 M15 9v12",
+        ["zoom-in"] = "M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0 M21 21l-4.35-4.35 M11 8v6 M8 11h6",
+        ["zoom-out"] = "M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0 M21 21l-4.35-4.35 M8 11h6",
+        ["clipboard-copy"] = "M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2 M16 4h2a2 2 0 0 1 2 2v4 M21 14H11 M15 10l-4 4 4 4",
+        ["app-window"] = "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M10 4v4 M2 8h20 M6 4v4",
+        ["layers"] = "M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12 M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17",
+        ["chevron-left"] = "M15 18l-6-6 6-6",
+        ["chevron-right"] = "M9 18l6-6-6-6",
+        ["loader-circle"] = "M21 12a9 9 0 1 1-6.219-8.56",
+        ["printer"] = "M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6 M7 14h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z",
+        ["square-arrow-out-up-right"] = "M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6 M21 3l-9 9 M15 3h6v6",
+    };
+
+    private static readonly Dictionary<string, Geometry> Cache = new();
+
+    public static readonly DependencyProperty KindProperty = DependencyProperty.Register(
+        nameof(Kind), typeof(string), typeof(LucideIcon),
+        new PropertyMetadata(null, (d, _) => ((LucideIcon)d).UpdateGeometry()));
+
+    public static readonly DependencyProperty SizeProperty = DependencyProperty.Register(
+        nameof(Size), typeof(double), typeof(LucideIcon),
+        new PropertyMetadata(16.0, (d, e) => { var i = (LucideIcon)d; i.Width = i.Height = (double)e.NewValue; }));
+
+    public static readonly DependencyProperty StrokeWidthProperty = DependencyProperty.Register(
+        nameof(StrokeWidth), typeof(double), typeof(LucideIcon),
+        new PropertyMetadata(2.0, (d, e) => ((LucideIcon)d)._path.StrokeThickness = (double)e.NewValue));
+
+    public string? Kind { get => (string?)GetValue(KindProperty); set => SetValue(KindProperty, value); }
+    public double Size { get => (double)GetValue(SizeProperty); set => SetValue(SizeProperty, value); }
+    public double StrokeWidth { get => (double)GetValue(StrokeWidthProperty); set => SetValue(StrokeWidthProperty, value); }
+
+    private readonly Path _path;
+
+    public LucideIcon()
+    {
+        Width = Height = 16;
+        Stretch = Stretch.Uniform;
+        SnapsToDevicePixels = true;
+        VerticalAlignment = VerticalAlignment.Center;
+
+        _path = new Path
+        {
+            StrokeThickness = 2,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+        };
+        // Follow the inherited text color (Button/TextBlock Foreground)
+        _path.SetBinding(Shape.StrokeProperty, new Binding { Path = new PropertyPath(TextElement.ForegroundProperty), RelativeSource = RelativeSource.Self });
+
+        Child = new Canvas { Width = 24, Height = 24, Children = { _path } };
+    }
+
+    private void UpdateGeometry()
+    {
+        string? kind = Kind;
+        if (kind == null || !Icons.TryGetValue(kind, out var data))
+        {
+            _path.Data = null;
+            return;
+        }
+
+        if (!Cache.TryGetValue(kind, out var geometry))
+        {
+            geometry = Geometry.Parse(data);
+            geometry.Freeze();
+            Cache[kind] = geometry;
+        }
+        _path.Data = geometry;
+    }
+}
