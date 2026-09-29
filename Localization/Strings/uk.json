@@ -2,7 +2,7 @@
   "app.startError": "Не вдалося запустити Lupik:\n{0}",
   "archive.cancelTip": "Скасувати розпакування",
   "archive.encrypted": "зашифрований",
-  "archive.extract": "Розпакувати",
+  "archive.extract": "Розпакувати весь архів",
   "archive.extractError": "Не вдалося розпакувати архів:\n{0}",
   "archive.extractOneTip": "Видобути поруч з архівом",
   "archive.extractTip": "Розпаковує архів поруч із файлом",

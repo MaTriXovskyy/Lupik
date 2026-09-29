@@ -2,7 +2,7 @@
   "app.startError": "Lupik konnte nicht gestartet werden:\n{0}",
   "archive.cancelTip": "Entpacken abbrechen",
   "archive.encrypted": "verschlüsselt",
-  "archive.extract": "Entpacken",
+  "archive.extract": "Ganzes Archiv entpacken",
   "archive.extractError": "Das Archiv konnte nicht entpackt werden:\n{0}",
   "archive.extractOneTip": "Neben dem Archiv entpacken",
   "archive.extractTip": "Entpackt das Archiv neben die Datei",

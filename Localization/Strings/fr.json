@@ -2,7 +2,7 @@
   "app.startError": "Impossible de démarrer Lupik :\n{0}",
   "archive.cancelTip": "Annuler l'extraction",
   "archive.encrypted": "chiffrée",
-  "archive.extract": "Extraire",
+  "archive.extract": "Extraire toute l'archive",
   "archive.extractError": "Impossible d'extraire l'archive :\n{0}",
   "archive.extractOneTip": "Extraire à côté de l'archive",
   "archive.extractTip": "Extrait l'archive à côté du fichier",

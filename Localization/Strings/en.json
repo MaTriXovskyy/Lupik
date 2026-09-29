@@ -2,7 +2,7 @@
   "app.startError": "Lupik could not start:\n{0}",
   "archive.cancelTip": "Cancel extracting",
   "archive.encrypted": "encrypted",
-  "archive.extract": "Extract",
+  "archive.extract": "Extract the whole archive",
   "archive.extractError": "Couldn't extract the archive:\n{0}",
   "archive.extractOneTip": "Extract next to the archive",
   "archive.extractTip": "Extracts the archive next to the file",

@@ -120,7 +120,7 @@ T = {
 "list.name":     ["NAZWA", "NAME", "NAME", "NOMBRE", "NOM", "NOME", "ИМЯ", "НАЗВА"],
 "list.size":     ["ROZMIAR", "SIZE", "GRÖSSE", "TAMAÑO", "TAILLE", "DIMENSIONE", "РАЗМЕР", "РОЗМІР"],
 "list.modified": ["ZMODYFIKOWANO", "MODIFIED", "GEÄNDERT", "MODIFICADO", "MODIFIÉ", "MODIFICATO", "ИЗМЕНЁН", "ЗМІНЕНО"],
-"archive.extract":       ["Rozpakuj", "Extract", "Entpacken", "Extraer", "Extraire", "Estrai", "Распаковать", "Розпакувати"],
+"archive.extract":       ["Rozpakuj całe archiwum", "Extract the whole archive", "Ganzes Archiv entpacken", "Extraer todo el archivo", "Extraire toute l'archive", "Estrai tutto l'archivio", "Распаковать весь архив", "Розпакувати весь архів"],
 "archive.extractTip":    ["Rozpakowuje archiwum obok pliku", "Extracts the archive next to the file", "Entpackt das Archiv neben die Datei", "Extrae el archivo junto al fichero", "Extrait l'archive à côté du fichier", "Estrae l'archivio accanto al file", "Распаковывает архив рядом с файлом", "Розпаковує архів поруч із файлом"],
 "archive.cancelTip":     ["Anuluj rozpakowywanie", "Cancel extracting", "Entpacken abbrechen", "Cancelar la extracción", "Annuler l'extraction", "Annulla l'estrazione", "Отменить распаковку", "Скасувати розпакування"],
 "archive.showFolderTip": ["Pokaż rozpakowany folder", "Show the extracted folder", "Entpackten Ordner anzeigen", "Mostrar la carpeta extraída", "Afficher le dossier extrait", "Mostra la cartella estratta", "Показать распакованную папку", "Показати розпаковану папку"],

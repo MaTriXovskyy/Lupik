@@ -340,6 +340,9 @@ public partial class ArchiveViewer : UserControl
         if (_pressedRow == null || _archive == null || _busy) return;
         _pressPoint = e.GetPosition(EntriesList);
 
+        // Folders can be dragged out, but not peeked at: their contents are already listed right here
+        if (_pressedRow.IsFolder) return;
+
         // Held still for a moment: peek at it
         _holdTimer?.Stop();
         _holdTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(280) };

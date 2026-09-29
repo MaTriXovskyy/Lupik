@@ -116,7 +116,7 @@
                         <!-- Extract just this one, next to the archive (shown on hover) -->
                         <Button x:Name="RowExtract" Grid.Column="3" Style="{StaticResource IconButton}" Width="26" Height="24" Padding="0"
                                 HorizontalAlignment="Right" Click="OnExtractOneClicked" ToolTip="{loc:T archive.extractOneTip}" Visibility="Hidden">
-                            <views:LucideIcon Kind="download" Size="13"/>
+                            <views:LucideIcon Kind="package-open" Size="14"/>
                         </Button>
                     </Grid>
                     <DataTemplate.Triggers>

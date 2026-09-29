@@ -2,7 +2,7 @@
   "app.startError": "Nie udało się uruchomić Lupika:\n{0}",
   "archive.cancelTip": "Anuluj rozpakowywanie",
   "archive.encrypted": "zaszyfrowane",
-  "archive.extract": "Rozpakuj",
+  "archive.extract": "Rozpakuj całe archiwum",
   "archive.extractError": "Nie udało się rozpakować archiwum:\n{0}",
   "archive.extractOneTip": "Wypakuj obok archiwum",
   "archive.extractTip": "Rozpakowuje archiwum obok pliku",
