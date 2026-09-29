@@ -15,7 +15,7 @@ using Lupik.Localization;
 namespace Lupik.Views;
 
 /// <summary>One visible row of the archive listing. Key = its path inside the archive ("folder/file.txt").</summary>
-public sealed record ArchiveEntryRow(string Name, string Key, bool IsFolder, Brush NameBrush, Thickness Indent, string SizeText, string DateText)
+public sealed record ArchiveEntryRow(string Name, string Key, bool IsFolder, Brush NameBrush, TreePosition Tree, string SizeText, string DateText)
 {
     public ImageSource? Icon { get; init; }
 }
@@ -130,7 +130,7 @@ public partial class ArchiveViewer : UserControl
 
         var rows = new List<ArchiveEntryRow>();
         int folders = 0;
-        Flatten(root, 0, rows, ref folders);
+        Flatten(root, 0, rows, ref folders, new List<bool>());
         return (rows, files, folders, unpacked, anyEncrypted);
     }
 
@@ -156,23 +156,32 @@ public partial class ArchiveViewer : UserControl
         while (reader.MoveToNextEntry()) yield return reader.Entry;
     }
 
-    /// <summary>Folders first, then files, each alphabetically; children indented under their folder.</summary>
-    private static long Flatten(Node folder, int depth, List<ArchiveEntryRow> rows, ref int folders)
+    /// <summary>
+    /// Folders first, then files, each alphabetically; children under their folder, with tree guide lines.
+    /// <paramref name="lines"/>: for each outer level, whether its folder still has items after this branch.
+    /// </summary>
+    private static long Flatten(Node folder, int depth, List<ArchiveEntryRow> rows, ref int folders, List<bool> lines)
     {
         long total = 0;
         var ordered = folder.Children.Values
             .OrderByDescending(n => n.IsDirectory)
-            .ThenBy(n => n.Name, StringComparer.CurrentCultureIgnoreCase);
+            .ThenBy(n => n.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
 
-        foreach (var node in ordered)
+        for (int i = 0; i < ordered.Count; i++)
         {
-            var indent = new Thickness(depth * 18, 0, 0, 0);
+            var node = ordered[i];
+            bool isLast = i == ordered.Count - 1;
+            var indent = new TreePosition(depth, lines.ToArray(), isLast);
             if (node.IsDirectory)
             {
                 folders++;
                 int index = rows.Count;
                 rows.Add(null!); // placeholder: size is known only after the children
-                long size = Flatten(node, depth + 1, rows, ref folders);
+                // Its children draw a line through this level unless this folder was the last one here
+                var childLines = new List<bool>(lines);
+                if (depth > 0) childLines.Add(!isLast);
+                long size = Flatten(node, depth + 1, rows, ref folders, childLines);
                 rows[index] = new ArchiveEntryRow(node.Name, node.Key, true, NameBrush, indent, FormatFileSize(size), "");
                 total += size;
             }

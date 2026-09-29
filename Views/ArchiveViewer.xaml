@@ -104,7 +104,8 @@
                             <ColumnDefinition Width="140"/>
                             <ColumnDefinition Width="36"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
+                        <StackPanel Orientation="Horizontal">
+                            <views:TreeGuides Position="{Binding Tree}"/>
                             <!-- Windows' own icon for the file type / folder -->
                             <Image Source="{Binding Icon}" Width="18" Height="18" Margin="0,0,8,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                             <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="12.5" VerticalAlignment="Center"
