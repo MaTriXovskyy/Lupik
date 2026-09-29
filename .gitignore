@@ -82,3 +82,6 @@ $RECYCLE.BIN/
 # --- Sample files are test data: keep all of them, whatever the patterns above say ---
 !test_samples/
 !test_samples/**
+
+# --- Velopack packaging output ---
+Releases/

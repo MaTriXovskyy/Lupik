@@ -1,0 +1,41 @@
+# Builds the installer and publishes a GitHub release when a version tag is pushed:
+#   git tag v1.2.3 && git push origin v1.2.3
+# Installed copies of Lupik find the new release and offer the update.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Version from the tag
+        shell: pwsh
+        run: echo "VERSION=$("${{ github.ref_name }}".TrimStart("v"))" >> $env:GITHUB_ENV
+
+      - name: Publish
+        run: dotnet publish Lupik.csproj -c Release -r win-x64 --self-contained -p:Version=${{ env.VERSION }} -o publish
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk --version 1.2.161
+
+      - name: Download the previous release (for delta updates)
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Pack the installer
+        run: vpk pack --packId Lupik --packVersion ${{ env.VERSION }} --packDir publish --mainExe Lupik.exe --packTitle Lupik --packAuthors MaTriXovskyy --icon app.ico
+
+      - name: Upload the release
+        run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "Lupik ${{ env.VERSION }}" --tag ${{ github.ref_name }} --token ${{ secrets.GITHUB_TOKEN }}
