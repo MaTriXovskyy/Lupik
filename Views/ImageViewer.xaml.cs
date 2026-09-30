@@ -32,6 +32,66 @@ public partial class ImageViewer : UserControl
     {
         InitializeComponent();
         ViewportBorder.MouseLeftButtonDown += OnViewportDoubleClick;
+        ApplyBackground();
+        // The checkerboard follows light/dark; the choice can also change in Settings
+        Loaded += (_, _) => { Unwatch(); Core.Accent.Changed += OnLookChanged; Core.Settings.Changed += OnLookChanged; };
+        Unloaded += (_, _) => Unwatch();
+    }
+
+    // --- Background behind the picture (B) ---
+
+    private static readonly string[] Backgrounds = { "theme", "checker", "black", "white" };
+
+    /// <summary>Next background (theme → checkerboard → black → white); returns its name for the notice.</summary>
+    public string CycleBackground()
+    {
+        int i = Array.IndexOf(Backgrounds, Core.Settings.Current.ImageBackground);
+        string next = Backgrounds[(i + 1) % Backgrounds.Length];
+        Core.Settings.Update(s => s.ImageBackground = next);
+        ApplyBackground();
+        return Localization.Loc.T("image.background." + next);
+    }
+
+    private void OnBackgroundClicked(object sender, RoutedEventArgs e) => CycleBackground();
+
+    private void OnLookChanged() => Dispatcher.BeginInvoke(ApplyBackground);
+
+    private void Unwatch()
+    {
+        Core.Accent.Changed -= OnLookChanged;
+        Core.Settings.Changed -= OnLookChanged;
+    }
+
+    private void ApplyBackground()
+    {
+        string mode = Core.Settings.Current.ImageBackground;
+        ViewportBorder.Background = mode switch
+        {
+            "checker" => Checkerboard(),
+            "black" => Brushes.Black,
+            "white" => Brushes.White,
+            _ => Brushes.Transparent, // the window's own background
+        };
+        BackgroundButton.ToolTip = Localization.Loc.T("image.backgroundTip", Localization.Loc.T("image.background." + mode));
+        if (mode == "theme") BackgroundButton.ClearValue(ForegroundProperty);
+        else BackgroundButton.SetResourceReference(ForegroundProperty, "Gold");
+    }
+
+    /// <summary>The classic transparency checkerboard, in greys that suit the theme.</summary>
+    internal static Brush Checkerboard()
+    {
+        bool light = Core.Palette.IsLight;
+        var a = light ? Color.FromRgb(0xFF, 0xFF, 0xFF) : Color.FromRgb(0x2A, 0x27, 0x24);
+        var b = light ? Color.FromRgb(0xE4, 0xE1, 0xDC) : Color.FromRgb(0x1C, 0x1A, 0x18);
+        var squares = new GeometryGroup();
+        squares.Children.Add(new RectangleGeometry(new Rect(0, 0, 8, 8)));
+        squares.Children.Add(new RectangleGeometry(new Rect(8, 8, 8, 8)));
+        var drawing = new DrawingGroup();
+        drawing.Children.Add(new GeometryDrawing(new SolidColorBrush(a), null, new RectangleGeometry(new Rect(0, 0, 16, 16))));
+        drawing.Children.Add(new GeometryDrawing(new SolidColorBrush(b), null, squares));
+        var brush = new DrawingBrush(drawing) { TileMode = TileMode.Tile, Viewport = new Rect(0, 0, 16, 16), ViewportUnits = BrushMappingMode.Absolute };
+        brush.Freeze();
+        return brush;
     }
 
     // --- Filmstrip (T) ---
@@ -700,7 +760,7 @@ public partial class ImageViewer : UserControl
             Clipboard.SetImage(bitmap);
 
             CopyImageIcon.Kind = "check";
-            CopyImageButton.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xA6, 0xE3, 0xA1));
+            CopyImageButton.Foreground = new System.Windows.Media.SolidColorBrush(Core.Palette.Color(0xA6E3A1));
             await Task.Delay(1500);
             CopyImageIcon.Kind = "clipboard-copy";
             CopyImageButton.ClearValue(ForegroundProperty);
@@ -947,7 +1007,7 @@ public partial class ImageViewer : UserControl
     private async Task LoadInfoAsync(string path)
     {
         int token = ++_infoToken;
-        InfoButton.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE3, 0xB3, 0x41));
+        InfoButton.SetResourceReference(ForegroundProperty, "Gold");
         List<Lupik.Core.InfoItem> items;
         try { items = await Task.Run(() => Lupik.Core.ImageInfo.Read(path)); }
         catch (Exception ex) { App.Log($"[ImageViewer] Info failed: {ex.Message}"); return; }

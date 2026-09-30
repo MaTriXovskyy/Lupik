@@ -10,7 +10,7 @@
         Deactivated="OnDeactivated" PreviewKeyDown="OnKeyDown">
     <Window.Resources>
         <Style x:Key="MenuItem" TargetType="Button">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
             <Setter Property="FontSize" Value="13.5"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Focusable" Value="False"/>
@@ -23,11 +23,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2C2721"/>
-                                <Setter Property="Foreground" Value="{StaticResource GoldHover}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c2C2721}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource GoldHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#352F27"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c352F27}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -37,7 +37,7 @@
     </Window.Resources>
 
     <!-- Margin leaves room for the shadow around the card -->
-    <Border x:Name="Card" Margin="20" Width="248" Background="#1B1917" BorderBrush="#35302A" BorderThickness="1" CornerRadius="14"
+    <Border x:Name="Card" Margin="20" Width="248" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="14"
             Padding="6" Opacity="0" RenderTransformOrigin="0.5,1">
         <Border.RenderTransform>
             <TranslateTransform x:Name="CardShift" Y="6"/>
@@ -48,20 +48,20 @@
 
         <StackPanel>
             <!-- Header: icon, name, version -->
-            <Border Background="#211E1B" CornerRadius="10" Padding="10,10" Margin="0,0,0,4">
+            <Border Background="{DynamicResource c211E1B}" CornerRadius="10" Padding="10,10" Margin="0,0,0,4">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="{StaticResource AppLogo}" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image Source="{DynamicResource AppLogo}" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="Lupik" FontFamily="{StaticResource DisplayFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
-                        <TextBlock x:Name="VersionText" FontSize="11.5" Foreground="{StaticResource TextMuted}"/>
+                        <TextBlock Text="Lupik" FontFamily="{StaticResource DisplayFont}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock x:Name="VersionText" FontSize="11.5" Foreground="{DynamicResource TextMuted}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
             <Button Style="{StaticResource MenuItem}" Click="OnOpen">
                 <DockPanel>
-                    <Border DockPanel.Dock="Right" Style="{StaticResource KeyHint}" Background="#2A2622">
-                        <TextBlock Text="{loc:T key.preview}" FontSize="10.5" Foreground="{StaticResource TextSecondary}"/>
+                    <Border DockPanel.Dock="Right" Style="{StaticResource KeyHint}" Background="{DynamicResource c2A2622}">
+                        <TextBlock Text="{loc:T key.preview}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"/>
                     </Border>
                     <views:LucideIcon Kind="eye" Size="16" Margin="0,0,10,0"/>
                     <TextBlock Text="{loc:T tray.open}" VerticalAlignment="Center"/>
@@ -75,14 +75,14 @@
             </Button>
 
             <!-- Shown when a newer version was found -->
-            <Button x:Name="UpdateItem" Style="{StaticResource MenuItem}" Click="OnUpdate" Visibility="Collapsed" Foreground="{StaticResource Gold}">
+            <Button x:Name="UpdateItem" Style="{StaticResource MenuItem}" Click="OnUpdate" Visibility="Collapsed" Foreground="{DynamicResource Gold}">
                 <DockPanel>
                     <views:LucideIcon Kind="download" Size="16" Margin="0,0,10,0"/>
                     <TextBlock x:Name="UpdateText" VerticalAlignment="Center" FontWeight="SemiBold"/>
                 </DockPanel>
             </Button>
 
-            <Border Height="1" Background="#2F2B27" Margin="8,4"/>
+            <Border Height="1" Background="{DynamicResource c2F2B27}" Margin="8,4"/>
 
             <Button Style="{StaticResource MenuItem}" Click="OnExit">
                 <DockPanel>

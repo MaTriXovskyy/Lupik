@@ -45,6 +45,18 @@ public partial class SettingsWindow : Window
         AutoplaySwitch.IsChecked = Settings.Current.AutoplayMedia;
         ScaleSlider.Value = Math.Round(Settings.Current.WindowScale * 100);
         UpdatesSwitch.IsChecked = Settings.Current.CheckForUpdates;
+        AccentPicker.SetColor(Accent.Chosen);
+        AccentPicker.ColorChanged += OnAccentPicked;
+        RememberBoundsSwitch.IsChecked = Settings.Current.RememberBounds;
+        ForgetBoundsButton.IsEnabled = Settings.Current.WindowBounds.Count > 0;
+        Check(new[] { ThemeDark, ThemeLight, ThemeSystem }, Settings.Current.Theme);
+        Check(new[] { BackdropNone, BackdropMica, BackdropAcrylic }, MainWindow.BackdropSupported ? Settings.Current.Backdrop : "none");
+        Check(new[] { ImageBgTheme, ImageBgChecker, ImageBgBlack, ImageBgWhite }, Settings.Current.ImageBackground);
+        BackdropMica.IsEnabled = BackdropAcrylic.IsEnabled = MainWindow.BackdropSupported;
+        if (!MainWindow.BackdropSupported) BackdropHint.Text = Loc.T("settings.backdropUnsupported");
+        RefreshAccentControls();
+        Accent.Changed += RefreshAccentControls;
+        Closed += (_, _) => Accent.Changed -= RefreshAccentControls;
         _loading = false;
 
         RefreshTexts();
@@ -65,7 +77,8 @@ public partial class SettingsWindow : Window
     {
         if (!Dispatcher.CheckAccess()) { Dispatcher.BeginInvoke(RefreshTexts); return; }
 
-        PageTitle.Text = Loc.T(NavKeys.IsChecked == true ? "settings.navKeys"
+        PageTitle.Text = Loc.T(NavAppearance.IsChecked == true ? "settings.navAppearance"
+            : NavKeys.IsChecked == true ? "settings.navKeys"
             : NavUpdates.IsChecked == true ? "settings.navUpdates"
             : NavAbout.IsChecked == true ? "settings.navAbout" : "settings.navGeneral");
 
@@ -86,6 +99,7 @@ public partial class SettingsWindow : Window
         if (PageGeneral == null) return; // during InitializeComponent
         StopRecording();
         PageGeneral.Visibility = NavGeneral.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PageAppearance.Visibility = NavAppearance.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PageKeys.Visibility = NavKeys.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PageUpdates.Visibility = NavUpdates.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = NavAbout.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
@@ -157,11 +171,103 @@ public partial class SettingsWindow : Window
     private void OnAutoplayClick(object sender, RoutedEventArgs e) =>
         Settings.Update(s => s.AutoplayMedia = AutoplaySwitch.IsChecked == true);
 
+    private void OnRememberBoundsClick(object sender, RoutedEventArgs e) =>
+        Settings.Update(s => s.RememberBounds = RememberBoundsSwitch.IsChecked == true);
+
+    /// <summary>Every kind of file opens at the default size and place again.</summary>
+    private void OnForgetBounds(object sender, RoutedEventArgs e)
+    {
+        Settings.Update(s => s.WindowBounds.Clear());
+        ForgetBoundsButton.IsEnabled = false;
+    }
+
     private void OnScaleChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (ScaleText != null) ScaleText.Text = $"{e.NewValue:0}%";
         if (_loading) return;
         Settings.Update(s => s.WindowScale = e.NewValue / 100.0);
+    }
+
+    // --- Appearance
+
+    private static void Check(RadioButton[] options, string value) =>
+        (options.FirstOrDefault(o => (string)o.Tag == value) ?? options[0]).IsChecked = true;
+
+    private void OnThemeChecked(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string theme }) return;
+        Settings.Update(s => s.Theme = theme);
+        Accent.ApplySaved(); // rebuilds every color for the theme, live
+    }
+
+    private void OnBackdropChecked(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string backdrop }) return;
+        Settings.Update(s => s.Backdrop = backdrop); // the preview window picks it up
+    }
+
+    private void OnImageBgChecked(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string background }) return;
+        Settings.Update(s => s.ImageBackground = background);
+    }
+
+    /// <summary>Windows' accent instead of a picked one (it follows later changes in Windows too).</summary>
+    private void OnSystemAccentClick(object sender, RoutedEventArgs e)
+    {
+        bool system = SystemAccentSwitch.IsChecked == true;
+        // Off: keep the color Windows had as Lupik's own, so nothing jumps
+        string? value = system ? Accent.SystemValue : Accent.Chosen == Accent.Default ? null : Accent.ToHex(Accent.Chosen);
+        Settings.Update(s => s.AccentColor = value);
+        Accent.ApplySaved();
+    }
+
+    /// <summary>The accent controls after any look change (theme, Windows' accent, reset).</summary>
+    private void RefreshAccentControls()
+    {
+        if (!Dispatcher.CheckAccess()) { Dispatcher.BeginInvoke(RefreshAccentControls); return; }
+        bool system = Accent.FollowsSystem;
+        SystemAccentSwitch.IsChecked = system;
+        AccentPicker.IsEnabled = !system;
+        PickerRow.Opacity = system ? 0.45 : 1;
+        ResetAccentButton.IsEnabled = system || Accent.Chosen != Accent.Default;
+        if (system) AccentPicker.SetColor(Accent.Chosen);
+        CheckerSample.Background = ImageViewerCheckerboard();
+    }
+
+    private static Brush ImageViewerCheckerboard() => ImageViewer.Checkerboard();
+
+    private Color? _pendingAccent;
+
+    /// <summary>A color from the picker: shown everywhere at once (at most once a frame while dragging), saved when chosen.</summary>
+    private void OnAccentPicked(Color color, bool final)
+    {
+        ResetAccentButton.IsEnabled = color != Accent.Default;
+        if (final)
+        {
+            _pendingAccent = null;
+            if (color != Accent.Chosen) Accent.Apply(color);
+            string? value = color == Accent.Default ? null : Accent.ToHex(color);
+            if (Settings.Current.AccentColor != value) Settings.Update(s => s.AccentColor = value);
+            return;
+        }
+        bool queued = _pendingAccent != null;
+        _pendingAccent = color;
+        if (queued) return;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, () =>
+        {
+            if (_pendingAccent is not Color pending) return;
+            _pendingAccent = null;
+            Accent.Apply(pending);
+        });
+    }
+
+    private void OnResetAccent(object sender, RoutedEventArgs e)
+    {
+        if (Accent.FollowsSystem) Settings.Update(s => s.AccentColor = null);
+        AccentPicker.SetColor(Accent.Default);
+        OnAccentPicked(Accent.Default, final: true);
+        RefreshAccentControls();
     }
 
     // --- Keys

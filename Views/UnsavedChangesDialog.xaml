@@ -10,7 +10,7 @@
         FontFamily="{StaticResource AppFont}"
         PreviewKeyDown="OnKeyDown">
     <!-- Margin leaves room for the shadow around the card -->
-    <Border x:Name="Card" Margin="28" Width="460" Background="#1B1917" BorderBrush="#35302A" BorderThickness="1" CornerRadius="16"
+    <Border x:Name="Card" Margin="28" Width="460" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="16"
             RenderTransformOrigin="0.5,0.5" Opacity="0" MouseLeftButtonDown="OnDrag">
         <Border.RenderTransform>
             <ScaleTransform x:Name="CardScale" ScaleX="0.96" ScaleY="0.96"/>
@@ -23,33 +23,33 @@
             <DockPanel>
                 <!-- The file being edited: its thumbnail (or icon), with a small gold save badge -->
                 <Grid DockPanel.Dock="Left" Width="76" Height="76" Margin="0,0,16,0" VerticalAlignment="Top">
-                    <Border CornerRadius="12" Background="#24211E" BorderBrush="#2F2B27" BorderThickness="1" ClipToBounds="True">
+                    <Border CornerRadius="12" Background="{DynamicResource c24211E}" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="1" ClipToBounds="True">
                         <Image x:Name="Thumb" Stretch="Uniform" Margin="6" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Border>
-                    <Border Width="26" Height="26" CornerRadius="13" Background="#E3B341" BorderBrush="#1B1917" BorderThickness="2"
+                    <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource Gold}" BorderBrush="{DynamicResource c1B1917}" BorderThickness="2"
                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-6,-6">
-                        <views:LucideIcon Kind="save" Size="12" StrokeWidth="2.25" HorizontalAlignment="Center" TextElement.Foreground="#1A1407"/>
+                        <views:LucideIcon Kind="save" Size="12" StrokeWidth="2.25" HorizontalAlignment="Center" TextElement.Foreground="{DynamicResource OnGold}"/>
                     </Border>
                 </Grid>
 
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="{loc:T edit.unsavedHeading}" FontFamily="{StaticResource DisplayFont}"
-                               FontSize="19" FontWeight="SemiBold" Foreground="#FBF8F2"/>
-                    <TextBlock x:Name="NameText" FontSize="13.5" Foreground="#ECE6DC" Margin="0,6,0,0"
+                               FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource cFBF8F2}"/>
+                    <TextBlock x:Name="NameText" FontSize="13.5" Foreground="{DynamicResource cECE6DC}" Margin="0,6,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="320" HorizontalAlignment="Left"/>
                 </StackPanel>
             </DockPanel>
 
             <DockPanel Margin="0,22,0,0">
-                <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" Click="OnDiscard" Foreground="#F07A72">
+                <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" Click="OnDiscard" Foreground="{DynamicResource cF07A72}">
                     <TextBlock Text="{loc:T edit.discard}" VerticalAlignment="Center"/>
                 </Button>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource SecondaryButton}" Click="OnCancel" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{loc:T common.cancel}" VerticalAlignment="Center"/>
-                            <Border Style="{StaticResource KeyHint}" Background="#3B3631">
-                                <TextBlock Text="Esc" FontSize="10.5" Foreground="#B5AB9D"/>
+                            <Border Style="{StaticResource KeyHint}" Background="{DynamicResource c3B3631}">
+                                <TextBlock Text="Esc" FontSize="10.5" Foreground="{DynamicResource cB5AB9D}"/>
                             </Border>
                         </StackPanel>
                     </Button>
@@ -58,7 +58,7 @@
                             <views:LucideIcon Kind="save" Size="14" Margin="0,0,8,0"/>
                             <TextBlock Text="{loc:T edit.save}" VerticalAlignment="Center"/>
                             <Border Style="{StaticResource KeyHint}">
-                                <TextBlock Text="Enter" FontSize="10.5" Foreground="#3A2E12"/>
+                                <TextBlock Text="Enter" FontSize="10.5" Foreground="{DynamicResource OnGoldHint}"/>
                             </Border>
                         </StackPanel>
                     </Button>
@@ -67,8 +67,8 @@
 
             <!-- Good to know: under the buttons, in the theme's gold, with an (i) -->
             <DockPanel Margin="0,16,0,0" HorizontalAlignment="Center">
-                <views:LucideIcon DockPanel.Dock="Left" Kind="info" Size="14" Margin="0,1,8,0" VerticalAlignment="Top" TextElement.Foreground="#C99A2E"/>
-                <TextBlock Text="{loc:T edit.unsavedHint}" FontSize="12" Foreground="#C99A2E" TextWrapping="Wrap" TextAlignment="Center"/>
+                <views:LucideIcon DockPanel.Dock="Left" Kind="info" Size="14" Margin="0,1,8,0" VerticalAlignment="Top" TextElement.Foreground="{DynamicResource GoldPressed}"/>
+                <TextBlock Text="{loc:T edit.unsavedHint}" FontSize="12" Foreground="{DynamicResource GoldPressed}" TextWrapping="Wrap" TextAlignment="Center"/>
             </DockPanel>
         </StackPanel>
     </Border>

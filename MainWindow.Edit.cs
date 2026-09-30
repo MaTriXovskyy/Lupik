@@ -170,6 +170,7 @@ public partial class MainWindow
     /// <summary>Back to how the preview always works: no activation, Explorer in front with the focus.</summary>
     private void GiveFocusBack()
     {
+        if (_pinned) return; // a pinned window is a normal window: it keeps the focus
         SetWindowLong(Hwnd, GWL_EXSTYLE, GetWindowLong(Hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
         if (SourceWindow != IntPtr.Zero) NativeMethods.SetForegroundWindow(SourceWindow);
     }
@@ -179,7 +180,7 @@ public partial class MainWindow
     {
         NoticeText.Text = message;
         NoticeText.Foreground = success
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xA6, 0xE3, 0xA1))
+            ? new System.Windows.Media.SolidColorBrush(Core.Palette.Color(0xA6E3A1))
             : (System.Windows.Media.Brush)FindResource("GoldHover");
         NoticeText.Visibility = Visibility.Visible;
         string shown = message;

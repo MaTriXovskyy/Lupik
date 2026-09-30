@@ -116,16 +116,12 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
     {
         var area = TextEditorControl.TextArea;
 
-        // Subtle selection and current-line highlight
-        area.SelectionBrush = new SolidColorBrush(Color.FromArgb(0x55, 0x58, 0x5B, 0x70));
         area.SelectionBorder = null;
         area.SelectionForeground = null;
         area.SelectionCornerRadius = 2;
-        area.Caret.CaretBrush = new SolidColorBrush(CodeTheme.Subtext);
-
         TextEditorControl.Options.HighlightCurrentLine = true;
-        area.TextView.CurrentLineBackground = new SolidColorBrush(Color.FromArgb(0x40, 0x31, 0x32, 0x44));
         area.TextView.CurrentLineBorder = new Pen(Brushes.Transparent, 0);
+        ApplyEditorColors();
 
         TextEditorControl.Options.EnableHyperlinks = false;
         TextEditorControl.Options.EnableEmailHyperlinks = false;
@@ -147,8 +143,19 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
     /// <summary>
     /// Reads the file on a background thread. Returns false if a newer load superseded this one.
     /// </summary>
+    /// <summary>Subtle selection and current-line highlight, in the current theme (again on every file: the theme may have changed).</summary>
+    private void ApplyEditorColors()
+    {
+        var area = TextEditorControl.TextArea;
+        bool light = Core.Palette.IsLight;
+        area.SelectionBrush = new SolidColorBrush(light ? Color.FromArgb(0x40, 0x7A, 0x8C, 0xB8) : Color.FromArgb(0x55, 0x58, 0x5B, 0x70));
+        area.Caret.CaretBrush = new SolidColorBrush(CodeTheme.Subtext);
+        area.TextView.CurrentLineBackground = new SolidColorBrush(light ? Color.FromArgb(0x0E, 0x00, 0x00, 0x00) : Color.FromArgb(0x40, 0x31, 0x32, 0x44));
+    }
+
     public async Task<bool> LoadFileAsync(string filePath)
     {
+        ApplyEditorColors();
         int token = ++_loadToken;
         try
         {
@@ -260,7 +267,7 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
             Clipboard.SetText(TextEditorControl.Text);
             CopyIcon.Kind = "check";
             CopyText.Text = Loc.T("common.copied");
-            CopyButton.Foreground = new SolidColorBrush(Color.FromRgb(0xA6, 0xE3, 0xA1));
+            CopyButton.Foreground = new SolidColorBrush(Core.Palette.Color(0xA6E3A1));
 
             await Task.Delay(1800);
 

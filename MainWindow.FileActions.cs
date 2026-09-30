@@ -116,7 +116,55 @@ public partial class MainWindow
     private void OnShowInFolderClicked(object sender, RoutedEventArgs e) => RunShell("explorer.exe", $"/select,\"{_currentFilePath}\"");
     private void OnOpenDefaultClicked(object sender, RoutedEventArgs e) => OpenInDefaultApp();
     // Windows' own "Open with…" picker, so any installed app (Photoshop, etc.) can be chosen
-    private void OnOpenWithClicked(object sender, RoutedEventArgs e) => RunShell("rundll32.exe", $"shell32.dll,OpenAs_RunDLL {_currentFilePath}");
+    // --- Open with: Lupik's menu of the apps Windows suggests, plus Windows' own "choose another app"
+
+    private void OnOpenWithClicked(object sender, RoutedEventArgs e)
+    {
+        if (OpenWithMenu.IsOpen) { CloseOpenWithMenu(); return; }
+        if (!File.Exists(_currentFilePath)) return;
+        string path = _currentFilePath;
+        OpenWithList.Children.Clear();
+        foreach (var app in OpenWithApps.For(path))
+        {
+            var icon = app.Icon != null
+                ? (UIElement)new System.Windows.Controls.Image { Source = app.Icon, Width = 20, Height = 20, Margin = new Thickness(0, 0, 10, 0) }
+                : new Views.LucideIcon { Kind = "app-window", Size = 16, Margin = new Thickness(2, 0, 12, 0) };
+            System.Windows.Controls.DockPanel.SetDock(icon, System.Windows.Controls.Dock.Left);
+            var row = new System.Windows.Controls.DockPanel();
+            if (app.IsDefault)
+            {
+                var badge = new System.Windows.Controls.TextBlock { Text = Loc.T("openWith.default"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+                badge.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextMuted");
+                System.Windows.Controls.DockPanel.SetDock(badge, System.Windows.Controls.Dock.Right);
+                row.Children.Add(badge);
+            }
+            row.Children.Add(icon);
+            row.Children.Add(new System.Windows.Controls.TextBlock { Text = app.Name, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
+            var button = new System.Windows.Controls.Button { Style = (Style)FindResource("MenuRow"), Content = row, ToolTip = app.Name };
+            button.Click += (_, _) =>
+            {
+                CloseOpenWithMenu();
+                if (OpenWithApps.Open(app, path)) HideWindow();
+                else Views.MessageCard.Show(this, Loc.T("openWith.failed", app.Name));
+            };
+            OpenWithList.Children.Add(button);
+        }
+        if (OpenWithList.Children.Count == 0)
+        {
+            var none = new System.Windows.Controls.TextBlock { Text = Loc.T("openWith.none"), FontSize = 12, Margin = new Thickness(10, 4, 10, 6), TextWrapping = TextWrapping.Wrap };
+            none.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextMuted");
+            OpenWithList.Children.Add(none);
+        }
+        OpenWithMenu.IsOpen = true;
+    }
+
+    private void OnOpenWithOtherClicked(object sender, RoutedEventArgs e)
+    {
+        CloseOpenWithMenu();
+        RunShell("rundll32.exe", $"shell32.dll,OpenAs_RunDLL {_currentFilePath}");
+    }
+
+    private void CloseOpenWithMenu() => OpenWithMenu.IsOpen = false;
 
     private void OpenInDefaultApp()
     {
@@ -246,7 +294,7 @@ public partial class MainWindow
     {
         // Icon-only button: flash a green check, with the details in the tooltip
         SaveAsIcon.Kind = "check";
-        SaveAsButton.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xA6, 0xE3, 0xA1));
+        SaveAsButton.Foreground = new SolidColorBrush(Core.Palette.Color(0xA6E3A1));
         SaveAsButton.ToolTip = message;
         await Task.Delay(2200);
         SaveAsIcon.Kind = "save";

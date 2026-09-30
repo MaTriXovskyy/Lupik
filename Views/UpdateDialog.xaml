@@ -4,14 +4,14 @@
         xmlns:loc="clr-namespace:Lupik.Localization"
         xmlns:views="clr-namespace:Lupik.Views"
         Title="{loc:T update.dialogTitle}"
-        Icon="pack://application:,,,/app.ico"
+        Icon="pack://application:,,,/Lupik;component/app.ico"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" SizeToContent="WidthAndHeight" ShowInTaskbar="True"
         WindowStartupLocation="CenterScreen" Topmost="True"
         FontFamily="{StaticResource AppFont}"
         PreviewKeyDown="OnKeyDown">
     <!-- Margin leaves room for the shadow around the card -->
-    <Border x:Name="Card" Margin="28" Width="440" Background="#1B1917" BorderBrush="#35302A" BorderThickness="1" CornerRadius="16"
+    <Border x:Name="Card" Margin="28" Width="440" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="16"
             RenderTransformOrigin="0.5,0.5" Opacity="0" MouseLeftButtonDown="OnDrag">
         <Border.RenderTransform>
             <ScaleTransform x:Name="CardScale" ScaleX="0.96" ScaleY="0.96"/>
@@ -23,15 +23,15 @@
         <StackPanel Margin="22,22,22,20">
             <DockPanel>
                 <Grid DockPanel.Dock="Left" Width="64" Height="64" Margin="0,0,16,0" VerticalAlignment="Top">
-                    <Image Source="{StaticResource AppLogo}" RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource Gold}" BorderBrush="#1B1917" BorderThickness="2"
+                    <Image Source="{DynamicResource AppLogo}" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource Gold}" BorderBrush="{DynamicResource c1B1917}" BorderThickness="2"
                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-6,-6">
-                        <views:LucideIcon Kind="download" Size="12" StrokeWidth="2.5" HorizontalAlignment="Center" TextElement.Foreground="{StaticResource OnGold}"/>
+                        <views:LucideIcon Kind="download" Size="12" StrokeWidth="2.5" HorizontalAlignment="Center" TextElement.Foreground="{DynamicResource OnGold}"/>
                     </Border>
                 </Grid>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock x:Name="HeadingText" FontFamily="{StaticResource DisplayFont}" FontSize="19" FontWeight="SemiBold" Foreground="#FBF8F2"/>
-                    <TextBlock x:Name="BodyText" FontSize="13" Foreground="#B5AB9D" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="HeadingText" FontFamily="{StaticResource DisplayFont}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource cFBF8F2}"/>
+                    <TextBlock x:Name="BodyText" FontSize="13" Foreground="{DynamicResource cB5AB9D}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </DockPanel>
 
@@ -39,8 +39,8 @@
                 <Button Style="{StaticResource SecondaryButton}" Click="OnLater" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{loc:T update.later}" VerticalAlignment="Center"/>
-                        <Border Style="{StaticResource KeyHint}" Background="#3B3631">
-                            <TextBlock Text="Esc" FontSize="10.5" Foreground="#B5AB9D"/>
+                        <Border Style="{StaticResource KeyHint}" Background="{DynamicResource c3B3631}">
+                            <TextBlock Text="Esc" FontSize="10.5" Foreground="{DynamicResource cB5AB9D}"/>
                         </Border>
                     </StackPanel>
                 </Button>
@@ -49,7 +49,7 @@
                         <views:LucideIcon Kind="download" Size="14" Margin="0,0,8,0"/>
                         <TextBlock Text="{loc:T update.install}" VerticalAlignment="Center"/>
                         <Border Style="{StaticResource KeyHint}">
-                            <TextBlock Text="Enter" FontSize="10.5" Foreground="#4A3A12"/>
+                            <TextBlock Text="Enter" FontSize="10.5" Foreground="{DynamicResource OnGoldHint}"/>
                         </Border>
                     </StackPanel>
                 </Button>

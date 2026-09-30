@@ -43,6 +43,7 @@ public partial class App : Application
         base.OnStartup(e);
 
         Localization.Loc.Instance.SetLanguage(Core.Settings.Current.Language);
+        Core.Accent.ApplySaved(); // before any window: every gold brush comes from here
         foreach (var missing in Localization.Loc.MissingKeys()) Log($"[Loc] Missing translation: {missing}");
 
         // Every window of the app refuses UI Automation queries (see NativeMethods.RefuseAutomation)

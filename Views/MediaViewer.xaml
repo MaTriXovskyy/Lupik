@@ -7,7 +7,7 @@
              xmlns:views="clr-namespace:Lupik.Views"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800"
-             Background="#131211">
+             Background="{DynamicResource c131211}">
     <UserControl.Resources>
         <!-- Thin dark slider: filled part in the accent color, round thumb -->
         <Style x:Key="MediaSlider" TargetType="Slider">
@@ -19,14 +19,14 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid Height="16" Background="Transparent">
-                            <Border Height="4" CornerRadius="2" Background="#3B3631" VerticalAlignment="Center"/>
+                            <Border Height="4" CornerRadius="2" Background="{DynamicResource c3B3631}" VerticalAlignment="Center"/>
                             <Track x:Name="PART_Track">
                                 <Track.DecreaseRepeatButton>
                                     <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <Border Background="Transparent">
-                                                    <Border Height="4" CornerRadius="2" Background="#E3B341" VerticalAlignment="Center"/>
+                                                    <Border Height="4" CornerRadius="2" Background="{DynamicResource Gold}" VerticalAlignment="Center"/>
                                                 </Border>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
@@ -45,7 +45,7 @@
                                     <Thumb Focusable="False">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Width="12" Height="12" Fill="#FBF8F2"/>
+                                                <Ellipse Width="12" Height="12" Fill="{DynamicResource cFBF8F2}"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -70,25 +70,25 @@
                           MediaOpened="OnMediaOpened" MediaFailed="OnMediaFailed" MediaEnded="OnMediaEnded"/>
 
             <StackPanel x:Name="AudioPanel" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border Width="200" Height="200" CornerRadius="14" Background="#24211E" ClipToBounds="True">
+                <Border Width="200" Height="200" CornerRadius="14" Background="{DynamicResource c24211E}" ClipToBounds="True">
                     <Grid>
                         <views:LucideIcon x:Name="AudioIcon" Kind="music" Size="72" StrokeWidth="1.5"
-                                          HorizontalAlignment="Center" TextElement.Foreground="#E3B341"/>
+                                          HorizontalAlignment="Center" TextElement.Foreground="{DynamicResource Gold}"/>
                         <Image x:Name="CoverImage" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Grid>
                 </Border>
-                <TextBlock x:Name="AudioTitleText" Foreground="#FBF8F2" FontSize="15" FontWeight="SemiBold" Margin="0,16,0,0"
+                <TextBlock x:Name="AudioTitleText" Foreground="{DynamicResource cFBF8F2}" FontSize="15" FontWeight="SemiBold" Margin="0,16,0,0"
                            HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="440"/>
             </StackPanel>
         </Grid>
 
         <!-- Transport bar -->
-        <Border Grid.Row="1" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,1,0,0" Padding="8,0,12,0" Height="44">
+        <Border Grid.Row="1" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="0,1,0,0" Padding="8,0,12,0" Height="44">
             <DockPanel VerticalAlignment="Center">
                 <Button x:Name="PlayButton" DockPanel.Dock="Left" Style="{StaticResource IconButton}" ToolTip="{loc:T media.playTip}" Click="OnPlayClicked">
                     <views:LucideIcon x:Name="PlayIcon" Kind="pause" Size="16"/>
                 </Button>
-                <TextBlock x:Name="TimeText" DockPanel.Dock="Left" Text="0:00 / 0:00" Foreground="#B5AB9D" FontSize="12"
+                <TextBlock x:Name="TimeText" DockPanel.Dock="Left" Text="0:00 / 0:00" Foreground="{DynamicResource cB5AB9D}" FontSize="12"
                            VerticalAlignment="Center" Margin="6,0,12,0" MinWidth="84"/>
 
                 <Slider x:Name="VolumeSlider" DockPanel.Dock="Right" Style="{StaticResource MediaSlider}" Width="80"
@@ -96,7 +96,7 @@
                 <Button x:Name="MuteButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" ToolTip="{loc:T media.muteTip}" Click="OnMuteClicked" Margin="12,0,4,0">
                     <views:LucideIcon x:Name="MuteIcon" Kind="volume-2" Size="16"/>
                 </Button>
-                <TextBlock DockPanel.Dock="Right" Text="J / L  ±5 s" Foreground="#5A534B" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                <TextBlock DockPanel.Dock="Right" Text="J / L  ±5 s" Foreground="{DynamicResource c5A534B}" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0"/>
 
                 <Slider x:Name="SeekSlider" Style="{StaticResource MediaSlider}" Minimum="0" Maximum="1"
                         ValueChanged="OnSeekChanged"/>

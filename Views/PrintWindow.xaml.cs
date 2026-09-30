@@ -161,7 +161,7 @@ public partial class PrintWindow : Window
         {
             SheetsText.Text = "";
             StatusText.Text = Loc.T("print.badRange", _source.PageCount);
-            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+            StatusText.Foreground = new SolidColorBrush(Core.Palette.Color(0xF38BA8));
             PrintButton.IsEnabled = false;
             return;
         }
@@ -169,7 +169,7 @@ public partial class PrintWindow : Window
         _pages = pages!;
         _previewPosition = Math.Clamp(_previewPosition, 0, _pages.Count - 1);
         StatusText.Text = "";
-        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xB5, 0xAB, 0x9D));
+        StatusText.Foreground = new SolidColorBrush(Core.Palette.Color(0xB5AB9D));
         PrintButton.IsEnabled = _printer?.Valid == true;
 
         int sidesPerSheet = DuplexBox.SelectedIndex > 0 ? 2 : 1;
@@ -295,7 +295,7 @@ public partial class PrintWindow : Window
 
         PrintButton.IsEnabled = false;
         IsEnabledSettings(false);
-        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xB5, 0xAB, 0x9D));
+        StatusText.Foreground = new SolidColorBrush(Core.Palette.Color(0xB5AB9D));
         StatusText.Text = Loc.T("print.sending");
 
         try
@@ -307,7 +307,7 @@ public partial class PrintWindow : Window
         catch (Exception ex)
         {
             App.Log($"[PrintWindow] Print failed: {ex}");
-            StatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
+            StatusText.Foreground = new SolidColorBrush(Core.Palette.Color(0xF38BA8));
             StatusText.Text = Loc.T("print.error", ex.Message);
             PrintButton.IsEnabled = true;
             IsEnabledSettings(true);

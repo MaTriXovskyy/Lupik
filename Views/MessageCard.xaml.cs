@@ -27,9 +27,9 @@ public partial class MessageCard : Window
         if (!error)
         {
             BadgeIcon.Kind = "info";
-            BadgeIcon.SetValue(System.Windows.Documents.TextElement.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0xF9, 0xE2, 0xAF)));
-            IconBadge.Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x33, 0x22));
-            IconBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(0x5E, 0x52, 0x30));
+            BadgeIcon.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "GoldSoft");
+            IconBadge.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "GoldTintInfo");
+            IconBadge.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "GoldTintInfoLine");
         }
         Loaded += (_, _) =>
         {

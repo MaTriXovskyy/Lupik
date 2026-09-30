@@ -4,7 +4,7 @@
              xmlns:loc="clr-namespace:Lupik.Localization"
              xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
              xmlns:views="clr-namespace:Lupik.Views"
-             Background="#161412">
+             Background="{DynamicResource c161412}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -18,21 +18,21 @@
         </Grid.ColumnDefinitions>
 
         <!-- Toolbar: what changed, and jumping between changes -->
-        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#121110" BorderBrush="#2A2621" BorderThickness="0,0,0,1" Padding="14,7">
+        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource c121110}" BorderBrush="{DynamicResource c2A2621}" BorderThickness="0,0,0,1" Padding="14,7">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
-                    <Border Background="#2E2618" BorderBrush="#5C4A20" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
-                        <StackPanel Orientation="Horizontal" TextElement.Foreground="#E3B341">
+                    <Border Background="{DynamicResource GoldTint}" BorderBrush="{DynamicResource GoldDeep}" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource Gold}">
                             <views:LucideIcon Kind="file-diff" Size="12" Margin="0,0,5,0"/>
                             <TextBlock Text="DIFF" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="AddedText" Foreground="#7FD58F" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="RemovedText" Foreground="#F07A72" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                    <TextBlock x:Name="SummaryText" Foreground="#8A8074" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <TextBlock x:Name="AddedText" Foreground="{DynamicResource c7FD58F}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="RemovedText" Foreground="{DynamicResource cF07A72}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <TextBlock x:Name="SummaryText" Foreground="{DynamicResource c8A8074}" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock x:Name="ChangeText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="ChangeText" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T diff.prevTip}" Click="OnPrevChange">
                         <views:LucideIcon Kind="chevron-up" Size="15"/>
                     </Button>
@@ -44,22 +44,22 @@
         </Border>
 
         <!-- File names above each side -->
-        <Border Grid.Row="1" Grid.Column="0" Background="#1B1917" BorderBrush="#2A2621" BorderThickness="0,0,0,1" Padding="14,5">
-            <TextBlock x:Name="LeftName" Foreground="#F07A72" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+        <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c2A2621}" BorderThickness="0,0,0,1" Padding="14,5">
+            <TextBlock x:Name="LeftName" Foreground="{DynamicResource cF07A72}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
         </Border>
-        <Border Grid.Row="1" Grid.Column="2" Background="#1B1917" BorderBrush="#2A2621" BorderThickness="0,0,0,1" Padding="14,5">
-            <TextBlock x:Name="RightName" Foreground="#7FD58F" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+        <Border Grid.Row="1" Grid.Column="2" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c2A2621}" BorderThickness="0,0,0,1" Padding="14,5">
+            <TextBlock x:Name="RightName" Foreground="{DynamicResource c7FD58F}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
         </Border>
-        <Rectangle Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" Fill="#2F2B27"/>
+        <Rectangle Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" Fill="{DynamicResource c2F2B27}"/>
 
         <avalonEdit:TextEditor x:Name="LeftEditor" Grid.Row="2" Grid.Column="0"
                                FontFamily="Cascadia Mono, Cascadia Code, JetBrains Mono, Consolas" FontSize="13"
-                               Foreground="#E9E2D6" Background="#161412" IsReadOnly="True" ShowLineNumbers="False"
+                               Foreground="{DynamicResource cE9E2D6}" Background="{DynamicResource c161412}" IsReadOnly="True" ShowLineNumbers="False"
                                WordWrap="False" Padding="0,6,0,6"
                                HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden"/>
         <avalonEdit:TextEditor x:Name="RightEditor" Grid.Row="2" Grid.Column="2"
                                FontFamily="Cascadia Mono, Cascadia Code, JetBrains Mono, Consolas" FontSize="13"
-                               Foreground="#E9E2D6" Background="#161412" IsReadOnly="True" ShowLineNumbers="False"
+                               Foreground="{DynamicResource cE9E2D6}" Background="{DynamicResource c161412}" IsReadOnly="True" ShowLineNumbers="False"
                                WordWrap="False" Padding="0,6,0,6"
                                HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
     </Grid>

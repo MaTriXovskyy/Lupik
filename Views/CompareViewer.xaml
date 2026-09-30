@@ -3,11 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:Lupik.Localization"
              xmlns:views="clr-namespace:Lupik.Views"
-             Background="#131211" ClipToBounds="True">
+             Background="{DynamicResource c131211}" ClipToBounds="True">
     <UserControl.Resources>
         <Style x:Key="Badge" TargetType="Border">
-            <Setter Property="Background" Value="#CC131211"/>
-            <Setter Property="BorderBrush" Value="#3B3631"/>
+            <Setter Property="Background" Value="{DynamicResource cCC131211}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource c3B3631}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="8,3"/>
@@ -39,14 +39,14 @@
                     <Grid x:Name="PaneA" ClipToBounds="True">
                         <Image x:Name="SideImageA" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="6"/>
                         <Border Style="{StaticResource Badge}" HorizontalAlignment="Left">
-                            <TextBlock x:Name="SideLabelA" Foreground="#ECE6DC" FontSize="11.5"/>
+                            <TextBlock x:Name="SideLabelA" Foreground="{DynamicResource cECE6DC}" FontSize="11.5"/>
                         </Border>
                     </Grid>
-                    <Rectangle Grid.Column="1" Fill="#2F2B27"/>
+                    <Rectangle Grid.Column="1" Fill="{DynamicResource c2F2B27}"/>
                     <Grid x:Name="PaneB" Grid.Column="2" ClipToBounds="True">
                         <Image x:Name="SideImageB" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="6"/>
                         <Border Style="{StaticResource Badge}" HorizontalAlignment="Left">
-                            <TextBlock x:Name="SideLabelB" Foreground="#ECE6DC" FontSize="11.5"/>
+                            <TextBlock x:Name="SideLabelB" Foreground="{DynamicResource cECE6DC}" FontSize="11.5"/>
                         </Border>
                     </Grid>
                 </Grid>
@@ -58,29 +58,29 @@
                         <Image x:Name="SliderImageB" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="6"/>
                     </Grid>
                     <Canvas IsHitTestVisible="False">
-                        <Rectangle x:Name="SplitLine" Width="2" Fill="#F6F1E9" Opacity="0.9"/>
-                        <Border x:Name="SplitHandle" Width="30" Height="30" CornerRadius="15" Background="#F6F1E9">
-                            <views:LucideIcon Kind="arrow-left-right" Size="15" TextElement.Foreground="#131211"
+                        <Rectangle x:Name="SplitLine" Width="2" Fill="{DynamicResource cF6F1E9}" Opacity="0.9"/>
+                        <Border x:Name="SplitHandle" Width="30" Height="30" CornerRadius="15" Background="{DynamicResource cF6F1E9}">
+                            <views:LucideIcon Kind="arrow-left-right" Size="15" TextElement.Foreground="{DynamicResource c131211}"
                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </Canvas>
                     <Border Style="{StaticResource Badge}" HorizontalAlignment="Left">
-                        <TextBlock x:Name="SliderLabelA" Foreground="#ECE6DC" FontSize="11.5"/>
+                        <TextBlock x:Name="SliderLabelA" Foreground="{DynamicResource cECE6DC}" FontSize="11.5"/>
                     </Border>
                     <Border Style="{StaticResource Badge}" HorizontalAlignment="Right">
-                        <TextBlock x:Name="SliderLabelB" Foreground="#ECE6DC" FontSize="11.5"/>
+                        <TextBlock x:Name="SliderLabelB" Foreground="{DynamicResource cECE6DC}" FontSize="11.5"/>
                     </Border>
                 </Grid>
             </Grid>
         </Border>
 
         <!-- Footer -->
-        <Border Grid.Row="1" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,1,0,0" Padding="12,0" Height="36">
+        <Border Grid.Row="1" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="0,1,0,0" Padding="12,0" Height="36">
             <DockPanel LastChildFill="False" VerticalAlignment="Center">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="InfoTextA" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center"/>
-                    <TextBlock Text="  vs  " Foreground="#5A534B" FontSize="12" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="InfoTextB" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="InfoTextA" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock Text="  vs  " Foreground="{DynamicResource c5A534B}" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="InfoTextB" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -100,12 +100,12 @@
                         <views:LucideIcon Kind="arrow-left-right" Size="15"/>
                     </Button>
 
-                    <Rectangle Width="1" Height="16" Fill="#3B3631" Margin="8,0"/>
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource c3B3631}" Margin="8,0"/>
 
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.out}" Click="OnZoomOutClicked">
                         <views:LucideIcon Kind="zoom-out" Size="15"/>
                     </Button>
-                    <TextBlock x:Name="ZoomText" Text="100%" Foreground="#E3B341" FontSize="12" FontWeight="Medium"
+                    <TextBlock x:Name="ZoomText" Text="100%" Foreground="{DynamicResource Gold}" FontSize="12" FontWeight="Medium"
                                Width="44" TextAlignment="Center" VerticalAlignment="Center"/>
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.in}" Click="OnZoomInClicked">
                         <views:LucideIcon Kind="zoom-in" Size="15"/>
@@ -114,7 +114,7 @@
                         <views:LucideIcon Kind="scan" Size="15"/>
                     </Button>
 
-                    <Rectangle Width="1" Height="16" Fill="#3B3631" Margin="8,0"/>
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource c3B3631}" Margin="8,0"/>
 
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T compare.singleTip}" Click="OnSingleClicked">
                         <views:LucideIcon Kind="image" Size="15"/>

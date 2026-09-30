@@ -3,11 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:Lupik.Views"
              xmlns:loc="clr-namespace:Lupik.Localization"
-             Background="#131211">
+             Background="{DynamicResource c131211}">
     <UserControl.Resources>
         <!-- A workbook sheet tab; the shown sheet is gold -->
         <Style x:Key="SheetTab" TargetType="ToggleButton">
-            <Setter Property="Foreground" Value="#B5AB9D"/>
+            <Setter Property="Foreground" Value="{DynamicResource cB5AB9D}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Focusable" Value="False"/>
@@ -15,17 +15,17 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Border x:Name="Bd" Background="Transparent" BorderBrush="#2F2B27" BorderThickness="1" CornerRadius="6" Padding="10,3">
+                        <Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="1" CornerRadius="6" Padding="10,3">
                             <ContentPresenter VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2E2A25"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c2E2A25}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3D3322"/>
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#E3B341"/>
-                                <Setter Property="Foreground" Value="#F0C95E"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource GoldTintHover}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Gold}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource GoldHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -39,17 +39,17 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,0,0,1" Padding="14,8">
+        <Border Grid.Row="0" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="0,0,0,1" Padding="14,8">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <Border Background="#1F3A2B" BorderBrush="#2F5E43" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
-                        <StackPanel Orientation="Horizontal" TextElement.Foreground="#A6E3A1">
+                    <Border Background="{DynamicResource c1F3A2B}" BorderBrush="{DynamicResource c2F5E43}" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource cA6E3A1}">
                             <views:LucideIcon Kind="sheet" Size="12" Margin="0,0,5,0"/>
                             <TextBlock x:Name="BadgeText" Text="CSV" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="SummaryText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="EditHint" Text="{loc:T edit.csvHint}" Foreground="#E3B341" FontSize="12" VerticalAlignment="Center"
+                    <TextBlock x:Name="SummaryText" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="EditHint" Text="{loc:T edit.csvHint}" Foreground="{DynamicResource Gold}" FontSize="12" VerticalAlignment="Center"
                                Margin="16,0,0,0" Visibility="Collapsed"/>
                 </StackPanel>
                 <!-- Excel workbooks: one tab per sheet -->

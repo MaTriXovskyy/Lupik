@@ -7,7 +7,7 @@
              xmlns:views="clr-namespace:Lupik.Views"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="800"
-             Background="#131211">
+             Background="{DynamicResource c131211}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
 
         <!-- Toolbar: file info on the left, page navigation in the middle, zoom on the right -->
-        <Border Grid.Row="0" Background="#24211E" BorderBrush="#3B3631" BorderThickness="0,0,0,1" Padding="14,8">
+        <Border Grid.Row="0" Background="{DynamicResource c24211E}" BorderBrush="{DynamicResource c3B3631}" BorderThickness="0,0,0,1" Padding="14,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -25,10 +25,10 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
-                    <Border Background="#E3B341" CornerRadius="4" Padding="6,2" Margin="0,0,10,0">
-                        <TextBlock x:Name="FormatBadgeText" Text="PDF" Foreground="#1A1407" FontSize="11" FontWeight="Bold"/>
+                    <Border Background="{DynamicResource Gold}" CornerRadius="4" Padding="6,2" Margin="0,0,10,0">
+                        <TextBlock x:Name="FormatBadgeText" Text="PDF" Foreground="{DynamicResource OnGold}" FontSize="11" FontWeight="Bold"/>
                     </Border>
-                    <TextBlock x:Name="FileSizeText" Text="" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="FileSizeText" Text="" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
 
                 <!-- Previous · [page] / total · next. The page box takes typed digits through the keyboard hook:
@@ -38,12 +38,12 @@
                         <views:LucideIcon Kind="chevron-up" Size="15"/>
                     </Button>
                     <Border x:Name="PageBox" MinWidth="46" Height="26" Margin="6,0,6,0" CornerRadius="6" Padding="8,0"
-                            Background="#161412" BorderBrush="#3B3631" BorderThickness="1" Cursor="IBeam"
+                            Background="{DynamicResource c161412}" BorderBrush="{DynamicResource c3B3631}" BorderThickness="1" Cursor="IBeam"
                             ToolTip="{loc:T pdf.pageBoxTip}" MouseLeftButtonDown="OnPageBoxClicked">
-                        <TextBlock x:Name="PageBoxText" Foreground="#F6F1E9" FontSize="13" FontWeight="SemiBold"
+                        <TextBlock x:Name="PageBoxText" Foreground="{DynamicResource cF6F1E9}" FontSize="13" FontWeight="SemiBold"
                                    VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
-                    <TextBlock x:Name="PageTotalText" Foreground="#B5AB9D" FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="PageTotalText" Foreground="{DynamicResource cB5AB9D}" FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <Button x:Name="NextPageButton" Style="{StaticResource IconButton}" ToolTip="{loc:T pdf.nextPageTip}" Click="OnNextPageClicked">
                         <views:LucideIcon Kind="chevron-down" Size="15"/>
                     </Button>
@@ -54,7 +54,7 @@
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T pdf.zoomOutTip}" Click="OnZoomOutClicked">
                         <views:LucideIcon Kind="zoom-out" Size="15"/>
                     </Button>
-                    <TextBlock x:Name="ZoomPercentText" Text="100%" Foreground="#E3B341" FontSize="12" FontWeight="SemiBold"
+                    <TextBlock x:Name="ZoomPercentText" Text="100%" Foreground="{DynamicResource Gold}" FontSize="12" FontWeight="SemiBold"
                                VerticalAlignment="Center" Width="44" TextAlignment="Center"/>
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T pdf.zoomInTip}" Click="OnZoomInClicked">
                         <views:LucideIcon Kind="zoom-in" Size="15"/>
@@ -64,7 +64,7 @@
         </Border>
 
         <!-- Edit mode (E): what can be done to the pages -->
-        <Border x:Name="EditToolbar" Grid.Row="1" Background="#1B1917" BorderBrush="#3B3631" BorderThickness="0,0,0,1" Padding="14,6" Visibility="Collapsed">
+        <Border x:Name="EditToolbar" Grid.Row="1" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c3B3631}" BorderThickness="0,0,0,1" Padding="14,6" Visibility="Collapsed">
             <Border.Resources>
                 <Style x:Key="EditTool" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
                     <Setter Property="Padding" Value="10,5"/>
@@ -73,7 +73,7 @@
                 </Style>
             </Border.Resources>
             <WrapPanel VerticalAlignment="Center">
-                <TextBlock x:Name="EditPageText" Foreground="#E3B341" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock x:Name="EditPageText" Foreground="{DynamicResource Gold}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
                 <Button Style="{StaticResource EditTool}" Click="OnRotateLeftClicked" ToolTip="{loc:T pdfEdit.rotateLeftTip}">
                     <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.rotateLeft}"/></StackPanel>
                 </Button>
@@ -83,7 +83,7 @@
                 <Button Style="{StaticResource EditTool}" Click="OnDeletePageClicked" ToolTip="{loc:T pdfEdit.deleteTip}">
                     <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="trash-2" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.delete}"/></StackPanel>
                 </Button>
-                <Rectangle Width="1" Height="18" Fill="#3B3631" Margin="6,0,12,0" VerticalAlignment="Center"/>
+                <Rectangle Width="1" Height="18" Fill="{DynamicResource c3B3631}" Margin="6,0,12,0" VerticalAlignment="Center"/>
                 <Button Style="{StaticResource EditTool}" Click="OnExtractClicked" ToolTip="{loc:T pdfEdit.extractTip}">
                     <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="copy" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.extract}"/></StackPanel>
                 </Button>

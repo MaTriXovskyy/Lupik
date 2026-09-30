@@ -47,6 +47,25 @@ public partial class MainWindow : Window
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
         WireImageExtras();
         PdfViewerControl.Notice += message => ShowNotice(message);
+        WatchAppearance();
+        PreviewTextInput += OnWindowTextInput;
+        UpdatePinButton();
+        if (_pinned) Closed += (_, _) => ReleasePinned();
+    }
+
+    /// <summary>A pinned window closed: let go of its file and of the app-wide events.</summary>
+    private void ReleasePinned()
+    {
+        Loc.Instance.LanguageChanged -= UpdateWelcomeText;
+        SystemPreviewControl.Close();
+        MediaViewerControl.Stop();
+        ImageViewerControl.Release();
+        PdfViewerControl.Release();
+        CodeViewerControl.Release();
+        FolderViewerControl.Release();
+        CsvViewerControl.Release();
+        DocxViewerControl.Release();
+        ArchiveViewerControl.Release();
     }
 
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
@@ -59,6 +78,7 @@ public partial class MainWindow : Window
         App.Log("[MainWindow] ShowWelcome called.");
         UpdateWelcomeText();
         _currentFilePath = "";
+        _boundsKind = null;
         TitleFileNameText.Text = Loc.T("main.readyTitle");
         TitleIconImage.Source = null;
         Title = "Lupik";
@@ -86,6 +106,8 @@ public partial class MainWindow : Window
         if (EditMode && !string.Equals(filePath, _editingPath, StringComparison.OrdinalIgnoreCase) && !ExitEdit()) return;
         CancelIdleRelease();
         CloseSearch(); // a new file: the old matches mean nothing there
+        CloseOpenWithMenu();
+        _boundsKind = KindOf(filePath);
         int token = ++_showToken;
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
         BeginLoading(filePath, ext, token);
@@ -391,6 +413,8 @@ public partial class MainWindow : Window
     {
         App.Log("[MainWindow] HideWindow called");
         if (EditMode && !ExitEdit()) return; // unsaved changes: the user chose to stay
+        CloseOpenWithMenu();
+        if (_pinned) { Close(); return; } // a pinned window is done once closed
 
         // Nothing to hand back: the preview never took the focus from Explorer
         Hide();

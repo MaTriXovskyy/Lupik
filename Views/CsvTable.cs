@@ -18,17 +18,32 @@ public class CsvTable : FrameworkElement
     private const double HeaderHeight = 30;
     private const double CellPadding = 10;
 
-    private static readonly Brush RowBrush = Frozen(Color.FromRgb(0x13, 0x12, 0x11));
-    private static readonly Brush AltRowBrush = Frozen(Color.FromRgb(0x18, 0x16, 0x14));
-    private static readonly Brush HeaderBrush = Frozen(Color.FromRgb(0x1B, 0x19, 0x17));
-    private static readonly Brush TextBrush = Frozen(Color.FromRgb(0xEC, 0xE6, 0xDC));
-    private static readonly Brush HeaderTextBrush = Frozen(Color.FromRgb(0xB5, 0xAB, 0x9D));
-    private static readonly Pen GridPen = FrozenPen(Color.FromRgb(0x24, 0x21, 0x1E));
-    private static readonly Pen HeaderPen = FrozenPen(Color.FromRgb(0x2F, 0x2B, 0x27));
-    private static readonly Brush SelectionFill = Frozen(Color.FromArgb(0x38, 0xE3, 0xB3, 0x41));
-    private static readonly Pen SelectionPen = FrozenPen(Color.FromArgb(0x90, 0xE3, 0xB3, 0x41));
-    private static readonly Pen ActivePen = FrozenPen(Color.FromRgb(0xE3, 0xB3, 0x41), 2);
-    private static readonly Brush HeaderSelectedBrush = Frozen(Color.FromArgb(0x30, 0xE3, 0xB3, 0x41));
+    // Theme and accent colors: rebuilt when either changes in Settings
+    private static Color _accent;
+    private static int _paletteVersion;
+    private static Brush RowBrush = null!, AltRowBrush = null!, HeaderBrush = null!, TextBrush = null!, HeaderTextBrush = null!;
+    private static Pen GridPen = null!, HeaderPen = null!;
+    private static Brush SelectionFill = null!, HeaderSelectedBrush = null!;
+    private static Pen SelectionPen = null!, ActivePen = null!;
+
+    private static void EnsureAccent()
+    {
+        var a = Core.Accent.Color;
+        if (a == _accent && _paletteVersion == Core.Palette.Version && ActivePen != null) return;
+        _accent = a;
+        _paletteVersion = Core.Palette.Version;
+        RowBrush = Frozen(Core.Palette.Color(0x131211));
+        AltRowBrush = Frozen(Core.Palette.Color(0x181614));
+        HeaderBrush = Frozen(Core.Palette.Color(0x1B1917));
+        TextBrush = Frozen(Core.Palette.Color(0xECE6DC));
+        HeaderTextBrush = Frozen(Core.Palette.Color(0xB5AB9D));
+        GridPen = FrozenPen(Core.Palette.Color(0x24211E));
+        HeaderPen = FrozenPen(Core.Palette.Color(0x2F2B27));
+        SelectionFill = Frozen(Color.FromArgb(0x38, a.R, a.G, a.B));
+        SelectionPen = FrozenPen(Color.FromArgb(0x90, a.R, a.G, a.B));
+        ActivePen = FrozenPen(a, 2);
+        HeaderSelectedBrush = Frozen(Color.FromArgb(0x30, a.R, a.G, a.B));
+    }
 
     private readonly Typeface _typeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
     private readonly Typeface _headerTypeface = new(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
@@ -117,6 +132,7 @@ public class CsvTable : FrameworkElement
 
     protected override void OnRender(DrawingContext dc)
     {
+        EnsureAccent();
         if (_header.Length == 0) return;
         AttachScroller();
 

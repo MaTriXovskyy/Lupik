@@ -63,6 +63,8 @@ embedded Type 1 fonts included.
 | K | crop (Shift keeps proportions, Alt resizes from the center) |
 | I | image details |
 | T | filmstrip of the folder's images |
+| B | background behind pictures: theme, checkerboard, black, white |
+| P | pin: the file moves to a window of its own that stays on top and no longer follows Explorer (in that window P toggles "always on top") |
 | C | compare the two selected images / text files, or back to one |
 | Ctrl+F, F3 | search (Enter / Shift+Enter: next / previous, Esc closes) |
 | E | edit mode (Ctrl+S saves, Esc leaves) |
@@ -87,7 +89,13 @@ dotnet build -c Release
 The exe ends up in `bin/Release/net10.0-windows/Lupik.exe`. Run it and it sits in the tray.
 Right-click the tray icon for Settings: language (Lupik speaks Polish, English, German, Spanish, French, Italian,
 Russian and Ukrainian, and follows Windows by default), the preview key, start with Windows, closing the preview
-when you click another app, window size, media autoplay and updates.
+when you click another app, window size (remembered separately for each kind of file once you move or resize
+the window), media autoplay, updates, and the look: a dark, light or as-Windows theme, a Mica or acrylic backdrop
+for the preview (Windows 11), and Lupik's color. The gold accent can be swapped for any RGB color, one of the
+ready-made ones or Windows' own accent, and every golden detail follows it.
+
+The app button with the arrow in the title bar lists the apps Windows suggests for the file, like Explorer's
+"Open with" menu.
 
 Texts live in `Localization/translations.py`; run it after editing to regenerate `Localization/Strings/*.json`.
 The app icon is drawn by `tools/make-icon.cs` (`dotnet run --file tools/make-icon.cs -- app.ico`).

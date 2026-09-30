@@ -27,8 +27,8 @@ public partial class ArchiveViewer : UserControl
 {
     public static readonly string[] Extensions = { ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".xz" };
 
-    private static readonly Brush NameBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xEC, 0xE6, 0xDC)));
-    private static readonly Brush LockedBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8)));
+    private static Brush NameBrush => Core.Palette.Brush(0xECE6DC);
+    private static Brush LockedBrush => Core.Palette.Brush(0xF38BA8);
 
     private int _loadToken;
 

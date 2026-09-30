@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:Lupik.Localization"
              xmlns:views="clr-namespace:Lupik.Views"
-             Background="#131211">
+             Background="{DynamicResource c131211}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -11,7 +11,7 @@
         </Grid.RowDefinitions>
 
         <!-- Summary + zip -->
-        <Border Grid.Row="0" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,0,0,1" Padding="14,8">
+        <Border Grid.Row="0" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="0,0,0,1" Padding="14,8">
             <DockPanel LastChildFill="True">
                 <!-- Zip: button, then progress, then result -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -25,18 +25,18 @@
 
                     <StackPanel x:Name="ZipProgressPanel" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
                         <Grid Width="160" Height="6" VerticalAlignment="Center" Margin="0,0,10,0">
-                            <Border Background="#24211E" CornerRadius="3"/>
-                            <Border x:Name="ZipProgressFill" Background="#E3B341" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
+                            <Border Background="{DynamicResource c24211E}" CornerRadius="3"/>
+                            <Border x:Name="ZipProgressFill" Background="{DynamicResource Gold}" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
                         </Grid>
-                        <TextBlock x:Name="ZipProgressText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center" MinWidth="120"/>
+                        <TextBlock x:Name="ZipProgressText" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center" MinWidth="120"/>
                         <Button Style="{StaticResource IconButton}" ToolTip="{loc:T folder.cancelTip}" Click="OnZipCancel" Margin="4,0,0,0">
                             <views:LucideIcon Kind="x" Size="14"/>
                         </Button>
                     </StackPanel>
 
                     <StackPanel x:Name="ZipDonePanel" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
-                        <views:LucideIcon Kind="check" Size="14" Margin="0,0,6,0" TextElement.Foreground="#A6E3A1"/>
-                        <TextBlock x:Name="ZipDoneText" Foreground="#A6E3A1" FontSize="12" VerticalAlignment="Center"
+                        <views:LucideIcon Kind="check" Size="14" Margin="0,0,6,0" TextElement.Foreground="{DynamicResource cA6E3A1}"/>
+                        <TextBlock x:Name="ZipDoneText" Foreground="{DynamicResource cA6E3A1}" FontSize="12" VerticalAlignment="Center"
                                    MaxWidth="260" TextTrimming="CharacterEllipsis"/>
                         <Button Style="{StaticResource IconButton}" ToolTip="{loc:T folder.showZipTip}" Click="OnZipReveal" Margin="6,0,0,0">
                             <views:LucideIcon Kind="folder-open" Size="14"/>
@@ -45,13 +45,13 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="#3A3322" BorderBrush="#5E5230" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
-                        <StackPanel Orientation="Horizontal" TextElement.Foreground="#F9E2AF">
+                    <Border Background="{DynamicResource GoldTintInfo}" BorderBrush="{DynamicResource GoldTintInfoLine}" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource GoldSoft}">
                             <views:LucideIcon Kind="folder" Size="12" Margin="0,0,5,0"/>
                             <TextBlock Text="{loc:T folder.badge}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="SummaryText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center"
+                    <TextBlock x:Name="SummaryText" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </DockPanel>
@@ -82,25 +82,25 @@
                                            RenderOptions.BitmapScalingMode="HighQuality"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Row="1" Margin="0,4,0,0">
-                                        <TextBlock Text="{Binding Name}" Foreground="#ECE6DC" FontSize="11.5" TextAlignment="Center"
+                                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource cECE6DC}" FontSize="11.5" TextAlignment="Center"
                                                    TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="30"/>
-                                        <TextBlock Text="{Binding Detail}" Foreground="#8A8074" FontSize="10.5" TextAlignment="Center"/>
+                                        <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource c8A8074}" FontSize="10.5" TextAlignment="Center"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
                             <DataTemplate.Triggers>
                                 <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Card" Property="Background" Value="#1F1C1A"/>
+                                    <Setter TargetName="Card" Property="Background" Value="{DynamicResource c1F1C1A}"/>
                                 </Trigger>
                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                    <Setter TargetName="Card" Property="Background" Value="#2E2618"/>
-                                    <Setter TargetName="Card" Property="BorderBrush" Value="#E3B341"/>
+                                    <Setter TargetName="Card" Property="Background" Value="{DynamicResource GoldTint}"/>
+                                    <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource Gold}"/>
                                 </DataTrigger>
                             </DataTemplate.Triggers>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock x:Name="EmptyText" Text="{loc:T folder.empty}" Foreground="#8A8074" FontSize="13"
+                <TextBlock x:Name="EmptyText" Text="{loc:T folder.empty}" Foreground="{DynamicResource c8A8074}" FontSize="13"
                            HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,80,0,0" Visibility="Collapsed"/>
             </Grid>
         </ScrollViewer>

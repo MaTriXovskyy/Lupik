@@ -9,7 +9,7 @@
         FontFamily="{StaticResource AppFont}"
         PreviewKeyDown="OnKeyDown">
     <!-- Margin leaves room for the shadow around the card -->
-    <Border x:Name="Card" Margin="28" Width="440" Background="#1B1917" BorderBrush="#35302A" BorderThickness="1" CornerRadius="16"
+    <Border x:Name="Card" Margin="28" Width="440" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="16"
             RenderTransformOrigin="0.5,0.5" Opacity="0" MouseLeftButtonDown="OnDrag">
         <Border.RenderTransform>
             <ScaleTransform x:Name="CardScale" ScaleX="0.96" ScaleY="0.96"/>
@@ -21,13 +21,13 @@
         <StackPanel Margin="22,22,22,20">
             <DockPanel>
                 <Border x:Name="IconBadge" DockPanel.Dock="Left" Width="44" Height="44" CornerRadius="12" Margin="0,0,16,0" VerticalAlignment="Top"
-                        Background="#3A1F1D" BorderBrush="#6E3430" BorderThickness="1">
-                    <views:LucideIcon x:Name="BadgeIcon" Kind="triangle-alert" Size="20" HorizontalAlignment="Center" TextElement.Foreground="#F07A72"/>
+                        Background="{DynamicResource c3A1F1D}" BorderBrush="{DynamicResource c6E3430}" BorderThickness="1">
+                    <views:LucideIcon x:Name="BadgeIcon" Kind="triangle-alert" Size="20" HorizontalAlignment="Center" TextElement.Foreground="{DynamicResource cF07A72}"/>
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock x:Name="HeadingText" FontFamily="{StaticResource DisplayFont}" FontSize="17" FontWeight="SemiBold"
-                               Foreground="#FBF8F2" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="DetailText" FontSize="12.5" Foreground="#B5AB9D" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Foreground="{DynamicResource cFBF8F2}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="DetailText" FontSize="12.5" Foreground="{DynamicResource cB5AB9D}" Margin="0,6,0,0" TextWrapping="Wrap"
                                Visibility="Collapsed"/>
                 </StackPanel>
             </DockPanel>
@@ -35,7 +35,7 @@
             <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Margin="0,20,0,0" Click="OnOk">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="OK" VerticalAlignment="Center"/>
-                    <Border Style="{StaticResource KeyHint}"><TextBlock Text="Enter" FontSize="10.5" Foreground="#3A2E12"/></Border>
+                    <Border Style="{StaticResource KeyHint}"><TextBlock Text="Enter" FontSize="10.5" Foreground="{DynamicResource OnGoldHint}"/></Border>
                 </StackPanel>
             </Button>
         </StackPanel>

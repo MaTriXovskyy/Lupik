@@ -8,20 +8,20 @@
              xmlns:views="clr-namespace:Lupik.Views"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800"
-             Background="#161412">
+             Background="{DynamicResource c161412}">
     <UserControl.Resources>
         <!-- Slim, rounded dark scrollbars -->
         <Style x:Key="ScrollThumb" TargetType="Thumb">
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Thumb">
-                        <Border x:Name="Bd" Background="#3F3A33" CornerRadius="4"/>
+                        <Border x:Name="Bd" Background="{DynamicResource c3F3A33}" CornerRadius="4"/>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#51493F"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c51493F}"/>
                             </Trigger>
                             <Trigger Property="IsDragging" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#665C50"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c665C50}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -71,7 +71,7 @@
 
         <!-- Pill-shaped toolbar button -->
         <Style x:Key="ToolbarButton" TargetType="ButtonBase">
-            <Setter Property="Foreground" Value="#BAC2DE"/>
+            <Setter Property="Foreground" Value="{DynamicResource cBAC2DE}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Padding" Value="10,5"/>
@@ -80,18 +80,18 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ButtonBase">
                         <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                BorderBrush="#2E2A25" BorderThickness="1" CornerRadius="6"
+                                BorderBrush="{DynamicResource c2E2A25}" BorderThickness="1" CornerRadius="6"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2E2A25"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c2E2A25}"/>
                             </Trigger>
                             <Trigger Property="ToggleButton.IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3D3322"/>
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#E3B341"/>
-                                <Setter Property="Foreground" Value="#E3B341"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource GoldTintHover}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Gold}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Gold}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -107,15 +107,15 @@
         </Grid.RowDefinitions>
 
         <!-- Toolbar -->
-        <Border Grid.Row="0" Background="#121110" BorderBrush="#2A2621" BorderThickness="0,0,0,1" Padding="14,8">
+        <Border Grid.Row="0" Background="{DynamicResource c121110}" BorderBrush="{DynamicResource c2A2621}" BorderThickness="0,0,0,1" Padding="14,8">
             <DockPanel LastChildFill="False">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
-                    <Border Background="#2E2618" BorderBrush="#5C4A20" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
-                        <TextBlock x:Name="LanguageText" Text="C#" Foreground="#E3B341" FontSize="11" FontWeight="SemiBold"/>
+                    <Border Background="{DynamicResource GoldTint}" BorderBrush="{DynamicResource GoldDeep}" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
+                        <TextBlock x:Name="LanguageText" Text="C#" Foreground="{DynamicResource Gold}" FontSize="11" FontWeight="SemiBold"/>
                     </Border>
-                    <TextBlock x:Name="LinesCountText" Text="" Foreground="#7F849C" FontSize="12" VerticalAlignment="Center"/>
-                    <Ellipse Width="3" Height="3" Fill="#3F3A33" VerticalAlignment="Center" Margin="10,0"/>
-                    <TextBlock x:Name="FileSizeText" Text="" Foreground="#7F849C" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="LinesCountText" Text="" Foreground="{DynamicResource c7F849C}" FontSize="12" VerticalAlignment="Center"/>
+                    <Ellipse Width="3" Height="3" Fill="{DynamicResource c3F3A33}" VerticalAlignment="Center" Margin="10,0"/>
+                    <TextBlock x:Name="FileSizeText" Text="" Foreground="{DynamicResource c7F849C}" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
@@ -137,9 +137,9 @@
                                x:Name="TextEditorControl"
                                FontFamily="Cascadia Mono, Cascadia Code, JetBrains Mono, Consolas"
                                FontSize="13"
-                               Foreground="#E9E2D6"
-                               Background="#161412"
-                               LineNumbersForeground="#3F3A33"
+                               Foreground="{DynamicResource cE9E2D6}"
+                               Background="{DynamicResource c161412}"
+                               LineNumbersForeground="{DynamicResource c3F3A33}"
                                Padding="0,8,0,8"
                                IsReadOnly="True"
                                ShowLineNumbers="True"

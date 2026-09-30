@@ -7,9 +7,9 @@
              xmlns:views="clr-namespace:Lupik.Views"
              mc:Ignorable="d" 
              d:DesignHeight="400" d:DesignWidth="600"
-             Background="#131211">
+             Background="{DynamicResource c131211}">
     <Grid VerticalAlignment="Center" HorizontalAlignment="Center" Margin="32">
-        <Border Background="#24211E" BorderBrush="#3B3631" BorderThickness="1"
+        <Border Background="{DynamicResource c24211E}" BorderBrush="{DynamicResource c3B3631}" BorderThickness="1"
                 CornerRadius="12" Padding="32" Width="480">
             <StackPanel HorizontalAlignment="Center">
                 <!-- Large File Icon -->
@@ -18,16 +18,16 @@
 
                 <!-- File Name -->
                 <TextBlock x:Name="FileNameText" Text=""
-                           Foreground="#F6F1E9" FontSize="18" FontWeight="Bold"
+                           Foreground="{DynamicResource cF6F1E9}" FontSize="18" FontWeight="Bold"
                            HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,8"/>
 
                 <!-- File Type and Size -->
                 <TextBlock x:Name="FileTypeAndSizeText" Text=""
-                           Foreground="#B5AB9D" FontSize="13"
+                           Foreground="{DynamicResource cB5AB9D}" FontSize="13"
                            HorizontalAlignment="Center" Margin="0,0,0,24"/>
 
                 <!-- Metadata details table -->
-                <Border Background="#131211" CornerRadius="8" Padding="16" Margin="0,0,0,24">
+                <Border Background="{DynamicResource c131211}" CornerRadius="8" Padding="16" Margin="0,0,0,24">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -39,20 +39,20 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T info.modifiedLabel}" Foreground="#8A8074" FontSize="12" Margin="0,0,12,6"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" x:Name="ModifiedDateText" Text="2026-09-29 10:00" Foreground="#DDD6CB" FontSize="12" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T info.modifiedLabel}" Foreground="{DynamicResource c8A8074}" FontSize="12" Margin="0,0,12,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" x:Name="ModifiedDateText" Text="2026-09-29 10:00" Foreground="{DynamicResource cDDD6CB}" FontSize="12" Margin="0,0,0,6"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:T info.createdLabel}" Foreground="#8A8074" FontSize="12" Margin="0,0,12,6"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="CreatedDateText" Text="2026-09-28 15:30" Foreground="#DDD6CB" FontSize="12" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:T info.createdLabel}" Foreground="{DynamicResource c8A8074}" FontSize="12" Margin="0,0,12,6"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="CreatedDateText" Text="2026-09-28 15:30" Foreground="{DynamicResource cDDD6CB}" FontSize="12" Margin="0,0,0,6"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:T info.pathLabel}" Foreground="#8A8074" FontSize="12" Margin="0,0,12,0"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="FilePathText" Text="" Foreground="#DDD6CB" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:T info.pathLabel}" Foreground="{DynamicResource c8A8074}" FontSize="12" Margin="0,0,12,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="FilePathText" Text="" Foreground="{DynamicResource cDDD6CB}" FontSize="11" TextTrimming="CharacterEllipsis"/>
                     </Grid>
                 </Border>
 
                 <!-- Open Action -->
                 <Button
-                        Background="#E3B341" Foreground="#1A1407"
+                        Background="{DynamicResource Gold}" Foreground="{DynamicResource OnGold}"
                         FontSize="13" FontWeight="SemiBold"
                         Padding="16,8" BorderThickness="0" Cursor="Hand"
                         HorizontalAlignment="Center"

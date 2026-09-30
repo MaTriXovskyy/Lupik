@@ -38,6 +38,7 @@ public class TrayService : IDisposable
 
             RefreshTexts();
             Loc.Instance.LanguageChanged += RefreshTexts; // also fires when the keys change
+            Accent.Changed += RefreshIcon;
 
             App.Log("[TrayService] NotifyIcon initialized successfully and is visible in system tray.");
         }
@@ -56,6 +57,15 @@ public class TrayService : IDisposable
         _notifyIcon.Text = tip.Length > 127 ? tip[..127] : tip;
     }
 
+    /// <summary>The accent changed in Settings: the tray icon follows it.</summary>
+    private void RefreshIcon()
+    {
+        if (_notifyIcon == null) return;
+        var old = _notifyIcon.Icon;
+        _notifyIcon.Icon = LoadAppIcon();
+        old?.Dispose();
+    }
+
     public void ShowBalloonNotification(string title, string text)
     {
         try
@@ -68,11 +78,14 @@ public class TrayService : IDisposable
         }
     }
 
-    /// <summary>The app icon (same as the exe and taskbar), at the tray's small-icon size.</summary>
+    /// <summary>The app icon (same as the exe and taskbar), at the tray's small-icon size; drawn in the accent when it isn't the gold.</summary>
     private static Icon LoadAppIcon()
     {
         try
         {
+            if (Accent.Color != Accent.Default && Application.Current.TryFindResource("AppLogo") is System.Windows.Media.ImageSource logo)
+                return RenderIcon(logo, SystemInformation.SmallIconSize.Width);
+
             var resource = Application.GetResourceStream(new Uri("pack://application:,,,/app.ico"));
             if (resource != null)
             {
@@ -85,6 +98,31 @@ public class TrayService : IDisposable
             App.Log($"[TrayService] Could not load app icon: {ex.Message}");
         }
         return (Icon)SystemIcons.Application.Clone(); // fallback
+    }
+
+    /// <summary>The vector logo as an icon: rendered to PNG and wrapped in a one-image .ico.</summary>
+    private static Icon RenderIcon(System.Windows.Media.ImageSource logo, int size)
+    {
+        var visual = new System.Windows.Media.DrawingVisual();
+        using (var dc = visual.RenderOpen()) dc.DrawImage(logo, new Rect(0, 0, size, size));
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(size, size, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+        using var png = new MemoryStream();
+        encoder.Save(png);
+
+        using var ico = new MemoryStream();
+        using (var w = new BinaryWriter(ico, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            w.Write((short)0); w.Write((short)1); w.Write((short)1);                 // header: icon, one image
+            w.Write((byte)(size >= 256 ? 0 : size)); w.Write((byte)(size >= 256 ? 0 : size));
+            w.Write((byte)0); w.Write((byte)0); w.Write((short)1); w.Write((short)32);
+            w.Write((int)png.Length); w.Write(22);                                   // data follows the 22-byte header
+            w.Write(png.ToArray());
+        }
+        ico.Position = 0;
+        return new Icon(ico);
     }
 
     public void Dispose()

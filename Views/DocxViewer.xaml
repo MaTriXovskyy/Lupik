@@ -2,22 +2,22 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:Lupik.Views"
-             Background="#131211">
+             Background="{DynamicResource c131211}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,0,0,1" Padding="14,8">
+        <Border Grid.Row="0" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="0,0,0,1" Padding="14,8">
             <StackPanel Orientation="Horizontal">
-                <Border Background="#1E2F45" BorderBrush="#2F4A6E" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
-                    <StackPanel Orientation="Horizontal" TextElement.Foreground="#8CB8F0">
+                <Border Background="{DynamicResource c1E2F45}" BorderBrush="{DynamicResource c2F4A6E}" BorderThickness="1" CornerRadius="10" Padding="9,2" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource c8CB8F0}">
                         <views:LucideIcon Kind="file-text" Size="12" Margin="0,0,5,0"/>
                         <TextBlock x:Name="BadgeText" Text="DOCX" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
-                <TextBlock x:Name="SummaryText" Foreground="#B5AB9D" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock x:Name="SummaryText" Foreground="{DynamicResource cB5AB9D}" FontSize="12" VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
 

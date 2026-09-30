@@ -10,7 +10,7 @@
         FontFamily="{StaticResource AppFont}"
         PreviewKeyDown="OnKeyDown">
     <!-- Margin leaves room for the shadow around the card -->
-    <Border x:Name="Card" Margin="28" Width="420" Background="#1B1917" BorderBrush="#35302A" BorderThickness="1" CornerRadius="16"
+    <Border x:Name="Card" Margin="28" Width="420" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="16"
             RenderTransformOrigin="0.5,0.5" Opacity="0" MouseLeftButtonDown="OnDrag">
         <Border.RenderTransform>
             <ScaleTransform x:Name="CardScale" ScaleX="0.96" ScaleY="0.96"/>
@@ -23,10 +23,10 @@
             <DockPanel>
                 <!-- What is being deleted: its thumbnail (or icon), with a small red trash badge -->
                 <Grid DockPanel.Dock="Left" Width="76" Height="76" Margin="0,0,16,0" VerticalAlignment="Top">
-                    <Border CornerRadius="12" Background="#24211E" BorderBrush="#2F2B27" BorderThickness="1" ClipToBounds="True">
+                    <Border CornerRadius="12" Background="{DynamicResource c24211E}" BorderBrush="{DynamicResource c2F2B27}" BorderThickness="1" ClipToBounds="True">
                         <Image x:Name="Thumb" Stretch="Uniform" Margin="6" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Border>
-                    <Border Width="26" Height="26" CornerRadius="13" Background="#E5534B" BorderBrush="#1B1917" BorderThickness="2"
+                    <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource cE5534B}" BorderBrush="{DynamicResource c1B1917}" BorderThickness="2"
                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-6,-6">
                         <views:LucideIcon Kind="trash-2" Size="12" StrokeWidth="2.25" HorizontalAlignment="Center" TextElement.Foreground="White"/>
                     </Border>
@@ -34,10 +34,10 @@
 
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock x:Name="HeadingText" Text="{loc:T delete.heading}" FontFamily="{StaticResource DisplayFont}"
-                               FontSize="19" FontWeight="SemiBold" Foreground="#FBF8F2"/>
-                    <TextBlock x:Name="NameText" Text="" FontSize="13.5" Foreground="#ECE6DC" Margin="0,6,0,0"
+                               FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource cFBF8F2}"/>
+                    <TextBlock x:Name="NameText" Text="" FontSize="13.5" Foreground="{DynamicResource cECE6DC}" Margin="0,6,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="300" HorizontalAlignment="Left"/>
-                    <TextBlock x:Name="MetaText" Text="" FontSize="12" Foreground="#8A8074" Margin="0,3,0,0"/>
+                    <TextBlock x:Name="MetaText" Text="" FontSize="12" Foreground="{DynamicResource c8A8074}" Margin="0,3,0,0"/>
                 </StackPanel>
             </DockPanel>
 
@@ -45,17 +45,17 @@
                 <Button Style="{StaticResource SecondaryButton}" Click="OnCancel" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{loc:T common.cancel}" VerticalAlignment="Center"/>
-                        <Border Style="{StaticResource KeyHint}" Background="#3B3631">
-                            <TextBlock Text="Esc" FontSize="10.5" Foreground="#B5AB9D"/>
+                        <Border Style="{StaticResource KeyHint}" Background="{DynamicResource c3B3631}">
+                            <TextBlock Text="Esc" FontSize="10.5" Foreground="{DynamicResource cB5AB9D}"/>
                         </Border>
                     </StackPanel>
                 </Button>
-                <Button Style="{StaticResource PrimaryButton}" Background="#E5534B" Foreground="White" Click="OnConfirm">
+                <Button Style="{StaticResource PrimaryButton}" Background="{DynamicResource cE5534B}" Foreground="White" Click="OnConfirm">
                     <StackPanel Orientation="Horizontal">
                         <views:LucideIcon Kind="trash-2" Size="14" Margin="0,0,8,0"/>
                         <TextBlock Text="{loc:T delete.confirm}" VerticalAlignment="Center"/>
                         <Border Style="{StaticResource KeyHint}">
-                            <TextBlock Text="Enter" FontSize="10.5" Foreground="#FFE9E7"/>
+                            <TextBlock Text="Enter" FontSize="10.5" Foreground="{DynamicResource cFFE9E7}"/>
                         </Border>
                     </StackPanel>
                 </Button>

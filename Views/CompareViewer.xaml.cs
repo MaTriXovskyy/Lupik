@@ -17,9 +17,9 @@ namespace Lupik.Views;
 /// </summary>
 public partial class CompareViewer : UserControl
 {
-    private static readonly Brush Accent = Frozen(Color.FromRgb(0xE3, 0xB3, 0x41));
-    private static readonly Brush Warning = Frozen(Color.FromRgb(0xF9, 0xE2, 0xAF));
-    private static readonly Brush Muted = Frozen(Color.FromRgb(0xB5, 0xAB, 0x9D));
+    private static Brush AccentBrush => Frozen(Core.Accent.Color);
+    private static Brush Warning => Frozen(Core.Accent.Soft);
+    private static Brush Muted => Core.Palette.Brush(0xB5AB9D);
 
     private readonly ScaleTransform _scale = new();
     private readonly TranslateTransform _translate = new();
@@ -105,8 +105,8 @@ public partial class CompareViewer : UserControl
         SideBySide.Visibility = _sliderMode ? Visibility.Collapsed : Visibility.Visible;
         SliderMode.Visibility = _sliderMode ? Visibility.Visible : Visibility.Collapsed;
         // Active mode in the accent colour; the other back to the style's colour (a null brush would hide it)
-        if (_sliderMode) { SliderButton.Foreground = Accent; SideButton.ClearValue(ForegroundProperty); }
-        else { SideButton.Foreground = Accent; SliderButton.ClearValue(ForegroundProperty); }
+        if (_sliderMode) { SliderButton.Foreground = AccentBrush; SideButton.ClearValue(ForegroundProperty); }
+        else { SideButton.Foreground = AccentBrush; SliderButton.ClearValue(ForegroundProperty); }
         Fit();
         UpdateSplit();
     }

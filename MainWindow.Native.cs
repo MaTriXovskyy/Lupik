@@ -31,11 +31,19 @@ public partial class MainWindow
         const int GWL_STYLE = -16, WS_MINIMIZEBOX = 0x20000;
         SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_MINIMIZEBOX);
 
-        // Never activated: Explorer keeps the focus (see BringToFront)
-        const int GWL_EXSTYLE = -20, WS_EX_NOACTIVATE = 0x08000000;
-        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
-        ShowActivated = false;
-        WatchForeground();
+        if (_pinned)
+        {
+            // A pinned window is an ordinary one: it takes the focus when clicked and gets its keys the normal way
+            ShowActivated = true;
+        }
+        else
+        {
+            // Never activated: Explorer keeps the focus (see BringToFront)
+            const int GWL_EXSTYLE = -20, WS_EX_NOACTIVATE = 0x08000000;
+            SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+            ShowActivated = false;
+            WatchForeground();
+        }
 
         ApplyModernStyling(hwnd);
     }
@@ -48,11 +56,9 @@ public partial class MainWindow
 
     private void ApplyModernStyling(IntPtr hwnd)
     {
+        ApplyAppearance(); // dark/light hint and backdrop
         try
         {
-            int darkMode = 1;
-            NativeMethods.DwmSetWindowAttribute(hwnd, NativeMethods.DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
-
             int cornerPreference = NativeMethods.DWMWCP_ROUND;
             NativeMethods.DwmSetWindowAttribute(hwnd, NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerPreference, sizeof(int));
         }
@@ -62,11 +68,19 @@ public partial class MainWindow
     private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         NativeMethods.RefuseAutomation(msg, ref handled);
-        return IntPtr.Zero;
+        if (msg == WM_EXITSIZEMOVE) RememberBounds(); // the user moved or resized the window
+        return KeepBackdropActive(hwnd, msg, lParam, ref handled);
     }
+
+    private const int WM_EXITSIZEMOVE = 0x0232;
 
     private void BringToFront()
     {
+        if (_pinned)
+        {
+            if (!IsVisible) Show();
+            return;
+        }
         if (SuppressActivationForTests)
         {
             ShowActivated = false;

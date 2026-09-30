@@ -140,7 +140,7 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
         {
             Child = new Grid { Children = { image, highlights } },
             Background = Brushes.White,
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0x3B, 0x36, 0x31)),
+            BorderBrush = new SolidColorBrush(Core.Palette.Color(0x3B3631)),
             BorderThickness = new Thickness(1),
         };
         var frame = new Grid { Margin = new Thickness(0, 0, 0, PageGap), Children = { shadow, page } };

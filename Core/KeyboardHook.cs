@@ -290,6 +290,7 @@ public class KeyboardHook : IDisposable
             case 0x46 when (mods & Ctrl) != 0: return window.SearchableInPreview; // Ctrl+F: search
             case 0x72: return window.SearchableInPreview; // F3: next match
             case 0x54: return mods == 0; // T: filmstrip
+            case 0x42: return mods == 0; // B: background behind pictures
             case 0x45: return mods == 0 && window.EditableInPreview; // E: edit mode
             case 0x71: return mods == 0; // F2: rename
             case 0x25: case 0x26: case 0x27: case 0x28: // arrows (Alt+←/→ = back / forward)

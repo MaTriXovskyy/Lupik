@@ -23,6 +23,17 @@ public partial class MainWindow
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         // Editing: the keys are for the editor, except the few edit mode ones
         if (EditMode) { if (HandleEditModeKey(key, KeyState.Modifiers)) e.Handled = true; return; }
+        // A pinned window's search bar: editing keys here, the characters arrive as text input
+        if (_pinned && SearchActive)
+        {
+            var m = KeyState.Modifiers;
+            if (key is Key.Escape or Key.Enter or Key.F3 or Key.Up or Key.Down or Key.Back || (key == Key.V && m == ModifierKeys.Control))
+            {
+                HandleSearchKey(KeyInterop.VirtualKeyFromKey(key), m, null);
+                e.Handled = true;
+            }
+            return;
+        }
         if (HandleKey(key, KeyState.Modifiers)) e.Handled = true;
     }
 
@@ -69,7 +80,12 @@ public partial class MainWindow
             return true;
         }
 
-        if (key == Key.E && mods == 0 && CurrentEditable() != null)
+        if (key == Key.Escape && OpenWithMenu.IsOpen)
+        {
+            CloseOpenWithMenu();
+            handled = true;
+        }
+        else if (key == Key.E && mods == 0 && CurrentEditable() != null)
         {
             EnterEdit();
             handled = true;
@@ -136,6 +152,16 @@ public partial class MainWindow
         else if (imageShown && key == Key.T && mods == 0)
         {
             ImageViewerControl.ToggleFilmstrip();
+            handled = true;
+        }
+        else if (imageShown && key == Key.B && mods == 0)
+        {
+            ShowNotice(ImageViewerControl.CycleBackground());
+            handled = true;
+        }
+        else if (key == Key.P && mods == 0 && !string.IsNullOrEmpty(_currentFilePath))
+        {
+            TogglePin();
             handled = true;
         }
         else if (imageShown && key == Key.I && mods == 0)

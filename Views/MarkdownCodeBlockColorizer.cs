@@ -17,9 +17,11 @@ public class MarkdownCodeBlockColorizer : DocumentColorizingTransformer
 {
     private static readonly Regex FenceRegex = new(@"^\s*(```|~~~)\s*([\w#+.-]*)", RegexOptions.Compiled);
 
-    private static readonly Brush BlockBackground = new SolidColorBrush(Color.FromArgb(0x60, 0x11, 0x11, 0x1B));
-    private static readonly Brush FenceForeground = new SolidColorBrush(CodeTheme.Overlay);
-    private static readonly Brush PlainForeground = new SolidColorBrush(CodeTheme.Text);
+    // A shade darker than the page in either theme
+    private static Brush BlockBackground => Core.Palette.IsLight ? LightBlock : Core.Palette.Brush(0x11111B, 0x60);
+    private static readonly Brush LightBlock = new SolidColorBrush(Color.FromArgb(0x0C, 0, 0, 0));
+    private static Brush FenceForeground => new SolidColorBrush(CodeTheme.Overlay);
+    private static Brush PlainForeground => new SolidColorBrush(CodeTheme.Text);
 
     private sealed class CodeBlock
     {

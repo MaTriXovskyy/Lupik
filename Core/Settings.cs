@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Lupik.Core;
@@ -31,6 +32,24 @@ public class Settings
 
     /// <summary>"auto" = the Windows display language (if Lupik has it), or a language code like "de".</summary>
     public string Language { get; set; } = "auto";
+
+    /// <summary>Lupik's accent color ("#RRGGBB"), "system" = Windows' accent; null = the original gold.</summary>
+    public string? AccentColor { get; set; }
+
+    /// <summary>"dark", "light" or "system" (follows Windows' app mode).</summary>
+    public string Theme { get; set; } = "dark";
+
+    /// <summary>Behind the preview window: "none", "mica" or "acrylic" (Windows 11).</summary>
+    public string Backdrop { get; set; } = "none";
+
+    /// <summary>Behind pictures: "theme", "checker", "black" or "white" (B).</summary>
+    public string ImageBackground { get; set; } = "theme";
+
+    /// <summary>The preview remembers its size and place separately for each kind of file.</summary>
+    public bool RememberBounds { get; set; } = true;
+
+    /// <summary>Size and place per kind of file ("image", "pdf", ...), in DIPs.</summary>
+    public Dictionary<string, SavedBounds> WindowBounds { get; set; } = new();
 
     // Older settings files: migrated in Load
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SpaceInExplorer { get; set; }
@@ -87,3 +106,6 @@ public class Settings
         Changed?.Invoke();
     }
 }
+
+/// <summary>A window rectangle in DIPs.</summary>
+public record SavedBounds(double Left, double Top, double Width, double Height);

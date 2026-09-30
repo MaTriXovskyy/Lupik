@@ -31,13 +31,20 @@ public class TreeGuides : FrameworkElement
     /// <summary>How far above/below the row the lines reach (the list item's vertical padding).</summary>
     public double Overhang { get; set; } = 5;
 
-    private static readonly Pen LinePen = CreatePen();
+    private static Pen? _linePen;
+    private static int _lineVersion;
 
-    private static Pen CreatePen()
+    /// <summary>The guide lines' pen, in the current theme.</summary>
+    private static Pen LinePen
     {
-        var pen = new Pen(new SolidColorBrush(Color.FromRgb(0x4A, 0x43, 0x3B)), 1);
-        pen.Freeze();
-        return pen;
+        get
+        {
+            if (_linePen != null && _lineVersion == Core.Palette.Version) return _linePen;
+            _lineVersion = Core.Palette.Version;
+            _linePen = new Pen(Core.Palette.Brush(0x4A433B), 1);
+            _linePen.Freeze();
+            return _linePen;
+        }
     }
 
     protected override Size MeasureOverride(Size availableSize) =>

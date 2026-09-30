@@ -6,33 +6,34 @@ using ICSharpCode.AvalonEdit.Highlighting;
 namespace Lupik.Views;
 
 /// <summary>
-/// Recolors AvalonEdit's built-in (light-theme) highlighting definitions to a Catppuccin Mocha palette.
-/// Colors are matched by name, so every bundled language gets a consistent look.
+/// Recolors AvalonEdit's built-in (light-theme) highlighting definitions to a Catppuccin palette: Mocha on the dark
+/// theme, Latte on the light one. Colors are matched by name, so every bundled language gets a consistent look.
 /// </summary>
 public static class CodeTheme
 {
-    public static readonly Color Text = C("#E9E2D6");
-    public static readonly Color Subtext = C("#A6ADC8");
-    public static readonly Color Overlay = C("#665C50");
-    public static readonly Color Surface = C("#2E2A25");
-    public static readonly Color Base = C("#161412");
-    public static readonly Color Mantle = C("#121110");
+    private static bool Light => Core.Palette.IsLight;
 
-    private static readonly Color Mauve = C("#E3B341");
-    private static readonly Color Blue = C("#89B4FA");
-    private static readonly Color Sapphire = C("#74C7EC");
-    private static readonly Color Teal = C("#94E2D5");
-    private static readonly Color Green = C("#A6E3A1");
-    private static readonly Color Yellow = C("#F9E2AF");
-    private static readonly Color Peach = C("#FAB387");
-    private static readonly Color Red = C("#F38BA8");
-    private static readonly Color Pink = C("#F5C2E7");
+    public static Color Text => Light ? C("#3A342D") : C("#E9E2D6");
+    public static Color Subtext => Light ? C("#6C6F85") : C("#A6ADC8");
+    public static Color Overlay => Light ? C("#9A9086") : C("#665C50");
 
-    private static readonly HashSet<IHighlightingDefinition> Themed = new();
+    private static Color Mauve => Core.Accent.Color; // keywords in the accent color
+    private static Color Blue => Light ? C("#1E66F5") : C("#89B4FA");
+    private static Color Sapphire => Light ? C("#1B8AA8") : C("#74C7EC");
+    private static Color Teal => Light ? C("#148A86") : C("#94E2D5");
+    private static Color Green => Light ? C("#3C8F2A") : C("#A6E3A1");
+    private static Color Yellow => Light ? C("#B8740F") : C("#F9E2AF");
+    private static Color Peach => Light ? C("#D9570A") : C("#FAB387");
+    private static Color Red => Light ? C("#D20F39") : C("#F38BA8");
+    private static Color Pink => Light ? C("#C4459F") : C("#F5C2E7");
+
+    // Definition -> the accent and theme it was colored with (recolored after either changes)
+    private static readonly Dictionary<IHighlightingDefinition, (Color, bool)> Themed = new();
 
     public static void Apply(IHighlightingDefinition? definition)
     {
-        if (definition == null || !Themed.Add(definition)) return;
+        if (definition == null || (Themed.TryGetValue(definition, out var done) && done == (Mauve, Light))) return;
+        Themed[definition] = (Mauve, Light);
 
         foreach (var color in definition.NamedHighlightingColors)
         {

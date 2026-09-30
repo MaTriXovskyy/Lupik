@@ -53,7 +53,7 @@ public partial class DiffViewer : UserControl, ISearchable
             editor.TextArea.LeftMargins.Insert(0, margin);
             editor.Options.EnableHyperlinks = false;
             editor.Options.EnableEmailHyperlinks = false;
-            editor.TextArea.SelectionBrush = new SolidColorBrush(Color.FromArgb(0x55, 0x58, 0x5B, 0x70));
+            editor.TextArea.SelectionBrush = new SolidColorBrush(Core.Palette.IsLight ? Color.FromArgb(0x40, 0x7A, 0x8C, 0xB8) : Color.FromArgb(0x55, 0x58, 0x5B, 0x70));
             editor.TextArea.SelectionBorder = null;
         }
         _leftSearch = new SearchHighlighter(LeftEditor);
@@ -232,8 +232,8 @@ public partial class DiffViewer : UserControl, ISearchable
 
     private static readonly Brush DeletedLine = Frozen(0x38, 0xE5, 0x53, 0x4B);
     private static readonly Brush InsertedLine = Frozen(0x33, 0x4C, 0xC3, 0x64);
-    private static readonly Brush ModifiedLine = Frozen(0x24, 0xE3, 0xB3, 0x41);
-    private static readonly Brush FillerLine = Frozen(0xFF, 0x1E, 0x1B, 0x18); // no line here: the other side added some
+    private static Brush ModifiedLine => Frozen(0x24, Core.Accent.Color.R, Core.Accent.Color.G, Core.Accent.Color.B);
+    private static Brush FillerLine => Core.Palette.Brush(0x1E1B18); // no line here: the other side added some
     private static readonly Brush ChangedWordsOld = Frozen(0x70, 0xE5, 0x53, 0x4B);
     private static readonly Brush ChangedWordsNew = Frozen(0x66, 0x4C, 0xC3, 0x64);
 
@@ -281,7 +281,7 @@ public partial class DiffViewer : UserControl, ISearchable
     private sealed class NumberMargin(Func<List<Line>> lines) : AbstractMargin
     {
         private static readonly Typeface Face = new("Cascadia Mono, Consolas");
-        private static readonly Brush NumberBrush = Frozen(0xFF, 0x5A, 0x53, 0x4B);
+        private static Brush NumberBrush => Core.Palette.Brush(0x5A534B);
 
         protected override Size MeasureOverride(Size availableSize)
         {
