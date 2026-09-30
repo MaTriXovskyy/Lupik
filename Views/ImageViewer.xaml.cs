@@ -34,6 +34,122 @@ public partial class ImageViewer : UserControl
         ViewportBorder.MouseLeftButtonDown += OnViewportDoubleClick;
     }
 
+    // --- Filmstrip (T) ---
+
+    public const double FilmstripHeight = 78;
+
+    /// <summary>One image in the filmstrip; the thumbnail arrives once the item scrolls into view.</summary>
+    public sealed class FilmstripItem : System.ComponentModel.INotifyPropertyChanged
+    {
+        public required string Path { get; init; }
+        public string Name => System.IO.Path.GetFileName(Path);
+        public bool Requested;
+
+        private ImageSource? _thumbnail;
+        public ImageSource? Thumbnail { get => _thumbnail; set { _thumbnail = value; Changed(nameof(Thumbnail)); } }
+
+        private bool _isCurrent;
+        public bool IsCurrent { get => _isCurrent; set { _isCurrent = value; Changed(nameof(IsCurrent)); } }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        private void Changed(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+    }
+
+    private List<FilmstripItem> _filmstrip = new();
+
+    /// <summary>A strip image was clicked.</summary>
+    public event Action<string>? FilmstripPicked;
+
+    /// <summary>Whether the strip takes up room (setting on, more than one image).</summary>
+    public bool FilmstripShown => Filmstrip.Visibility == Visibility.Visible;
+
+    /// <summary>
+    /// The images around the shown one. The same list again (flipping through a folder) only moves the highlight,
+    /// so the loaded thumbnails stay.
+    /// </summary>
+    public void SetFilmstrip(IReadOnlyList<string> images, string current)
+    {
+        bool same = images.Count == _filmstrip.Count &&
+                    images.Select((p, i) => string.Equals(p, _filmstrip[i].Path, StringComparison.OrdinalIgnoreCase)).All(x => x);
+        if (!same)
+        {
+            _filmstrip = images.Select(p => new FilmstripItem { Path = p }).ToList();
+            FilmstripList.ItemsSource = _filmstrip;
+        }
+        FilmstripItem? selected = null;
+        foreach (var item in _filmstrip)
+        {
+            item.IsCurrent = string.Equals(item.Path, current, StringComparison.OrdinalIgnoreCase);
+            if (item.IsCurrent) selected = item;
+        }
+        UpdateFilmstripVisibility();
+        if (selected != null && FilmstripShown)
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => CenterInStrip(selected));
+    }
+
+    private void CenterInStrip(FilmstripItem item)
+    {
+        int index = _filmstrip.IndexOf(item);
+        if (index < 0) return;
+        var scroller = FindScrollViewer(FilmstripList);
+        if (scroller == null) { FilmstripList.ScrollIntoView(item); return; }
+        const double itemWidth = 82; // 76 + margins
+        scroller.ScrollToHorizontalOffset(Math.Max(0, index * itemWidth + itemWidth / 2 - scroller.ViewportWidth / 2));
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject d)
+    {
+        if (d is ScrollViewer s) return s;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
+            if (FindScrollViewer(VisualTreeHelper.GetChild(d, i)) is ScrollViewer found) return found;
+        return null;
+    }
+
+    private void UpdateFilmstripVisibility()
+    {
+        bool show = Lupik.Core.Settings.Current.ShowFilmstrip && _filmstrip.Count > 1;
+        Filmstrip.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        FilmstripButton.IsChecked = Lupik.Core.Settings.Current.ShowFilmstrip;
+        FilmstripButton.Foreground = FilmstripButton.IsChecked == true ? (Brush)FindResource("Gold") : null;
+        if (FilmstripButton.Foreground == null) FilmstripButton.ClearValue(ForegroundProperty);
+    }
+
+    /// <summary>T or the footer button: strip on/off (remembered).</summary>
+    public void ToggleFilmstrip()
+    {
+        Lupik.Core.Settings.Update(s => s.ShowFilmstrip = !s.ShowFilmstrip);
+        UpdateFilmstripVisibility();
+        FilmstripToggled?.Invoke();
+        if (FilmstripShown && _filmstrip.FirstOrDefault(i => i.IsCurrent) is { } current)
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => CenterInStrip(current));
+    }
+
+    /// <summary>The strip appeared or went away: the window may need to grow or shrink.</summary>
+    public event Action? FilmstripToggled;
+
+    private void OnFilmstripClicked(object sender, RoutedEventArgs e) => ToggleFilmstrip();
+
+    private void OnFilmstripItemLoaded(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not FilmstripItem item || item.Requested) return;
+        item.Requested = true;
+        Lupik.Core.ShellThumbnails.Request(item.Path, 120, Lupik.Core.ShellThumbnails.CurrentGeneration,
+            bmp => Dispatcher.BeginInvoke(() => item.Thumbnail = bmp));
+    }
+
+    private void OnFilmstripItemClicked(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is FilmstripItem item && !item.IsCurrent) FilmstripPicked?.Invoke(item.Path);
+        e.Handled = true;
+    }
+
+    /// <summary>The mouse wheel scrolls the strip sideways.</summary>
+    private void OnFilmstripWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (FindScrollViewer(FilmstripList) is { } scroller) scroller.ScrollToHorizontalOffset(scroller.HorizontalOffset - e.Delta);
+        e.Handled = true;
+    }
+
     /// <summary>
     /// Decodes the image on a background thread and swaps it in only once it's ready,
     /// so the previous image stays visible meanwhile. Returns false if a newer load superseded this one.

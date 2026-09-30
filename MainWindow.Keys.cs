@@ -66,7 +66,12 @@ public partial class MainWindow
             return true;
         }
 
-        if (imageShown && key == Key.K && mods == 0)
+        if ((key == Key.F && mods == ModifierKeys.Control) || (key == Key.F3 && !SearchActive))
+        {
+            OpenSearch(); // Ctrl+F / F3 in code, tables, Word, PDF and diffs
+            handled = true;
+        }
+        else if (imageShown && key == Key.K && mods == 0)
         {
             ImageViewerControl.BeginCrop();
             handled = true;
@@ -115,14 +120,24 @@ public partial class MainWindow
             ImageViewerControl.ZoomBy(1 / 1.25);
             handled = true;
         }
+        else if (imageShown && key == Key.T && mods == 0)
+        {
+            ImageViewerControl.ToggleFilmstrip();
+            handled = true;
+        }
         else if (imageShown && key == Key.I && mods == 0)
         {
             ImageViewerControl.ToggleInfo();
             handled = true;
         }
-        else if (mods == 0 && key == Key.C && (CompareViewerControl.Visibility == Visibility.Visible || (imageShown && ComparePair() != null)))
+        else if (mods == 0 && key == Key.C && CanToggleCompare())
         {
-            ToggleCompare(); // 2 images selected: side by side ⇄ single
+            ToggleCompare(); // 2 images or 2 text files selected: side by side ⇄ single
+            handled = true;
+        }
+        else if (DiffViewerControl.Visibility == Visibility.Visible && mods == 0 && key is Key.Up or Key.Down)
+        {
+            DiffViewerControl.StepChange(key == Key.Up ? -1 : 1); // in a diff ↑/↓ jump between changes
             handled = true;
         }
         else if (CompareViewerControl.Visibility == Visibility.Visible && CompareViewerControl.HandleKey(key, mods))
@@ -225,28 +240,38 @@ public partial class MainWindow
     /// <summary>The key-hint footer; the image preview shows the hints in its own footer instead.</summary>
     private void UpdateFooter()
     {
-        bool show = !_isFullScreen && ImageViewerControl.Visibility != Visibility.Visible;
+        bool show = ImageViewerControl.Visibility != Visibility.Visible;
         FooterRow.Height = new GridLength(show ? 30 : 0);
         FooterBar.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
-    /// Full screen for a slideshow feel: no title bar, window covers the whole monitor (incl. taskbar).
-    /// Arrow-key navigation keeps working and stays in full screen.
+    /// Full screen (F): the window fills the whole screen above the taskbar, and keeps its title bar, file actions,
+    /// footer and key hints, like the window does. (Covering the taskbar would need Lupik to be the active window,
+    /// and the preview never takes the focus from Explorer.) Arrow keys keep switching files in full screen.
     /// </summary>
     private void ToggleFullScreen()
     {
-        _isFullScreen = !_isFullScreen;
-        TitleRow.Height = new GridLength(_isFullScreen ? 0 : 38);
-        TitleBar.Visibility = _isFullScreen ? Visibility.Collapsed : Visibility.Visible;
-        UpdateFooter();
-        Background = _isFullScreen ? System.Windows.Media.Brushes.Black : new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x13, 0x12, 0x11));
-        // Full screen needs a frameless window (a captioned one maximizes to the work area, leaving the taskbar)
-        if (_isFullScreen) WindowStyle = WindowStyle.None;
-        WindowState = _isFullScreen ? WindowState.Maximized : WindowState.Normal;
-        if (!_isFullScreen) WindowStyle = WindowStyle.SingleBorderWindow;
+        if (!_isFullScreen)
+        {
+            // The work area of the monitor the window is on
+            var center = new System.Drawing.Point((int)((Left + Width / 2) * VisualTreeHelper.GetDpi(this).DpiScaleX),
+                                                  (int)((Top + Height / 2) * VisualTreeHelper.GetDpi(this).DpiScaleY));
+            var screen = System.Windows.Forms.Screen.FromPoint(center).WorkingArea;
+            var dpi = VisualTreeHelper.GetDpi(this);
+            SetBounds(new Rect(screen.Left / dpi.DpiScaleX, screen.Top / dpi.DpiScaleY, screen.Width / dpi.DpiScaleX, screen.Height / dpi.DpiScaleY));
+            _isFullScreen = true; // after SetBounds: while full screen, file switches don't resize the window
+            return;
+        }
 
-        if (!_isFullScreen && !string.IsNullOrEmpty(_currentFilePath))
+        _isFullScreen = false;
+        RestoreNormalBounds();
+    }
+
+    /// <summary>Back from full screen: the size the file would normally get.</summary>
+    private void RestoreNormalBounds()
+    {
+        if (!string.IsNullOrEmpty(_currentFilePath))
         {
             SetBounds(ImageViewerControl.Visibility == Visibility.Visible
                 ? ComputeImageBounds(ImageViewerControl.NaturalWidth, ImageViewerControl.NaturalHeight)

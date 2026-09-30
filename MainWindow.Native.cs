@@ -76,7 +76,7 @@ public partial class MainWindow
 
         // Restored from the taskbar: a minimized preview comes back as it was
         if (WindowState == WindowState.Minimized)
-            WindowState = _isFullScreen ? WindowState.Maximized : WindowState.Normal;
+            WindowState = WindowState.Normal;
 
         // The preview never takes the focus: activating it makes Windows wait until the previous foreground window
         // (Explorer) acknowledges losing it, up to 5 s whenever Explorer is busy. Like Quick Look on the Mac, Explorer

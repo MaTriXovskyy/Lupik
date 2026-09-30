@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,10 +10,15 @@ using System.Windows.Controls;
 using Lupik.Localization;
 namespace Lupik.Views;
 
-/// <summary>Shows .csv / .tsv files as a table (delimiter detected automatically).</summary>
-public partial class CsvViewer : UserControl
+/// <summary>
+/// Shows .csv / .tsv files as a table (delimiter detected automatically), and Excel workbooks (.xlsx), one sheet
+/// at a time with a tab per sheet. No Excel needed.
+/// </summary>
+public partial class CsvViewer : UserControl, ISearchable
 {
     public static readonly string[] Extensions = { ".csv", ".tsv" };
+
+    public static bool IsWorkbook(string ext) => Array.IndexOf(Lupik.Core.Office.XlsxReader.Extensions, ext) >= 0;
 
     private const int MaxRows = 20_000; // enough to skim; bigger files are cut off with a note
     private int _loadToken;
@@ -67,6 +72,8 @@ public partial class CsvViewer : UserControl
     public async Task<bool> LoadFileAsync(string filePath)
     {
         int token = ++_loadToken;
+        BadgeText.Text = Path.GetExtension(filePath).TrimStart('.').ToUpperInvariant();
+        SheetTabs.Children.Clear();
         try
         {
             var (rows, delimiter, truncated) = await Task.Run(() => Parse(filePath));
@@ -93,6 +100,98 @@ public partial class CsvViewer : UserControl
             UpdateSummary();
         }
         return true;
+    }
+
+    // ---------- Excel workbooks ----------
+
+    private string _workbookPath = "";
+
+    /// <summary>
+    /// Opens a workbook on its first sheet. False only if it couldn't be read (the caller falls back to Windows'
+    /// previewer); a load superseded by a newer one returns true.
+    /// </summary>
+    public async Task<bool> LoadWorkbookAsync(string filePath)
+    {
+        int token = ++_loadToken;
+        try
+        {
+            var names = await Task.Run(() => Lupik.Core.Office.XlsxReader.SheetNames(filePath));
+            if (token != _loadToken) return true;
+            _workbookPath = filePath;
+            BadgeText.Text = Path.GetExtension(filePath).TrimStart('.').ToUpperInvariant();
+            BuildSheetTabs(names);
+            await ShowSheetAsync(0, token);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[CsvViewer] Could not read workbook '{filePath}': {ex.Message}");
+            return false;
+        }
+    }
+
+    private void BuildSheetTabs(List<string> names)
+    {
+        SheetTabs.Children.Clear();
+        if (names.Count < 2) return; // one sheet: nothing to switch between
+        for (int i = 0; i < names.Count; i++)
+        {
+            int index = i;
+            var tab = new System.Windows.Controls.Primitives.ToggleButton
+            {
+                Content = names[i],
+                Style = (Style)FindResource("SheetTab"),
+                IsChecked = i == 0,
+            };
+            tab.Click += async (_, _) =>
+            {
+                foreach (var t in SheetTabs.Children.OfType<System.Windows.Controls.Primitives.ToggleButton>()) t.IsChecked = t == tab;
+                await ShowSheetAsync(index, ++_loadToken);
+                SheetChanged?.Invoke();
+            };
+            SheetTabs.Children.Add(tab);
+        }
+    }
+
+    /// <summary>Another sheet is shown (a running search is redone on it).</summary>
+    public event Action? SheetChanged;
+
+    private async Task<bool> ShowSheetAsync(int index, int token)
+    {
+        string path = _workbookPath;
+        var culture = Loc.Instance.Culture;
+        var sheet = await Task.Run(() => Lupik.Core.Office.XlsxReader.ReadSheet(path, index, MaxRows, culture));
+        if (token != _loadToken) return false;
+
+        // Excel-style column letters: the first row is data like any other
+        var header = Enumerable.Range(0, sheet.Columns).Select(Lupik.Core.Office.XlsxReader.ColumnName).ToArray();
+        Table.SetData(header, sheet.Rows.Select(r => r.Length > sheet.Columns ? r[..sheet.Columns] : r).ToList());
+        _summary = (sheet.Name.Length > 0 && SheetTabs.Children.Count == 0 ? sheet.Name + "  •  " : "") +
+                   $"{Loc.Plural("count.rows", sheet.Rows.Count)}  •  {Loc.Plural("count.columns", sheet.Columns)}" +
+                   (sheet.Truncated ? "  •  " + Loc.T("csv.truncated", MaxRows) : "");
+        UpdateSummary();
+        return true;
+    }
+
+    // ---------- Search (Ctrl+F) ----------
+
+    private List<(int Row, int Col)> _found = new();
+
+    public Task<int> SearchAsync(string query, System.Threading.CancellationToken token)
+    {
+        _found = Table.FindCells(query);
+        return Task.FromResult(_found.Count);
+    }
+
+    public void ShowMatch(int index)
+    {
+        if (index >= 0 && index < _found.Count) Table.ShowCell(_found[index].Row, _found[index].Col);
+    }
+
+    public void ClearSearch()
+    {
+        Table.FindCells("");
+        _found.Clear();
     }
 
     private static (List<string[]>, char, bool) Parse(string filePath)

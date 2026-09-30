@@ -14,6 +14,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Interactive Image Canvas -->
@@ -89,8 +90,50 @@
             </ItemsControl>
         </Border>
 
+        <!-- Filmstrip (T): the folder's images; click one to show it. Thumbnails load only as they come into view -->
+        <Border x:Name="Filmstrip" Grid.Row="2" Height="{x:Static views:ImageViewer.FilmstripHeight}" Background="#161412"
+                BorderBrush="#2F2B27" BorderThickness="0,1,0,0" Visibility="Collapsed">
+            <ListBox x:Name="FilmstripList" Background="Transparent" BorderThickness="0" Padding="8,0" Focusable="False"
+                     ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                     ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                     VirtualizingPanel.ScrollUnit="Pixel" PreviewMouseWheel="OnFilmstripWheel">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel Orientation="Horizontal" VerticalAlignment="Center"/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Focusable" Value="False"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="Bd" Width="76" Height="60" Margin="3,0" CornerRadius="6" BorderThickness="2"
+                                            BorderBrush="Transparent" Background="#1F1C19" ToolTip="{Binding Name}"
+                                            Loaded="OnFilmstripItemLoaded" MouseLeftButtonUp="OnFilmstripItemClicked">
+                                        <Border CornerRadius="4" ClipToBounds="True">
+                                            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        </Border>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="#5A534B"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="#E3B341"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+        </Border>
+
         <!-- Footer: never covers the image -->
-        <Border Grid.Row="2" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,1,0,0" Padding="12,0" Height="36">
+        <Border x:Name="Footer" Grid.Row="3" Background="#1B1917" BorderBrush="#2F2B27" BorderThickness="0,1,0,0" Padding="12,0" Height="36">
             <Grid x:Name="FooterGrid" SizeChanged="OnFooterLayoutChanged">
             <!-- Key hints, centered in the footer; hidden when they'd run into the side groups (narrow window) -->
             <StackPanel x:Name="FooterHints" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="#8A8074">
@@ -125,6 +168,12 @@
                 </StackPanel>
 
                 <StackPanel x:Name="FooterRight" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" SizeChanged="OnFooterLayoutChanged">
+                    <ToggleButton x:Name="FilmstripButton" Style="{StaticResource IconButton}" ToolTip="{loc:T image.filmstripTip}" Click="OnFilmstripClicked">
+                        <views:LucideIcon Kind="gallery" Size="15"/>
+                    </ToggleButton>
+
+                    <Rectangle Width="1" Height="16" Fill="#3B3631" Margin="8,0"/>
+
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.out}" Click="OnZoomOutClicked">
                         <views:LucideIcon Kind="zoom-out" Size="15"/>
                     </Button>

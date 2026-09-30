@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -138,6 +138,57 @@ public sealed class PdfDocument : IDisposable
         if (_doc == IntPtr.Zero) throw new ObjectDisposedException(nameof(PdfDocument));
     }
 
+    /// <summary>
+    /// Where <paramref name="query"/> occurs on a page (case-insensitive): one entry per match, each a list of
+    /// rectangles as fractions of the page (0..1, from the top left), since a match can wrap onto the next line.
+    /// </summary>
+    public List<List<System.Windows.Rect>> FindText(int index, string query)
+    {
+        var matches = new List<List<System.Windows.Rect>>();
+        if (query.Length == 0) return matches;
+        lock (Lock)
+        {
+            EnsureOpen();
+            if (Native.FPDF_GetPageSizeByIndexF(_doc, index, out var size) == 0 || size.Width <= 0 || size.Height <= 0) return matches;
+            IntPtr page = Native.FPDF_LoadPage(_doc, index);
+            if (page == IntPtr.Zero) return matches;
+            IntPtr text = Native.FPDFText_LoadPage(page);
+            try
+            {
+                if (text == IntPtr.Zero) return matches;
+                IntPtr find = Native.FPDFText_FindStart(text, query, 0, 0);
+                if (find == IntPtr.Zero) return matches;
+                try
+                {
+                    while (Native.FPDFText_FindNext(find) != 0 && matches.Count < 5000)
+                    {
+                        int start = Native.FPDFText_GetSchResultIndex(find), count = Native.FPDFText_GetSchCount(find);
+                        int rects = Native.FPDFText_CountRects(text, start, count);
+                        var list = new List<System.Windows.Rect>(rects);
+                        for (int r = 0; r < rects; r++)
+                        {
+                            if (Native.FPDFText_GetRect(text, r, out double left, out double top, out double right, out double bottom) == 0) continue;
+                            // PDF coordinates start at the bottom left, in points
+                            list.Add(new System.Windows.Rect(left / size.Width, (size.Height - top) / size.Height,
+                                Math.Max(0, right - left) / size.Width, Math.Max(0, top - bottom) / size.Height));
+                        }
+                        if (list.Count > 0) matches.Add(list);
+                    }
+                }
+                finally
+                {
+                    Native.FPDFText_FindClose(find);
+                }
+            }
+            finally
+            {
+                if (text != IntPtr.Zero) Native.FPDFText_ClosePage(text);
+                Native.FPDF_ClosePage(page);
+            }
+        }
+        return matches;
+    }
+
     public void Dispose()
     {
         lock (Lock)
@@ -170,6 +221,17 @@ public sealed class PdfDocument : IDisposable
         [DllImport(Dll)] public static extern void FPDFBitmap_FillRect(IntPtr bitmap, int left, int top, int width, int height, uint color);
         [DllImport(Dll)] public static extern void FPDF_RenderPageBitmap(IntPtr bitmap, IntPtr page, int startX, int startY, int sizeX, int sizeY, int rotate, int flags);
         [DllImport(Dll)] public static extern void FPDFBitmap_Destroy(IntPtr bitmap);
+
+        // Text (search)
+        [DllImport(Dll)] public static extern IntPtr FPDFText_LoadPage(IntPtr page);
+        [DllImport(Dll)] public static extern void FPDFText_ClosePage(IntPtr textPage);
+        [DllImport(Dll)] public static extern IntPtr FPDFText_FindStart(IntPtr textPage, [MarshalAs(UnmanagedType.LPWStr)] string findWhat, uint flags, int startIndex);
+        [DllImport(Dll)] public static extern int FPDFText_FindNext(IntPtr handle);
+        [DllImport(Dll)] public static extern int FPDFText_GetSchResultIndex(IntPtr handle);
+        [DllImport(Dll)] public static extern int FPDFText_GetSchCount(IntPtr handle);
+        [DllImport(Dll)] public static extern void FPDFText_FindClose(IntPtr handle);
+        [DllImport(Dll)] public static extern int FPDFText_CountRects(IntPtr textPage, int startIndex, int count);
+        [DllImport(Dll)] public static extern int FPDFText_GetRect(IntPtr textPage, int rectIndex, out double left, out double top, out double right, out double bottom);
     }
 }
 

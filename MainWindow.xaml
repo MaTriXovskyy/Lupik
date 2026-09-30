@@ -117,11 +117,13 @@
         <Grid Grid.Row="1" x:Name="ContentContainer">
             <views:ImageViewer x:Name="ImageViewerControl" Visibility="Collapsed"/>
             <views:CompareViewer x:Name="CompareViewerControl" Visibility="Collapsed"/>
+            <views:DiffViewer x:Name="DiffViewerControl" Visibility="Collapsed"/>
             <views:CodeViewer x:Name="CodeViewerControl" Visibility="Collapsed"/>
             <views:PdfViewer x:Name="PdfViewerControl" Visibility="Collapsed"/>
             <views:GenericViewer x:Name="GenericViewerControl" Visibility="Collapsed"/>
             <views:ArchiveViewer x:Name="ArchiveViewerControl" Visibility="Collapsed"/>
             <views:CsvViewer x:Name="CsvViewerControl" Visibility="Collapsed"/>
+            <views:DocxViewer x:Name="DocxViewerControl" Visibility="Collapsed"/>
             <views:FolderViewer x:Name="FolderViewerControl" Visibility="Collapsed"/>
             <views:PreviewHandlerHost x:Name="SystemPreviewControl" Visibility="Collapsed"/>
             <views:MediaViewer x:Name="MediaViewerControl" Visibility="Collapsed"/>
@@ -199,6 +201,34 @@
                     </WrapPanel>
                 </StackPanel>
             </Grid>
+
+            <!-- Search (Ctrl+F): floats at the top right, below the viewer's toolbar. Typing comes through the keyboard hook -->
+            <Border x:Name="SearchBar" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,52,18,0"
+                    Background="#F21B1917" BorderBrush="#E3B341" BorderThickness="1" CornerRadius="10" Padding="12,6,6,6">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.5" Color="Black"/>
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal">
+                    <views:LucideIcon Kind="search" Size="14" Margin="0,0,9,0" VerticalAlignment="Center" TextElement.Foreground="#E3B341"/>
+                    <Grid MinWidth="190" MaxWidth="340" VerticalAlignment="Center">
+                        <TextBlock x:Name="SearchPlaceholder" Text="{loc:T search.placeholder}" Foreground="#6F665B" FontSize="13"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="SearchText" Foreground="#FBF8F2" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="330"/>
+                            <Rectangle x:Name="SearchCaret" Width="1.5" Height="16" Fill="#E3B341" Margin="1,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock x:Name="SearchCount" Foreground="#8A8074" FontSize="12" VerticalAlignment="Center" Margin="12,0,6,0" MinWidth="44" TextAlignment="Right"/>
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T search.prevTip}" Click="OnSearchPrevClicked">
+                        <views:LucideIcon Kind="chevron-up" Size="15"/>
+                    </Button>
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T search.nextTip}" Click="OnSearchNextClicked">
+                        <views:LucideIcon Kind="chevron-down" Size="15"/>
+                    </Button>
+                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T search.closeTip}" Click="OnSearchCloseClicked">
+                        <views:LucideIcon Kind="x" Size="14"/>
+                    </Button>
+                </StackPanel>
+            </Border>
 
             <!-- Loading overlay: appears only when a file takes a moment to load -->
             <Grid x:Name="LoadingOverlay" Visibility="Collapsed" Background="#B3131211">

@@ -45,6 +45,7 @@ public partial class MainWindow : Window
         ArchiveViewerControl.PeekRequested += PeekFromArchive;
         Loc.Instance.LanguageChanged += UpdateWelcomeText;
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
+        WireImageExtras();
     }
 
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
@@ -81,6 +82,7 @@ public partial class MainWindow : Window
         }
 
         CancelIdleRelease();
+        CloseSearch(); // a new file: the old matches mean nothing there
         int token = ++_showToken;
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
         BeginLoading(filePath, ext, token);
@@ -103,7 +105,8 @@ public partial class MainWindow : Window
 
                 ApplyFileHeader(filePath);
                 ShowOnlyViewer(ImageViewerControl);
-                SetBounds(ComputeImageBounds(ImageViewerControl.NaturalWidth, ImageViewerControl.NaturalHeight));
+                ImageViewerControl.SetFilmstrip(ImageSiblings(filePath), filePath);
+                if (!_isFullScreen) SetBounds(ComputeImageBounds(ImageViewerControl.NaturalWidth, ImageViewerControl.NaturalHeight));
                 PreloadNeighbors(filePath);
             }
             else if (Views.MediaViewer.IsMedia(ext))
@@ -143,6 +146,22 @@ public partial class MainWindow : Window
                 // Returns once the first page is visible; remaining pages keep rendering in the background
                 await PdfViewerControl.LoadPdfAsync(filePath);
                 if (token != _showToken) return;
+            }
+            else if (Views.DocxViewer.CanOpen(ext) && await DocxViewerControl.LoadAsync(filePath))
+            {
+                // Word documents: Lupik's own view (a damaged or odd file falls through to Windows' previewer below)
+                if (token != _showToken) return;
+                ApplyFileHeader(filePath);
+                ShowOnlyViewer(DocxViewerControl);
+                SetBounds(ComputeDefaultBounds(ext));
+            }
+            else if (Views.CsvViewer.IsWorkbook(ext) && await CsvViewerControl.LoadWorkbookAsync(filePath))
+            {
+                // Excel workbooks: the table view, a tab per sheet
+                if (token != _showToken) return;
+                ApplyFileHeader(filePath);
+                ShowOnlyViewer(CsvViewerControl);
+                SetBounds(ComputeDefaultBounds(ext));
             }
             else if (Array.IndexOf(Views.CsvViewer.Extensions, ext) >= 0)
             {
@@ -279,7 +298,7 @@ public partial class MainWindow : Window
     /// <summary>Switches viewers without ever collapsing the one that stays, so nothing blinks.</summary>
     private void ShowOnlyViewer(UIElement target)
     {
-        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, FolderViewerControl, SystemPreviewControl, MediaViewerControl })
+        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, DiffViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, DocxViewerControl, FolderViewerControl, SystemPreviewControl, MediaViewerControl })
         {
             var visibility = viewer == target ? Visibility.Visible : Visibility.Collapsed;
             // Release the system previewer / player (they hold the file open) as soon as they're not shown
@@ -290,6 +309,7 @@ public partial class MainWindow : Window
         UpdateFooter();
         CopyInPreview = target == ImageViewerControl || target == CsvViewerControl;
         PdfInPreview = target == PdfViewerControl;
+        UpdateSearchable();
     }
 
     /// <summary>Whether Ctrl+C / Ctrl+A mean something in the current preview (read by the keyboard hook thread).</summary>
@@ -340,8 +360,10 @@ public partial class MainWindow : Window
         CodeViewerControl.Release();
         FolderViewerControl.Release();
         CsvViewerControl.Release();
+        DocxViewerControl.Release();
         ArchiveViewerControl.Release();
         CompareViewerControl.Release();
+        DiffViewerControl.Release();
         MediaViewerControl.Stop();
         TitleIconImage.Source = null;
         _selectionSet = Array.Empty<string>();
@@ -367,6 +389,7 @@ public partial class MainWindow : Window
 
         // Nothing to hand back: the preview never took the focus from Explorer
         Hide();
+        CloseSearch();
         _showToken++; // cancel any image still loading
         EndLoading();
         if (_isFullScreen) ToggleFullScreen(); // next preview opens as a normal window

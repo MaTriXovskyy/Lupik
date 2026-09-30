@@ -66,6 +66,8 @@ public class CsvTable : FrameworkElement
         _rowCache.Clear();
         _headerDrawing = null;
         _selection = null;
+        _matches.Clear();
+        _currentMatch = null;
         SelectionChanged?.Invoke();
 
         _widths = new double[header.Length];
@@ -153,6 +155,22 @@ public class CsvTable : FrameworkElement
         }
         SchedulePrefetch(firstRow, lastRow);
 
+        // Search matches (Ctrl+F): a gold wash over the cell, the current one stronger
+        if (_matches.Count > 0)
+        {
+            for (int r = firstRow; r <= lastRow; r++)
+            {
+                if (!_matches.TryGetValue(r, out var cols)) continue;
+                foreach (int c in cols)
+                {
+                    if (c >= _widths.Length) continue;
+                    bool current = _currentMatch == (r, c);
+                    dc.DrawRectangle(current ? CurrentMatchFill : MatchFill, current ? ActivePen : null,
+                        new Rect(_offsets[c] + 1, HeaderHeight + r * RowHeight + 1, _widths[c] - 2, RowHeight - 2));
+                }
+            }
+        }
+
         // Column separators
         for (int c = firstCol; c <= lastCol; c++)
         {
@@ -192,6 +210,53 @@ public class CsvTable : FrameworkElement
             dc.DrawLine(HeaderPen, new Point(x, top), new Point(x, top + HeaderHeight));
         }
         dc.Pop(); // viewport clip
+    }
+
+    // --- Search (Ctrl+F) ---
+
+    private static readonly Brush MatchFill = Frozen(Color.FromArgb(0x55, 0xFF, 0xD8, 0x4D));
+    private static readonly Brush CurrentMatchFill = Frozen(Color.FromArgb(0x99, 0xFF, 0x9A, 0x2E));
+    private readonly Dictionary<int, List<int>> _matches = new();
+    private (int Row, int Col)? _currentMatch;
+
+    /// <summary>Every cell containing <paramref name="query"/>, row by row (empty query: none).</summary>
+    public List<(int Row, int Col)> FindCells(string query)
+    {
+        _matches.Clear();
+        _currentMatch = null;
+        var found = new List<(int, int)>();
+        if (query.Length > 0)
+        {
+            for (int r = 0; r < _rows.Count; r++)
+            {
+                var row = _rows[r];
+                for (int c = 0; c < row.Length; c++)
+                {
+                    if (row[c].IndexOf(query, StringComparison.CurrentCultureIgnoreCase) < 0) continue;
+                    found.Add((r, c));
+                    if (!_matches.TryGetValue(r, out var cols)) _matches[r] = cols = new List<int>();
+                    cols.Add(c);
+                }
+            }
+        }
+        InvalidateVisual();
+        return found;
+    }
+
+    /// <summary>Marks a match as the current one and scrolls it into view.</summary>
+    public void ShowCell(int row, int col)
+    {
+        _currentMatch = (row, col);
+        if (_scroller != null && col < _widths.Length)
+        {
+            double y = HeaderHeight + row * RowHeight;
+            if (y < _scroller.VerticalOffset + HeaderHeight || y + RowHeight > _scroller.VerticalOffset + _scroller.ViewportHeight)
+                _scroller.ScrollToVerticalOffset(Math.Max(0, y - _scroller.ViewportHeight / 3));
+            double x = _offsets[col];
+            if (x < _scroller.HorizontalOffset || x + _widths[col] > _scroller.HorizontalOffset + _scroller.ViewportWidth)
+                _scroller.ScrollToHorizontalOffset(Math.Max(0, x - 40));
+        }
+        InvalidateVisual();
     }
 
     // --- Selection & copy ---

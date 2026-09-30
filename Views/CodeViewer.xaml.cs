@@ -9,7 +9,7 @@ using ICSharpCode.AvalonEdit.Highlighting;
 using Lupik.Localization;
 namespace Lupik.Views;
 
-public partial class CodeViewer : UserControl
+public partial class CodeViewer : UserControl, ISearchable
 {
     private string _currentFilePath = "";
     private readonly MarkdownCodeBlockColorizer _codeBlocks = new();
@@ -20,7 +20,19 @@ public partial class CodeViewer : UserControl
         TextEditorControl.TextArea.TextView.LineTransformers.Clear();
         TextEditorControl.TextArea.TextView.LineTransformers.Add(_codeBlocks);
         StyleEditor();
+        _search = new SearchHighlighter(TextEditorControl);
     }
+
+    // --- Search (Ctrl+F) ---
+
+    private readonly SearchHighlighter _search;
+
+    public System.Threading.Tasks.Task<int> SearchAsync(string query, System.Threading.CancellationToken token) =>
+        System.Threading.Tasks.Task.FromResult(_search.Find(query));
+
+    public void ShowMatch(int index) => _search.Show(index);
+
+    public void ClearSearch() => _search.Clear();
 
     private void StyleEditor()
     {
@@ -79,6 +91,7 @@ public partial class CodeViewer : UserControl
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
             SetHighlightingForExtension(ext);
 
+            _search.Clear();
             TextEditorControl.Text = content;
             TextEditorControl.ScrollToHome();
             _codeBlocks.Analyze(TextEditorControl.Document, ext is ".md" or ".markdown");
@@ -108,6 +121,15 @@ public partial class CodeViewer : UserControl
         string langName = ext.TrimStart('.').ToUpperInvariant();
         if (string.IsNullOrEmpty(langName)) langName = "TXT";
 
+        var definition = HighlightingFor(ext);
+        CodeTheme.Apply(definition);
+        TextEditorControl.SyntaxHighlighting = definition;
+        LanguageText.Text = langName;
+    }
+
+    /// <summary>Syntax colors for a file type (also used by the diff view).</summary>
+    internal static IHighlightingDefinition? HighlightingFor(string ext)
+    {
         IHighlightingDefinition? definition = HighlightingManager.Instance.GetDefinitionByExtension(ext);
 
         // Fallbacks for common extensions without exact matching extension
@@ -124,10 +146,7 @@ public partial class CodeViewer : UserControl
                 _ => null
             };
         }
-
-        CodeTheme.Apply(definition);
-        TextEditorControl.SyntaxHighlighting = definition;
-        LanguageText.Text = langName;
+        return definition;
     }
 
     /// <summary>Drops the loaded text (called when Lupik goes idle).</summary>

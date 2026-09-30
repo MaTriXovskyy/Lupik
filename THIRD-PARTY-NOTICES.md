@@ -11,5 +11,6 @@ including in closed or paid software, as long as the notices below travel with t
 | [Magick.NET](https://github.com/dlemstra/Magick.NET) / ImageMagick | decoding images (HEIC, AVIF, PSD, SVG...), saving in other formats | Apache-2.0 / ImageMagick License |
 | [AvalonEdit](https://github.com/icsharpcode/AvalonEdit) | the code and text viewer | MIT |
 | [SharpCompress](https://github.com/adamhathcock/sharpcompress) | reading and extracting archives | MIT |
+| [DiffPlex](https://github.com/mmanela/diffplex) | comparing two text files | Apache-2.0 |
 | [Velopack](https://github.com/velopack/velopack) | the installer and updates | MIT |
 | [Lucide](https://lucide.dev) | icons | ISC |

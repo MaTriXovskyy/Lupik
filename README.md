@@ -1,4 +1,4 @@
-# Lupik
+﻿# Lupik
 
 Quick Look for Windows. Select a file in Explorer or on the desktop, press Space, and you get a preview.
 Press Space again and it's gone. That's the whole idea, and the rest of the app is there to keep it fast.
@@ -18,13 +18,19 @@ Lupik checks GitHub for new versions and asks before installing one. You can tur
 
 - **Images**: PNG, JPG, GIF, BMP, WebP, TIFF, ICO, HEIC/HEIF, AVIF, PSD (flattened)
 - **Vectors**: SVG, EPS/PS and Illustrator `.ai` files saved with PDF compatibility (the default)
-- **Documents**: PDF, plus anything Windows has a preview handler for (Word, Excel, fonts, Outlook `.msg`...)
+- **Documents**: PDF; Word (`.docx`) and Excel (`.xlsx`, a tab per sheet) drawn by Lupik itself, no Office needed;
+  plus anything else Windows has a preview handler for (old `.doc`/`.xls`, PowerPoint, fonts, Outlook `.msg`...)
 - **Code and text**: syntax highlighting for around 40 languages and config formats, Markdown included
 - **Tables**: CSV and TSV
+- **Comparing**: select two pictures, or two text/code files (a diff: removed lines red, added green, changed words
+  marked; ↑/↓ jump between changes), and press the preview key
 - **Archives**: ZIP, RAR, 7z, TAR, GZ, BZ2, XZ. Browse the contents as a tree, hold the mouse on a file to peek at it,
   drag a file out to Explorer or extract just that one, or extract the whole archive
 - **Audio and video**: MP4, MKV, MOV, WebM, AVI, WMV, MP3, FLAC, WAV, OGG, Opus... whatever codecs Windows has
 - **Folders**: a grid of what's inside
+
+Pictures have a filmstrip of the folder's images underneath (T).
+Ctrl+F searches in code and text, tables, Word documents, PDFs and diffs (Enter / Shift+Enter: next / previous).
 
 PDF and `.ai` files are rendered by [PDFium](https://pdfium.googlesource.com/pdfium/), the PDF engine inside Chrome.
 
@@ -47,7 +53,9 @@ embedded Type 1 fonts included.
 | R / Shift+R | rotate |
 | K | crop (Shift keeps proportions, Alt resizes from the center) |
 | I | image details |
-| C | compare two selected images side by side |
+| T | filmstrip of the folder's images |
+| C | compare the two selected images / text files, or back to one |
+| Ctrl+F, F3 | search (Enter / Shift+Enter: next / previous, Esc closes) |
 | K J L M | play/pause, back 5 s, forward 5 s, mute (audio and video) |
 | Ctrl+S / Ctrl+P / Ctrl+C | save a copy in another format (images), print, copy |
 

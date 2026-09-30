@@ -267,6 +267,28 @@ public static class ExplorerService
         return null;
     }
 
+    private static (string Dir, DateTime Stamp, List<string> Files)? _folderCache;
+
+    /// <summary>
+    /// The folder's visible files in Explorer's name order ("2.jpg" before "10.jpg"). Remembered until the folder
+    /// changes: flipping through a big folder doesn't list it again on every step.
+    /// </summary>
+    public static List<string> FolderFiles(string dir)
+    {
+        var stamp = Directory.GetLastWriteTimeUtc(dir);
+        if (_folderCache is var (cachedDir, cachedStamp, cached) && cachedStamp == stamp &&
+            string.Equals(cachedDir, dir, StringComparison.OrdinalIgnoreCase))
+            return cached;
+
+        var files = new DirectoryInfo(dir).EnumerateFiles()
+            .Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden))
+            .Select(f => f.FullName)
+            .ToList();
+        files.Sort((a, b) => StrCmpLogicalW(a, b));
+        _folderCache = (dir, stamp, files);
+        return files;
+    }
+
     public static string? GetAdjacentFile(string currentPath, int direction)
     {
         try
@@ -278,14 +300,10 @@ public static class ExplorerService
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
                 return null;
 
-            var files = Directory.GetFiles(dir)
-                .Where(f => !new FileInfo(f).Attributes.HasFlag(FileAttributes.Hidden))
-                .ToList();
+            var files = FolderFiles(dir);
 
             if (files.Count <= 1)
                 return currentPath;
-
-            files.Sort((a, b) => StrCmpLogicalW(a, b));
 
             int currentIndex = files.FindIndex(f => string.Equals(f, currentPath, StringComparison.OrdinalIgnoreCase));
             if (currentIndex == -1)

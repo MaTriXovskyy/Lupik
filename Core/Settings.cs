@@ -20,6 +20,9 @@ public class Settings
     /// <summary>Audio and video start playing as soon as they open.</summary>
     public bool AutoplayMedia { get; set; } = true;
 
+    /// <summary>The strip of the folder's images under a picture (T).</summary>
+    public bool ShowFilmstrip { get; set; } = true;
+
     /// <summary>Look for a new version on GitHub (at start and every few hours).</summary>
     public bool CheckForUpdates { get; set; } = true;
 

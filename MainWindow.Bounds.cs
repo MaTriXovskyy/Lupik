@@ -48,9 +48,10 @@ public partial class MainWindow
         double w = Math.Min(1104, work.Width * 0.92);
         double h = Math.Min(810, work.Height * 0.92);
 
-        if (ext == ".pdf")
+        if (ext == ".pdf" || Views.DocxViewer.CanOpen(ext))
         {
-            w = Math.Min(1012, work.Width * 0.90);
+            // Pages: portrait (a .docx page is 816 px wide plus the dark margin around it)
+            w = Math.Min(ext == ".pdf" ? 1012 : 920, work.Width * 0.90);
             h = Math.Min(1035, work.Height * 0.95);
         }
 
@@ -66,7 +67,8 @@ public partial class MainWindow
         double maxW = work.Width * 0.95 * Settings.Current.WindowScale;
         double maxH = work.Height * 0.95 * Settings.Current.WindowScale;
 
-        const double chrome = 38 + 36; // title bar + image footer (the key hints live in it)
+        // Title bar + image footer (the key hints live in it) + the filmstrip, if shown
+        double chrome = 38 + 36 + (ImageViewerControl.FilmstripShown ? Views.ImageViewer.FilmstripHeight : 0);
         double w = imgWidth;
         double h = imgHeight + chrome;
 

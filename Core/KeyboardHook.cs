@@ -120,6 +120,9 @@ public class KeyboardHook : IDisposable
             if (IsOwnDialogInForeground())
                 return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
 
+            // The search bar is open: every key is typing for it (Space too, so this comes before the preview key)
+            if (RouteToSearch(kb)) return (IntPtr)1;
+
             // The preview key (Space unless changed in Settings)
             var previewKey = Settings.Current.PreviewKey;
             if (previewKey != null && previewKey.Matches(kb.vkCode, Core.KeyState.Modifiers))
@@ -227,11 +230,62 @@ public class KeyboardHook : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// While the search bar is open, keys typed over the preview (or the window it came from) become its text.
+    /// The character is worked out here, with the foreground app's keyboard layout (Polish AltGr letters included).
+    /// </summary>
+    private static bool RouteToSearch(NativeMethods.KBDLLHOOKSTRUCT kb)
+    {
+        var window = MainWindowRef;
+        if (window == null || !window.SearchActive || !window.IsShown) return false;
+
+        IntPtr fg = NativeMethods.GetForegroundWindow();
+        IntPtr root = GetAncestor(fg, GA_ROOT);
+        if (root == IntPtr.Zero) root = fg;
+        if (root != window.Hwnd && root != window.SourceWindow) return false;
+
+        uint vk = kb.vkCode;
+        if (vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT or VK_MENU or VK_LMENU or VK_RMENU or 0x11 or 0xA2 or 0xA3 or 0x5B or 0x5C or 0x14)
+            return false; // modifiers and Caps Lock themselves: let them through
+        var mods = Core.KeyState.Modifiers;
+        if ((mods & System.Windows.Input.ModifierKeys.Windows) != 0) return false;
+        if (vk == 0x09) return false; // Tab: leave it to Windows (Alt+Tab etc.)
+
+        string? text = CharacterOf(vk, kb.scanCode, fg);
+        window.Dispatcher.InvokeAsync(() => window.HandleSearchKey((int)vk, mods, text));
+        return true;
+    }
+
+    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
+    [DllImport("user32.dll")] private static extern short GetKeyState(int vKey);
+    [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint threadId);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int ToUnicodeEx(uint vk, uint scanCode, byte[] keyState, StringBuilder buffer, int size, uint flags, IntPtr layout);
+
+    private static string? CharacterOf(uint vk, uint scanCode, IntPtr foreground)
+    {
+        var state = new byte[256];
+        bool Down(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
+        if (Down(VK_SHIFT)) state[VK_SHIFT] = 0x80;
+        if (Down(0x11)) state[0x11] = 0x80;              // Ctrl
+        if (Down(VK_MENU)) state[VK_MENU] = 0x80;         // Alt
+        if (Down(VK_RMENU)) { state[0x11] = 0x80; state[VK_MENU] = 0x80; } // AltGr = Ctrl+Alt (ą, ę, ł...)
+        if ((GetKeyState(0x14) & 1) != 0) state[0x14] = 0x01; // Caps Lock on
+        var layout = GetKeyboardLayout(GetWindowThreadProcessId(foreground, out _));
+        var buffer = new StringBuilder(8);
+        // Flag 4: don't touch the keyboard state (dead keys stay intact for the app underneath)
+        int n = ToUnicodeEx(vk, scanCode, state, buffer, buffer.Capacity, 4, layout);
+        return n > 0 ? buffer.ToString(0, n) : null;
+    }
+
     private static bool IsPreviewKey(uint vk, System.Windows.Input.ModifierKeys mods, MainWindow window)
     {
         const System.Windows.Input.ModifierKeys Ctrl = System.Windows.Input.ModifierKeys.Control;
         switch (vk)
         {
+            case 0x46 when (mods & Ctrl) != 0: return window.SearchableInPreview; // Ctrl+F: search
+            case 0x72: return window.SearchableInPreview; // F3: next match
+            case 0x54: return mods == 0; // T: filmstrip
             case 0x25: case 0x26: case 0x27: case 0x28: // arrows (Alt+←/→ = back / forward)
             case 0x1B: case 0x0D: case 0x2E: case 0x08: // Esc, Enter, Delete, Backspace
                 return (mods & Ctrl) == 0;

@@ -19,7 +19,7 @@ namespace Lupik.Views;
 /// has a placeholder of its real size, and only the pages on screen (plus a neighbour) are rendered, at the
 /// monitor's actual resolution, so long documents open instantly and stay sharp at any zoom.
 /// </summary>
-public partial class PdfViewer : UserControl
+public partial class PdfViewer : UserControl, ISearchable
 {
     private const double PageGap = 16;       // between pages (and above the first)
     private const double SideMargin = 16;    // PagesPanel's left/right margin
@@ -32,6 +32,7 @@ public partial class PdfViewer : UserControl
         public required FrameworkElement Frame;
         public required Image Image;
         public required Border Page;
+        public required SearchLayer Highlights;
         public int PixelWidth, PixelHeight; // the image's size on screen, in device pixels
         public double PointsWidth, PointsHeight;
         public int RenderedPixelWidth;   // 0 = not rendered
@@ -110,6 +111,7 @@ public partial class PdfViewer : UserControl
 
     private void ClosePages()
     {
+        _searchMatches.Clear();
         PagesPanel.Children.Clear();
         _slots.Clear();
         _pdfDoc?.Dispose();
@@ -133,15 +135,16 @@ public partial class PdfViewer : UserControl
             Background = Brushes.White,
             Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 12, Opacity = 0.35, ShadowDepth = 3 },
         };
+        var highlights = new SearchLayer();
         var page = new Border
         {
-            Child = image,
+            Child = new Grid { Children = { image, highlights } },
             Background = Brushes.White,
             BorderBrush = new SolidColorBrush(Color.FromRgb(0x3B, 0x36, 0x31)),
             BorderThickness = new Thickness(1),
         };
         var frame = new Grid { Margin = new Thickness(0, 0, 0, PageGap), Children = { shadow, page } };
-        return new PageSlot { Frame = frame, Image = image, Page = page, PointsWidth = w, PointsHeight = h };
+        return new PageSlot { Frame = frame, Image = image, Page = page, Highlights = highlights, PointsWidth = w, PointsHeight = h };
     }
 
     // ---------- Layout ----------
@@ -365,6 +368,84 @@ public partial class PdfViewer : UserControl
 
     /// <summary>↑ / ↓: scroll a bit.</summary>
     public void ScrollBy(double delta) => PagesScrollViewer.ScrollToVerticalOffset(PagesScrollViewer.VerticalOffset + delta);
+
+    // ---------- Search (Ctrl+F) ----------
+
+    private readonly List<(int Page, List<Rect> Rects)> _searchMatches = new();
+    private int _currentMatch = -1;
+
+    /// <summary>Reads the text of every page (in the background, page by page) and marks each match.</summary>
+    public async Task<int> SearchAsync(string query, System.Threading.CancellationToken token)
+    {
+        ClearSearch();
+        var doc = _pdfDoc;
+        if (doc == null || query.Length == 0) return 0;
+        int loadToken = _loadToken;
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            token.ThrowIfCancellationRequested();
+            int page = i;
+            List<List<Rect>> found;
+            try { found = await Task.Run(() => doc.FindText(page, query), token); }
+            catch (ObjectDisposedException) { return 0; } // closed meanwhile
+            if (loadToken != _loadToken) return 0;
+            token.ThrowIfCancellationRequested();
+            foreach (var rects in found) _searchMatches.Add((page, rects));
+            if (found.Count > 0) _slots[page].Highlights.SetMatches(found);
+        }
+        return _searchMatches.Count;
+    }
+
+    public void ShowMatch(int index)
+    {
+        if (index < 0 || index >= _searchMatches.Count) return;
+        if (_currentMatch >= 0 && _currentMatch < _searchMatches.Count) _slots[_searchMatches[_currentMatch].Page].Highlights.SetCurrent(null);
+        _currentMatch = index;
+        var (page, rects) = _searchMatches[index];
+        var slot = _slots[page];
+        slot.Highlights.SetCurrent(rects);
+
+        // Scroll so the match sits in the upper third, and sideways too when zoomed in
+        double y = PageTop(page) + rects[0].Y * slot.Frame.Height;
+        PagesScrollViewer.ScrollToVerticalOffset(Math.Max(0, y - PagesScrollViewer.ViewportHeight / 3));
+        double pageLeft = Math.Max(0, (PagesPanel.ActualWidth - slot.Frame.Width) / 2);
+        double x = pageLeft + rects[0].X * slot.Frame.Width;
+        if (x < PagesScrollViewer.HorizontalOffset || x > PagesScrollViewer.HorizontalOffset + PagesScrollViewer.ViewportWidth - 40)
+            PagesScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - PagesScrollViewer.ViewportWidth / 3));
+    }
+
+    public void ClearSearch()
+    {
+        foreach (var (page, _) in _searchMatches) if (page < _slots.Count) _slots[page].Highlights.SetMatches(null);
+        _searchMatches.Clear();
+        _currentMatch = -1;
+    }
+
+    /// <summary>Match highlights over a page, stored as fractions of the page so zooming keeps them in place.</summary>
+    private sealed class SearchLayer : FrameworkElement
+    {
+        private static readonly Brush MatchBrush = Frozen(Color.FromArgb(0x66, 0xFF, 0xD0, 0x2E));
+        private static readonly Brush CurrentBrush = Frozen(Color.FromArgb(0x88, 0xFF, 0x8C, 0x1A));
+        private List<List<Rect>>? _matches;
+        private List<Rect>? _current;
+
+        public SearchLayer() => IsHitTestVisible = false;
+
+        public void SetMatches(List<List<Rect>>? matches) { _matches = matches; _current = null; InvalidateVisual(); }
+        public void SetCurrent(List<Rect>? rects) { _current = rects; InvalidateVisual(); }
+
+        protected override void OnRender(DrawingContext dc)
+        {
+            if (_matches == null) return;
+            double w = ActualWidth, h = ActualHeight;
+            foreach (var match in _matches)
+                foreach (var r in match)
+                    dc.DrawRectangle(ReferenceEquals(match, _current) ? CurrentBrush : MatchBrush, null,
+                        new Rect(r.X * w - 1, r.Y * h - 1, r.Width * w + 2, r.Height * h + 2));
+        }
+
+        private static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
+    }
 
     // ---------- Typing a page number ----------
 
