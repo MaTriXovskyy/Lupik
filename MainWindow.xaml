@@ -70,8 +70,30 @@
                     </Button.Style>
                 </Button>
 
+                <!-- Edit mode (E): what's being edited, save, done -->
+                <StackPanel x:Name="EditBar" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,8,0" Visibility="Collapsed">
+                    <TextBlock x:Name="EditDirtyText" Text="{loc:T edit.unsavedShort}" Foreground="#8A8074" FontSize="12"
+                               VerticalAlignment="Center" Margin="0,0,10,0" Visibility="Collapsed"/>
+                    <Button x:Name="EditSaveButton" Style="{StaticResource PrimaryButton}" Padding="12,4" FontSize="12" Click="OnEditSaveClicked" Margin="0,0,6,0">
+                        <StackPanel Orientation="Horizontal">
+                            <views:LucideIcon Kind="save" Size="13" Margin="0,0,6,0"/>
+                            <TextBlock Text="{loc:T edit.save}" VerticalAlignment="Center"/>
+                            <Border Style="{StaticResource KeyHint}"><TextBlock Text="Ctrl+S" FontSize="10" Foreground="#3A2E12"/></Border>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}" Padding="12,4" FontSize="12" Click="OnEditDoneClicked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{loc:T edit.done}" VerticalAlignment="Center"/>
+                            <Border Style="{StaticResource KeyHint}" Background="#3B3631"><TextBlock Text="Esc" FontSize="10" Foreground="#B5AB9D"/></Border>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
                 <!-- File tools, top right -->
                 <StackPanel x:Name="HeaderTools" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,6,0">
+                    <Button x:Name="EditButton" Style="{StaticResource IconButton}" ToolTip="{loc:T edit.tip}" Click="OnEditClicked" Visibility="Collapsed">
+                        <views:LucideIcon Kind="pencil" Size="15"/>
+                    </Button>
                     <Button x:Name="CropButton" Style="{StaticResource IconButton}" ToolTip="{loc:T main.cropTip}" Click="OnCropClicked">
                         <views:LucideIcon Kind="crop" Size="15"/>
                     </Button>
@@ -97,6 +119,10 @@
                         </Button>
                     </StackPanel>
                 </StackPanel>
+
+                <!-- Short messages ("Saved", "Can't edit this file…") -->
+                <TextBlock x:Name="NoticeText" DockPanel.Dock="Right" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"
+                           Visibility="Collapsed" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
 
                 <!-- Back, file icon and name -->
                 <DockPanel HorizontalAlignment="Left" LastChildFill="True" Margin="14,0,0,0" VerticalAlignment="Center">

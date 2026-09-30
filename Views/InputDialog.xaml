@@ -1,0 +1,51 @@
+<Window x:Class="Lupik.Views.InputDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Lupik.Localization"
+        xmlns:views="clr-namespace:Lupik.Views"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="{StaticResource AppFont}"
+        PreviewKeyDown="OnKeyDown">
+    <!-- Margin leaves room for the shadow around the card -->
+    <Border x:Name="Card" Margin="28" Width="440" Background="#1B1917" BorderBrush="#35302A" BorderThickness="1" CornerRadius="16"
+            MouseLeftButtonDown="OnDrag">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="36" ShadowDepth="10" Direction="270" Opacity="0.55" Color="Black"/>
+        </Border.Effect>
+        <StackPanel Margin="22,20,22,20">
+            <DockPanel Margin="0,0,0,14">
+                <Border DockPanel.Dock="Left" Width="36" Height="36" CornerRadius="9" Background="#3A3322" BorderBrush="#5E5230" BorderThickness="1"
+                        Margin="0,0,12,0" VerticalAlignment="Center">
+                    <views:LucideIcon x:Name="HeadingIcon" Kind="pencil" Size="16" HorizontalAlignment="Center" TextElement.Foreground="#F9E2AF"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="HeadingText" FontFamily="{StaticResource DisplayFont}" FontSize="17" FontWeight="SemiBold" Foreground="#FBF8F2"/>
+                    <TextBlock x:Name="HintText" FontSize="12" Foreground="#8A8074" Margin="0,2,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                </StackPanel>
+            </DockPanel>
+
+            <Border Background="#131211" BorderBrush="#E3B341" BorderThickness="1" CornerRadius="8" Padding="10,7">
+                <TextBox x:Name="Input" Background="Transparent" BorderThickness="0" Foreground="#FBF8F2" CaretBrush="#E3B341"
+                         SelectionBrush="#E3B341" SelectionOpacity="0.35" FontSize="14" TextChanged="OnTextChanged"/>
+            </Border>
+            <TextBlock x:Name="ErrorText" Foreground="#F07A72" FontSize="12" Margin="2,8,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Style="{StaticResource SecondaryButton}" Click="OnCancel" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{loc:T common.cancel}" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource KeyHint}" Background="#3B3631"><TextBlock Text="Esc" FontSize="10.5" Foreground="#B5AB9D"/></Border>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="OkButton" Style="{StaticResource PrimaryButton}" Click="OnConfirm">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="OkText" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource KeyHint}"><TextBlock Text="Enter" FontSize="10.5" Foreground="#3A2E12"/></Border>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

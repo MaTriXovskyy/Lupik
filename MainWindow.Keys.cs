@@ -20,7 +20,10 @@ public partial class MainWindow
 {
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
     {
-        if (HandleKey(e.Key == Key.System ? e.SystemKey : e.Key, KeyState.Modifiers)) e.Handled = true;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        // Editing: the keys are for the editor, except the few edit mode ones
+        if (EditMode) { if (HandleEditModeKey(key, KeyState.Modifiers)) e.Handled = true; return; }
+        if (HandleKey(key, KeyState.Modifiers)) e.Handled = true;
     }
 
     /// <summary>
@@ -66,7 +69,17 @@ public partial class MainWindow
             return true;
         }
 
-        if ((key == Key.F && mods == ModifierKeys.Control) || (key == Key.F3 && !SearchActive))
+        if (key == Key.E && mods == 0 && CurrentEditable() != null)
+        {
+            EnterEdit();
+            handled = true;
+        }
+        else if (key == Key.F2 && mods == 0 && PathExists(_currentFilePath) && CompareViewerControl.Visibility != Visibility.Visible && DiffViewerControl.Visibility != Visibility.Visible)
+        {
+            RenameCurrent();
+            handled = true;
+        }
+        else if ((key == Key.F && mods == ModifierKeys.Control) || (key == Key.F3 && !SearchActive))
         {
             OpenSearch(); // Ctrl+F / F3 in code, tables, Word, PDF and diffs
             handled = true;

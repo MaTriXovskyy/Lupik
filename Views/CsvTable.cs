@@ -247,6 +247,12 @@ public class CsvTable : FrameworkElement
     public void ShowCell(int row, int col)
     {
         _currentMatch = (row, col);
+        ScrollIntoView(row, col);
+        InvalidateVisual();
+    }
+
+    private void ScrollIntoView(int row, int col)
+    {
         if (_scroller != null && col < _widths.Length)
         {
             double y = HeaderHeight + row * RowHeight;
@@ -256,7 +262,82 @@ public class CsvTable : FrameworkElement
             if (x < _scroller.HorizontalOffset || x + _widths[col] > _scroller.HorizontalOffset + _scroller.ViewportWidth)
                 _scroller.ScrollToHorizontalOffset(Math.Max(0, x - 40));
         }
+    }
+
+    // --- Editing (edit mode, CSV only) ---
+
+    private bool _editable;
+
+    /// <summary>Cells can be edited: double-click, or typing / Enter / F2 on the active cell.</summary>
+    public bool Editable
+    {
+        get => _editable;
+        set { _editable = value; Focusable = value; if (value) Focus(); }
+    }
+
+    /// <summary>A cell should be edited: row -1 is the header; the text typed to start it, or null to keep the value.</summary>
+    public event Action<int, int, string?>? EditCellRequested;
+
+    public int RowCount => _rows.Count;
+    public int ColumnCount => _header.Length;
+
+    /// <summary>Where the selection started (the cell arrows and typing act on).</summary>
+    public (int Row, int Col)? ActiveCell => _selection is { } s ? (s.AnchorRow, s.AnchorCol) : null;
+
+    public void SelectCell(int row, int col)
+    {
+        if (_header.Length == 0) return;
+        row = Math.Clamp(row, 0, Math.Max(0, _rows.Count - 1));
+        col = Math.Clamp(col, 0, _header.Length - 1);
+        SetSelection(new Selection(row, col, row, col, WholeColumns: false));
+        ScrollIntoView(row, col);
+    }
+
+    public string GetCell(int row, int col) =>
+        row < 0 ? (col < _header.Length ? _header[col] : "")
+        : row < _rows.Count && col < _rows[row].Length ? _rows[row][col] : "";
+
+    public void SetCell(int row, int col, string value)
+    {
+        if (col < 0 || col >= _header.Length) return;
+        if (row < 0)
+        {
+            _header[col] = value;
+            _headerDrawing = null;
+        }
+        else if (row < _rows.Count && _rows is IList<string[]> rows)
+        {
+            var cells = rows[row];
+            if (col >= cells.Length) { Array.Resize(ref cells, col + 1); for (int i = 0; i < cells.Length; i++) cells[i] ??= ""; rows[row] = cells; }
+            cells[col] = value;
+            _rowCache.Remove(row);
+        }
         InvalidateVisual();
+    }
+
+    /// <summary>The cell's rectangle in the table's coordinates (the header one where it's drawn now).</summary>
+    public Rect CellRect(int row, int col)
+    {
+        double y = row < 0 ? (_scroller?.VerticalOffset ?? 0) : HeaderHeight + row * RowHeight;
+        return new Rect(_offsets[col], y, _widths[col], row < 0 ? HeaderHeight : RowHeight);
+    }
+
+    /// <summary>The selected cells (for Delete).</summary>
+    public IEnumerable<(int Row, int Col)> SelectedCells()
+    {
+        if (_selection is not { } s) yield break;
+        var (r1, c1, r2, c2) = s.Normalized;
+        for (int r = r1; r <= r2; r++)
+            for (int c = c1; c <= c2; c++)
+                yield return (r, c);
+    }
+
+    protected override void OnTextInput(System.Windows.Input.TextCompositionEventArgs e)
+    {
+        base.OnTextInput(e);
+        if (!_editable || ActiveCell is not var (row, col) || string.IsNullOrEmpty(e.Text) || char.IsControl(e.Text[0])) return;
+        EditCellRequested?.Invoke(row, col, e.Text); // typing on a cell replaces it, like in Excel
+        e.Handled = true;
     }
 
     // --- Selection & copy ---
@@ -357,6 +438,11 @@ public class CsvTable : FrameworkElement
         base.OnMouseLeftButtonDown(e);
         if (HitTestCell(e.GetPosition(this)) is not { } hit) return;
         var (row, col) = hit;
+        if (_editable)
+        {
+            Focus();
+            if (e.ClickCount == 2) { EditCellRequested?.Invoke(row, col, null); e.Handled = true; return; }
+        }
 
         bool extend = Lupik.Core.KeyState.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift) && _selection != null;
         _dragColumns = row < 0;

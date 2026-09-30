@@ -120,6 +120,10 @@ public class KeyboardHook : IDisposable
             if (IsOwnDialogInForeground())
                 return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
 
+            // Edit mode: Lupik is a normal focused window now; its keys go to it the normal way
+            if (MainWindowRef is { EditMode: true } editedIn && NativeMethods.GetForegroundWindow() == editedIn.Hwnd)
+                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+
             // The search bar is open: every key is typing for it (Space too, so this comes before the preview key)
             if (RouteToSearch(kb)) return (IntPtr)1;
 
@@ -286,6 +290,8 @@ public class KeyboardHook : IDisposable
             case 0x46 when (mods & Ctrl) != 0: return window.SearchableInPreview; // Ctrl+F: search
             case 0x72: return window.SearchableInPreview; // F3: next match
             case 0x54: return mods == 0; // T: filmstrip
+            case 0x45: return mods == 0 && window.EditableInPreview; // E: edit mode
+            case 0x71: return mods == 0; // F2: rename
             case 0x25: case 0x26: case 0x27: case 0x28: // arrows (Alt+←/→ = back / forward)
             case 0x1B: case 0x0D: case 0x2E: case 0x08: // Esc, Enter, Delete, Backspace
                 return (mods & Ctrl) == 0;

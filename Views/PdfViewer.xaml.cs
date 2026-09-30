@@ -19,7 +19,7 @@ namespace Lupik.Views;
 /// has a placeholder of its real size, and only the pages on screen (plus a neighbour) are rendered, at the
 /// monitor's actual resolution, so long documents open instantly and stay sharp at any zoom.
 /// </summary>
-public partial class PdfViewer : UserControl, ISearchable
+public partial class PdfViewer : UserControl, ISearchable, IEditable
 {
     private const double PageGap = 16;       // between pages (and above the first)
     private const double SideMargin = 16;    // PagesPanel's left/right margin
@@ -343,6 +343,7 @@ public partial class PdfViewer : UserControl, ISearchable
         PageTotalText.Text = "/ " + _slots.Count.ToString(Loc.Instance.Culture);
         PrevPageButton.IsEnabled = page > 0;
         NextPageButton.IsEnabled = page < _slots.Count - 1;
+        if (_editing) EditPageText.Text = Loc.T("pdfEdit.page", page + 1, _slots.Count);
     }
 
     // ---------- Navigation ----------
@@ -368,6 +369,203 @@ public partial class PdfViewer : UserControl, ISearchable
 
     /// <summary>↑ / ↓: scroll a bit.</summary>
     public void ScrollBy(double delta) => PagesScrollViewer.ScrollToVerticalOffset(PagesScrollViewer.VerticalOffset + delta);
+
+    // ---------- Edit mode (E): pages ----------
+
+    private bool _editing, _dirty;
+
+    public event Action? DirtyChanged;
+
+    /// <summary>A short message for the title bar ("Saved pages 3-5 as ...").</summary>
+    public event Action<string>? Notice;
+
+    public bool IsDirty => _dirty;
+
+    public string? WhyNotEditable() =>
+        _pdfDoc == null ? Loc.T("edit.cantRead")
+        : FormatBadgeText.Text == "AI" ? Loc.T("edit.noAi")
+        : null;
+
+    public void BeginEdit()
+    {
+        _editing = true;
+        _dirty = false;
+        EditToolbar.Visibility = Visibility.Visible;
+        UpdatePageIndicator();
+    }
+
+    public void EndEdit()
+    {
+        _editing = false;
+        _dirty = false;
+        EditToolbar.Visibility = Visibility.Collapsed;
+    }
+
+    public bool HandleEditKey(Key key, ModifierKeys mods)
+    {
+        // Paging works as always; up/down scroll
+        switch (key)
+        {
+            case Key.PageDown: StepPage(1); return true;
+            case Key.PageUp: StepPage(-1); return true;
+            case Key.Home: FirstPage(); return true;
+            case Key.End: LastPage(); return true;
+            case Key.Down: ScrollBy(80); return true;
+            case Key.Up: ScrollBy(-80); return true;
+        }
+        return false;
+    }
+
+    private void OnRotateLeftClicked(object sender, RoutedEventArgs e)
+    {
+        int page = CurrentPage();
+        _ = ChangePagesAsync(doc => doc.RotatePage(page, -1), page);
+    }
+
+    private void OnRotateRightClicked(object sender, RoutedEventArgs e)
+    {
+        int page = CurrentPage();
+        _ = ChangePagesAsync(doc => doc.RotatePage(page, 1), page);
+    }
+
+    private void OnDeletePageClicked(object sender, RoutedEventArgs e)
+    {
+        if (_slots.Count <= 1) { Notice?.Invoke(Loc.T("pdfEdit.lastPage")); return; }
+        int page = CurrentPage();
+        _ = ChangePagesAsync(doc => doc.DeletePage(page), Math.Min(page, _slots.Count - 2));
+    }
+
+    private void OnAppendClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = Loc.T("pdfEdit.appendTitle"),
+            Filter = "PDF|*.pdf",
+            InitialDirectory = Path.GetDirectoryName(_currentFilePath),
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        int firstNew = _slots.Count;
+        string other = dialog.FileName;
+        _ = ChangePagesAsync(doc => doc.AppendDocument(other), firstNew);
+    }
+
+    private async void OnExtractClicked(object sender, RoutedEventArgs e)
+    {
+        var doc = _pdfDoc;
+        if (doc == null) return;
+        int count = _slots.Count;
+        string? range = InputDialog.Ask(Window.GetWindow(this)!, Loc.T("pdfEdit.extractTitle"), Loc.T("pdfEdit.extractHint", count),
+            (CurrentPage() + 1).ToString(), Loc.T("pdfEdit.extractOk"), "copy",
+            text => ParseRange(text, count) == null ? Loc.T("pdfEdit.badRange") : null);
+        if (range == null) return;
+        string normalized = ParseRange(range, count)!;
+
+        var save = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = Loc.T("pdfEdit.extractSaveTitle"),
+            InitialDirectory = Path.GetDirectoryName(_currentFilePath),
+            FileName = $"{Path.GetFileNameWithoutExtension(_currentFilePath)} ({Loc.T("pdfEdit.pagesSuffix", normalized)}).pdf",
+            Filter = "PDF|*.pdf",
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        if (save.ShowDialog(Window.GetWindow(this)) != true) return;
+        if (string.Equals(Path.GetFullPath(save.FileName), Path.GetFullPath(_currentFilePath), StringComparison.OrdinalIgnoreCase))
+        {
+            Notice?.Invoke(Loc.T("save.sameNameOrFolder"));
+            return;
+        }
+        try
+        {
+            string target = save.FileName;
+            await Task.Run(() => doc.ExtractPages(normalized, target));
+            App.Log($"[PdfViewer] Extracted pages {normalized} to '{target}'");
+            Notice?.Invoke(Loc.T("pdfEdit.extracted", Path.GetFileName(target)));
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[PdfViewer] Extract failed: {ex.Message}");
+            MessageCard.Show(Window.GetWindow(this)!, Loc.T("edit.saveError", ex.Message));
+        }
+    }
+
+    /// <summary>"1, 3, 5-7" becomes "1,3,5-7" if every page exists (1..count), otherwise null.</summary>
+    internal static string? ParseRange(string text, int count)
+    {
+        var parts = new List<string>();
+        foreach (var piece in text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var ends = piece.Split('-', StringSplitOptions.TrimEntries);
+            if (ends.Length is < 1 or > 2 || !ends.All(x => int.TryParse(x, out int n) && n >= 1 && n <= count)) return null;
+            if (ends.Length == 2 && int.Parse(ends[0]) > int.Parse(ends[1])) return null;
+            parts.Add(string.Join("-", ends));
+        }
+        return parts.Count == 0 ? null : string.Join(",", parts);
+    }
+
+    /// <summary>Changes the open document, then lays the pages out again (sizes change when a page turns).</summary>
+    private async Task ChangePagesAsync(Action<PdfDocument> change, int showPage)
+    {
+        var doc = _pdfDoc;
+        if (doc == null || !_editing) return;
+        try
+        {
+            await Task.Run(() => change(doc));
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[PdfViewer] Page edit failed: {ex.Message}");
+            MessageCard.Show(Window.GetWindow(this)!, Loc.T("edit.saveError", ex.Message));
+            return;
+        }
+        if (!_dirty) { _dirty = true; DirtyChanged?.Invoke(); }
+        await RebuildPagesAsync(showPage);
+    }
+
+    private async Task RebuildPagesAsync(int showPage)
+    {
+        var doc = _pdfDoc;
+        if (doc == null) return;
+        ClearSearch();
+        _loadToken++; // stops a render still running for the old pages
+        while (_rendering) await Task.Delay(15);
+        var sizes = await Task.Run(() => Enumerable.Range(0, doc.PageCount).Select(doc.PageSizePoints).ToList());
+
+        PagesPanel.Children.Clear();
+        _slots.Clear();
+        _widestPagePoints = 1;
+        foreach (var (w, _) in sizes) _widestPagePoints = Math.Max(_widestPagePoints, w);
+        foreach (var (w, h) in sizes) _slots.Add(CreateSlot(w, h));
+        Relayout(keepPage: false);
+        PagesPanel.UpdateLayout();
+        GoToPage(showPage);
+        UpdatePageIndicator();
+        await RenderVisibleAsync();
+    }
+
+    public Task SaveToAsync(string path)
+    {
+        var doc = _pdfDoc ?? throw new InvalidOperationException("No document open.");
+        return Task.Run(() => doc.SaveAs(path));
+    }
+
+    private int _pageBeforeSave;
+
+    public void ReleaseFile()
+    {
+        _pageBeforeSave = CurrentPage();
+        _loadToken++;
+        ClosePages(); // PDFium keeps the file open while the document is loaded
+    }
+
+    public async Task ReloadAsync(string path)
+    {
+        await LoadPdfAsync(path);
+        PagesPanel.UpdateLayout();
+        GoToPage(_pageBeforeSave);
+        _dirty = false;
+        DirtyChanged?.Invoke();
+    }
 
     // ---------- Search (Ctrl+F) ----------
 

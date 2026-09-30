@@ -11,6 +11,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -62,8 +63,38 @@
             </Grid>
         </Border>
 
+        <!-- Edit mode (E): what can be done to the pages -->
+        <Border x:Name="EditToolbar" Grid.Row="1" Background="#1B1917" BorderBrush="#3B3631" BorderThickness="0,0,0,1" Padding="14,6" Visibility="Collapsed">
+            <Border.Resources>
+                <Style x:Key="EditTool" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                    <Setter Property="Padding" Value="10,5"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="Margin" Value="0,0,6,0"/>
+                </Style>
+            </Border.Resources>
+            <WrapPanel VerticalAlignment="Center">
+                <TextBlock x:Name="EditPageText" Foreground="#E3B341" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <Button Style="{StaticResource EditTool}" Click="OnRotateLeftClicked" ToolTip="{loc:T pdfEdit.rotateLeftTip}">
+                    <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.rotateLeft}"/></StackPanel>
+                </Button>
+                <Button Style="{StaticResource EditTool}" Click="OnRotateRightClicked" ToolTip="{loc:T pdfEdit.rotateRightTip}">
+                    <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.rotateRight}"/></StackPanel>
+                </Button>
+                <Button Style="{StaticResource EditTool}" Click="OnDeletePageClicked" ToolTip="{loc:T pdfEdit.deleteTip}">
+                    <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="trash-2" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.delete}"/></StackPanel>
+                </Button>
+                <Rectangle Width="1" Height="18" Fill="#3B3631" Margin="6,0,12,0" VerticalAlignment="Center"/>
+                <Button Style="{StaticResource EditTool}" Click="OnExtractClicked" ToolTip="{loc:T pdfEdit.extractTip}">
+                    <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="copy" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.extract}"/></StackPanel>
+                </Button>
+                <Button Style="{StaticResource EditTool}" Click="OnAppendClicked" ToolTip="{loc:T pdfEdit.appendTip}">
+                    <StackPanel Orientation="Horizontal"><views:LucideIcon Kind="plus" Size="13" Margin="0,0,6,0"/><TextBlock Text="{loc:T pdfEdit.append}"/></StackPanel>
+                </Button>
+            </WrapPanel>
+        </Border>
+
         <!-- Pages ScrollViewer -->
-        <ScrollViewer Grid.Row="1" x:Name="PagesScrollViewer"
+        <ScrollViewer Grid.Row="2" x:Name="PagesScrollViewer"
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
                       ScrollChanged="OnScrollChanged"

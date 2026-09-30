@@ -147,7 +147,7 @@ public partial class SettingsWindow : Window
         if (!Autostart.Set(want))
         {
             StartupSwitch.IsChecked = Autostart.IsEnabled;
-            MessageBox.Show(this, Loc.T("settings.startupError"), "Lupik");
+            MessageCard.Show(this, Loc.T("settings.startupError"));
         }
     }
 

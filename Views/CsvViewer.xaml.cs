@@ -14,7 +14,7 @@ namespace Lupik.Views;
 /// Shows .csv / .tsv files as a table (delimiter detected automatically), and Excel workbooks (.xlsx), one sheet
 /// at a time with a tab per sheet. No Excel needed.
 /// </summary>
-public partial class CsvViewer : UserControl, ISearchable
+public partial class CsvViewer : UserControl, ISearchable, IEditable
 {
     public static readonly string[] Extensions = { ".csv", ".tsv" };
 
@@ -27,6 +27,7 @@ public partial class CsvViewer : UserControl, ISearchable
     {
         InitializeComponent();
         Table.SelectionChanged += UpdateSummary;
+        Table.EditCellRequested += StartCellEdit;
     }
 
     private string _summary = "";
@@ -76,11 +77,15 @@ public partial class CsvViewer : UserControl, ISearchable
         SheetTabs.Children.Clear();
         try
         {
-            var (rows, delimiter, truncated) = await Task.Run(() => Parse(filePath));
+            var file = await Task.Run(() => Parse(filePath));
             if (token != _loadToken) return false;
+            var (rows, delimiter, truncated) = (file.Rows, file.Delimiter, file.Truncated);
+            _file = file;
+            _isWorkbook = false;
 
             int columns = rows.Count == 0 ? 0 : rows.Max(r => r.Length);
             string[] firstRow = rows.Count > 0 ? rows[0] : Array.Empty<string>();
+            _firstRow = Enumerable.Range(0, columns).Select(i => i < firstRow.Length ? firstRow[i] : "").ToArray();
             var header = Enumerable.Range(0, columns)
                 .Select(i => i < firstRow.Length && firstRow[i].Length > 0 ? firstRow[i] : Loc.T("csv.column", i + 1))
                 .ToArray();
@@ -95,6 +100,7 @@ public partial class CsvViewer : UserControl, ISearchable
         catch (Exception ex)
         {
             if (token != _loadToken) return false;
+            _file = null;
             Table.SetData(Array.Empty<string>(), Array.Empty<string[]>());
             _summary = Loc.T("common.readError", ex.Message);
             UpdateSummary();
@@ -118,6 +124,7 @@ public partial class CsvViewer : UserControl, ISearchable
             var names = await Task.Run(() => Lupik.Core.Office.XlsxReader.SheetNames(filePath));
             if (token != _loadToken) return true;
             _workbookPath = filePath;
+            _isWorkbook = true;
             BadgeText.Text = Path.GetExtension(filePath).TrimStart('.').ToUpperInvariant();
             BuildSheetTabs(names);
             await ShowSheetAsync(0, token);
@@ -173,6 +180,188 @@ public partial class CsvViewer : UserControl, ISearchable
         return true;
     }
 
+    // ---------- Edit mode (E): cells, CSV only ----------
+
+    private CsvFile? _file;
+    private bool _isWorkbook, _dirty, _editing;
+    private string[] _firstRow = Array.Empty<string>(); // the header as in the file (the table shows "Column N" for empty ones)
+    private TextBox? _cellEditor;
+    private (int Row, int Col) _cellEditing;
+
+    public event Action? DirtyChanged;
+    public bool IsDirty => _dirty;
+
+    public string? WhyNotEditable() =>
+        _isWorkbook ? Loc.T("edit.noExcel")
+        : _file == null ? Loc.T("edit.cantRead")
+        : _file.Truncated ? Loc.T("edit.tooBig")
+        : null;
+
+    public void BeginEdit()
+    {
+        _editing = true;
+        _dirty = false;
+        Table.Editable = true;
+        if (Table.ActiveCell == null && Table.RowCount > 0) Table.SelectCell(0, 0);
+        EditHint.Visibility = Visibility.Visible;
+    }
+
+    public void EndEdit()
+    {
+        CommitCellEdit(cancel: true);
+        _editing = false;
+        Table.Editable = false;
+        EditHint.Visibility = Visibility.Collapsed;
+        _dirty = false;
+    }
+
+    private void SetDirty()
+    {
+        if (_dirty) return;
+        _dirty = true;
+        DirtyChanged?.Invoke();
+    }
+
+    private void StartCellEdit(int row, int col, string? typed)
+    {
+        if (!_editing) return;
+        CommitCellEdit(cancel: false);
+        _cellEditing = (row, col);
+        var rect = Table.CellRect(row, col);
+        var topLeft = Table.TranslatePoint(rect.TopLeft, EditLayer);
+        _cellEditor = new TextBox
+        {
+            Text = typed ?? (row < 0 ? _firstRow[col] : Table.GetCell(row, col)),
+            Width = Math.Max(rect.Width, 120),
+            MinHeight = rect.Height,
+            FontSize = 12.5,
+            Padding = new Thickness(6, 3, 6, 3),
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1F, 0x1C, 0x19)),
+            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFB, 0xF8, 0xF2)),
+            CaretBrush = (System.Windows.Media.Brush)FindResource("Gold"),
+            BorderBrush = (System.Windows.Media.Brush)FindResource("Gold"),
+            BorderThickness = new Thickness(2),
+            AcceptsReturn = false,
+        };
+        Canvas.SetLeft(_cellEditor, topLeft.X);
+        Canvas.SetTop(_cellEditor, topLeft.Y);
+        _cellEditor.LostKeyboardFocus += (_, _) => CommitCellEdit(cancel: false);
+        EditLayer.Children.Add(_cellEditor);
+        _cellEditor.Focus();
+        _cellEditor.CaretIndex = _cellEditor.Text.Length;
+        if (typed == null) _cellEditor.SelectAll();
+    }
+
+    private void CommitCellEdit(bool cancel)
+    {
+        var editor = _cellEditor;
+        if (editor == null) return;
+        _cellEditor = null;
+        EditLayer.Children.Remove(editor);
+        if (cancel) return;
+
+        var (row, col) = _cellEditing;
+        string old = row < 0 ? _firstRow[col] : Table.GetCell(row, col);
+        if (editor.Text == old) return;
+        if (row < 0)
+        {
+            _firstRow[col] = editor.Text;
+            Table.SetCell(-1, col, editor.Text.Length > 0 ? editor.Text : Loc.T("csv.column", col + 1));
+        }
+        else Table.SetCell(row, col, editor.Text);
+        SetDirty();
+    }
+
+    public bool HandleEditKey(System.Windows.Input.Key key, System.Windows.Input.ModifierKeys mods)
+    {
+        if (_cellEditor != null)
+        {
+            // Typing in a cell: Enter/Tab commit and move on, Esc cancels; the rest is the text box's
+            if (key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Tab)
+            {
+                var (row, col) = _cellEditing;
+                CommitCellEdit(cancel: false);
+                bool back = (mods & System.Windows.Input.ModifierKeys.Shift) != 0;
+                if (key == System.Windows.Input.Key.Enter) Table.SelectCell(row < 0 ? 0 : row + (back ? -1 : 1), col);
+                else Table.SelectCell(Math.Max(0, row), col + (back ? -1 : 1));
+                Table.Focus();
+                return true;
+            }
+            if (key == System.Windows.Input.Key.Escape) { CommitCellEdit(cancel: true); Table.Focus(); return true; }
+            return false;
+        }
+
+        if (Table.ActiveCell is not var (r, c)) return false;
+        switch (key)
+        {
+            case System.Windows.Input.Key.Up: Table.SelectCell(r - 1, c); return true;
+            case System.Windows.Input.Key.Down: Table.SelectCell(r + 1, c); return true;
+            case System.Windows.Input.Key.Left: Table.SelectCell(r, c - 1); return true;
+            case System.Windows.Input.Key.Right: Table.SelectCell(r, c + 1); return true;
+            case System.Windows.Input.Key.Tab: Table.SelectCell(r, c + ((mods & System.Windows.Input.ModifierKeys.Shift) != 0 ? -1 : 1)); return true;
+            case System.Windows.Input.Key.Enter:
+            case System.Windows.Input.Key.F2:
+                StartCellEdit(r, c, null);
+                return true;
+            case System.Windows.Input.Key.Delete:
+                foreach (var (row, col) in Table.SelectedCells().ToList())
+                    if (Table.GetCell(row, col).Length > 0) { Table.SetCell(row, col, ""); SetDirty(); }
+                return true;
+        }
+        return false;
+    }
+
+    public Task SaveToAsync(string path)
+    {
+        CommitCellEdit(cancel: false);
+        var file = _file!;
+        var lines = new List<string[]> { _firstRow };
+        for (int r = 0; r < Table.RowCount; r++)
+        {
+            var row = new string[Table.ColumnCount];
+            for (int c = 0; c < row.Length; c++) row[c] = Table.GetCell(r, c);
+            // Rows keep their own length (no trailing separators the file didn't have)
+            int original = r + 1 < file.Rows.Count ? file.Rows[r + 1].Length : row.Length;
+            int last = row.Length - 1;
+            while (last >= original && row[last].Length == 0) last--;
+            lines.Add(row[..(last + 1)]);
+        }
+        return Task.Run(() =>
+        {
+            var sb = new StringBuilder();
+            foreach (var cells in lines)
+            {
+                for (int c = 0; c < cells.Length; c++)
+                {
+                    if (c > 0) sb.Append(file.Delimiter);
+                    sb.Append(Quote(cells[c], file.Delimiter));
+                }
+                sb.Append(file.NewLine);
+            }
+            Lupik.Core.TextEncoding.Write(path, sb.ToString(), file.Encoding, file.Bom);
+        });
+    }
+
+    /// <summary>Quotes a value only when it has to be (it holds the separator, a quote or a line break).</summary>
+    private static string Quote(string value, char delimiter) =>
+        value.IndexOf(delimiter) >= 0 || value.IndexOfAny(new[] { '"', '\n', '\r' }) >= 0
+            ? "\"" + value.Replace("\"", "\"\"") + "\""
+            : value;
+
+    public void ReleaseFile() { }
+
+    public async Task ReloadAsync(string path)
+    {
+        var (row, col) = Table.ActiveCell ?? (0, 0);
+        double offset = TableScroller.VerticalOffset, hOffset = TableScroller.HorizontalOffset;
+        await LoadFileAsync(path);
+        TableScroller.ScrollToVerticalOffset(offset);
+        TableScroller.ScrollToHorizontalOffset(hOffset);
+        _dirty = false;
+        if (_editing) { Table.Editable = true; Table.SelectCell(row, col); }
+        DirtyChanged?.Invoke();
+    }
+
     // ---------- Search (Ctrl+F) ----------
 
     private List<(int Row, int Col)> _found = new();
@@ -194,20 +383,29 @@ public partial class CsvViewer : UserControl, ISearchable
         _found.Clear();
     }
 
-    private static (List<string[]>, char, bool) Parse(string filePath)
+    /// <summary>A parsed CSV, with what's needed to write it back the same way.</summary>
+    private sealed record CsvFile(List<string[]> Rows, char Delimiter, bool Truncated, Encoding Encoding, bool Bom, string NewLine);
+
+    /// <summary>
+    /// UTF-8 if the file is valid UTF-8; otherwise the Windows code page (Windows-1250 on Polish Windows,
+    /// what Polish Excel uses for "CSV (rozdzielany przecinkami)").
+    /// </summary>
+    private static CsvFile Parse(string filePath)
     {
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var reader = new StreamReader(stream, DetectEncoding(stream), detectEncodingFromByteOrderMarks: true);
+        var (encoding, bom) = Lupik.Core.TextEncoding.Detect(stream);
+        string newLine = DetectNewLine(stream);
+        using var reader = new StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true);
 
         string? first = reader.ReadLine();
-        if (first == null) return (new List<string[]>(), ',', false);
+        if (first == null) return new CsvFile(new List<string[]>(), ',', false, encoding, bom, newLine);
         char delimiter = DetectDelimiter(first, Path.GetExtension(filePath));
 
         var rows = new List<string[]>();
         string? line = first;
         while (line != null)
         {
-            if (rows.Count >= MaxRows + 1) return (rows, delimiter, true);
+            if (rows.Count >= MaxRows + 1) return new CsvFile(rows, delimiter, true, encoding, bom, newLine);
 
             // A quoted value may span several lines: keep reading until quotes are balanced
             while (line.Count(c => c == '"') % 2 != 0 && reader.ReadLine() is { } next)
@@ -216,34 +414,17 @@ public partial class CsvViewer : UserControl, ISearchable
             rows.Add(SplitLine(line, delimiter));
             line = reader.ReadLine();
         }
-        return (rows, delimiter, false);
+        return new CsvFile(rows, delimiter, false, encoding, bom, newLine);
     }
 
-    /// <summary>
-    /// UTF-8 if the start of the file is valid UTF-8; otherwise Windows-1250,
-    /// which is what Polish Excel uses for "CSV (rozdzielany przecinkami)".
-    /// </summary>
-    private static Encoding DetectEncoding(Stream stream)
+    /// <summary>"\r\n" (Windows, Excel) unless the file uses bare "\n". Leaves the stream at the start.</summary>
+    private static string DetectNewLine(Stream stream)
     {
         var buffer = new byte[64 * 1024];
         int read = stream.Read(buffer, 0, buffer.Length);
         stream.Position = 0;
-
-        // Don't judge a multi-byte character cut off at the end of the sample
-        int end = read;
-        while (end > 0 && end > read - 4 && (buffer[end - 1] & 0xC0) == 0x80) end--;
-        if (end > 0 && buffer[end - 1] >= 0xC0) end--;
-
-        try
-        {
-            new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(buffer, 0, end);
-            return Encoding.UTF8;
-        }
-        catch (DecoderFallbackException)
-        {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            return Encoding.GetEncoding(1250);
-        }
+        int lf = Array.IndexOf(buffer, (byte)'\n', 0, read);
+        return lf > 0 && buffer[lf - 1] != '\r' ? "\n" : "\r\n";
     }
 
     private static char DetectDelimiter(string headerLine, string ext)

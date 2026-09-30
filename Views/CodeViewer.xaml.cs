@@ -9,7 +9,7 @@ using ICSharpCode.AvalonEdit.Highlighting;
 using Lupik.Localization;
 namespace Lupik.Views;
 
-public partial class CodeViewer : UserControl, ISearchable
+public partial class CodeViewer : UserControl, ISearchable, IEditable
 {
     private string _currentFilePath = "";
     private readonly MarkdownCodeBlockColorizer _codeBlocks = new();
@@ -22,6 +22,84 @@ public partial class CodeViewer : UserControl, ISearchable
         StyleEditor();
         _search = new SearchHighlighter(TextEditorControl);
     }
+
+    // --- Edit mode (E) ---
+
+    private System.Text.Encoding _encoding = System.Text.Encoding.UTF8;
+    private bool _bom, _truncated, _readFailed, _editing;
+
+    public event Action? DirtyChanged;
+
+    public bool IsDirty => _editing && !TextEditorControl.Document.UndoStack.IsOriginalFile;
+
+    public string? WhyNotEditable() =>
+        _readFailed ? Loc.T("edit.cantRead")
+        : _truncated ? Loc.T("edit.tooBig")
+        : null;
+
+    public void BeginEdit()
+    {
+        _editing = true;
+        TextEditorControl.IsReadOnly = false;
+        TextEditorControl.Document.UndoStack.MarkAsOriginalFile();
+        TextEditorControl.Document.UndoStack.PropertyChanged += OnUndoStackChanged;
+        TextEditorControl.Document.TextChanged += OnTextEdited;
+        TextEditorControl.Focus();
+        TextEditorControl.TextArea.Focus();
+        TextEditorControl.TextArea.Caret.Show();
+    }
+
+    public void EndEdit()
+    {
+        _editing = false;
+        TextEditorControl.IsReadOnly = true;
+        TextEditorControl.Document.UndoStack.PropertyChanged -= OnUndoStackChanged;
+        TextEditorControl.Document.TextChanged -= OnTextEdited;
+    }
+
+    private void OnUndoStackChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ICSharpCode.AvalonEdit.Document.UndoStack.IsOriginalFile)) DirtyChanged?.Invoke();
+    }
+
+    /// <summary>Markdown code blocks follow the edits (their coloring spans lines).</summary>
+    private void OnTextEdited(object? sender, EventArgs e)
+    {
+        if (!_codeBlocksPending)
+        {
+            _codeBlocksPending = true;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+            {
+                _codeBlocksPending = false;
+                string ext = Path.GetExtension(_currentFilePath).ToLowerInvariant();
+                _codeBlocks.Analyze(TextEditorControl.Document, ext is ".md" or ".markdown");
+                TextEditorControl.TextArea.TextView.Redraw();
+            });
+        }
+        LinesCountText.Text = Loc.Plural("count.lines", TextEditorControl.Document.LineCount);
+    }
+
+    private bool _codeBlocksPending;
+
+    public Task SaveToAsync(string path)
+    {
+        string text = TextEditorControl.Text;
+        var encoding = _encoding;
+        bool bom = _bom;
+        return Task.Run(() => Lupik.Core.TextEncoding.Write(path, text, encoding, bom));
+    }
+
+    public void ReleaseFile() { }
+
+    public Task ReloadAsync(string path)
+    {
+        TextEditorControl.Document.UndoStack.MarkAsOriginalFile();
+        FileSizeText.Text = FormatFileSize(new FileInfo(path).Length);
+        DirtyChanged?.Invoke();
+        return Task.CompletedTask;
+    }
+
+    public bool HandleEditKey(System.Windows.Input.Key key, System.Windows.Input.ModifierKeys mods) => false; // the editor has them
 
     // --- Search (Ctrl+F) ---
 
@@ -74,18 +152,23 @@ public partial class CodeViewer : UserControl, ISearchable
         int token = ++_loadToken;
         try
         {
-            var (content, size, truncated) = await Task.Run(() =>
+            var (content, size, truncated, encoding, bom) = await Task.Run(() =>
             {
                 // FileShare.ReadWrite so locked files can still be previewed
                 using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(stream);
+                var (encoding, bom) = Lupik.Core.TextEncoding.Detect(stream);
+                using var reader = new StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true);
                 var buffer = new char[MaxPreviewChars];
                 int read = reader.ReadBlock(buffer, 0, buffer.Length);
                 bool more = reader.Peek() >= 0;
-                return (new string(buffer, 0, read), stream.Length, more);
+                return (new string(buffer, 0, read), stream.Length, more, encoding, bom);
             });
 
             if (token != _loadToken) return false;
+            _encoding = encoding;
+            _bom = bom;
+            _truncated = truncated;
+            _readFailed = false;
 
             _currentFilePath = filePath;
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
@@ -93,6 +176,7 @@ public partial class CodeViewer : UserControl, ISearchable
 
             _search.Clear();
             TextEditorControl.Text = content;
+            TextEditorControl.Document.UndoStack.ClearAll(); // a fresh file: nothing to undo, nothing changed
             TextEditorControl.ScrollToHome();
             _codeBlocks.Analyze(TextEditorControl.Document, ext is ".md" or ".markdown");
             TextEditorControl.TextArea.TextView.Redraw();
@@ -106,6 +190,7 @@ public partial class CodeViewer : UserControl, ISearchable
         catch (Exception ex)
         {
             if (token != _loadToken) return false;
+            _readFailed = true;
             TextEditorControl.SyntaxHighlighting = null;
             TextEditorControl.Text = Loc.T("code.readError", ex.Message);
             _codeBlocks.Analyze(TextEditorControl.Document, false);

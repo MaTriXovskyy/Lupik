@@ -210,7 +210,7 @@ public partial class FolderViewer : UserControl
             App.Log($"[FolderViewer] Zip failed: {ex}");
             ResetZipUi();
             if (!MainWindow.SuppressActivationForTests) // tests: log only, a message box would grab focus
-                MessageBox.Show(Window.GetWindow(this)!, Loc.T("folder.zipError", ex.Message), "Lupik");
+                MessageCard.Show(Window.GetWindow(this)!, Loc.T("folder.zipError", ex.Message));
         }
         finally
         {

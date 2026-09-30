@@ -1,4 +1,4 @@
-﻿# Lupik
+# Lupik
 
 Quick Look for Windows. Select a file in Explorer or on the desktop, press Space, and you get a preview.
 Press Space again and it's gone. That's the whole idea, and the rest of the app is there to keep it fast.
@@ -30,6 +30,15 @@ Lupik checks GitHub for new versions and asks before installing one. You can tur
 - **Folders**: a grid of what's inside
 
 Pictures have a filmstrip of the folder's images underneath (T).
+
+**Edit mode (E)** is for quick fixes, not for replacing real editors:
+- text, code and config files: edit in place (the file keeps its encoding and line endings)
+- CSV: edit cells like in Excel (double-click, Enter or just type; Delete clears)
+- PDF: rotate or delete pages, extract pages to a new PDF, append another PDF
+- pictures (JPG, PNG, WebP, BMP, TIFF): blur a part, draw an arrow or a frame, add text, make it smaller
+
+Ctrl+S saves: the original goes to the Recycle Bin, so nothing is lost. Esc leaves edit mode (and asks about
+unsaved changes). In edit mode Lupik takes the keyboard focus, which the preview otherwise never does.
 Ctrl+F searches in code and text, tables, Word documents, PDFs and diffs (Enter / Shift+Enter: next / previous).
 
 PDF and `.ai` files are rendered by [PDFium](https://pdfium.googlesource.com/pdfium/), the PDF engine inside Chrome.
@@ -56,6 +65,8 @@ embedded Type 1 fonts included.
 | T | filmstrip of the folder's images |
 | C | compare the two selected images / text files, or back to one |
 | Ctrl+F, F3 | search (Enter / Shift+Enter: next / previous, Esc closes) |
+| E | edit mode (Ctrl+S saves, Esc leaves) |
+| F2 | rename |
 | K J L M | play/pause, back 5 s, forward 5 s, mute (audio and video) |
 | Ctrl+S / Ctrl+P / Ctrl+C | save a copy in another format (images), print, copy |
 

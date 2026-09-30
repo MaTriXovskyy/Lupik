@@ -46,6 +46,7 @@ public partial class MainWindow : Window
         Loc.Instance.LanguageChanged += UpdateWelcomeText;
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
         WireImageExtras();
+        PdfViewerControl.Notice += message => ShowNotice(message);
     }
 
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
@@ -81,6 +82,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Another file while editing: finish editing first (asks about unsaved changes)
+        if (EditMode && !string.Equals(filePath, _editingPath, StringComparison.OrdinalIgnoreCase) && !ExitEdit()) return;
         CancelIdleRelease();
         CloseSearch(); // a new file: the old matches mean nothing there
         int token = ++_showToken;
@@ -310,6 +313,7 @@ public partial class MainWindow : Window
         CopyInPreview = target == ImageViewerControl || target == CsvViewerControl;
         PdfInPreview = target == PdfViewerControl;
         UpdateSearchable();
+        UpdateEditable();
     }
 
     /// <summary>Whether Ctrl+C / Ctrl+A mean something in the current preview (read by the keyboard hook thread).</summary>
@@ -386,6 +390,7 @@ public partial class MainWindow : Window
     public void HideWindow()
     {
         App.Log("[MainWindow] HideWindow called");
+        if (EditMode && !ExitEdit()) return; // unsaved changes: the user chose to stay
 
         // Nothing to hand back: the preview never took the focus from Explorer
         Hide();

@@ -15,7 +15,7 @@ public sealed class PdfDocument : IDisposable
     private IntPtr _doc;
 
     public string Path { get; }
-    public int PageCount { get; }
+    public int PageCount { get; private set; }
 
     static PdfDocument()
     {
@@ -27,6 +27,109 @@ public sealed class PdfDocument : IDisposable
         Path = path;
         _doc = doc;
         PageCount = Native.FPDF_GetPageCount(doc);
+    }
+
+    // ---------- Editing pages (edit mode) ----------
+
+    /// <summary>Turns a page by quarter turns (+1 = 90° clockwise).</summary>
+    public void RotatePage(int index, int quarterTurns)
+    {
+        lock (Lock)
+        {
+            EnsureOpen();
+            IntPtr page = Native.FPDF_LoadPage(_doc, index);
+            if (page == IntPtr.Zero) throw new PdfException((PdfError)Native.FPDF_GetLastError());
+            try { Native.FPDFPage_SetRotation(page, ((Native.FPDFPage_GetRotation(page) + quarterTurns) % 4 + 4) % 4); }
+            finally { Native.FPDF_ClosePage(page); }
+        }
+    }
+
+    public void DeletePage(int index)
+    {
+        lock (Lock)
+        {
+            EnsureOpen();
+            Native.FPDFPage_Delete(_doc, index);
+            PageCount = Native.FPDF_GetPageCount(_doc);
+        }
+    }
+
+    /// <summary>Adds all pages of another PDF at the end. Returns how many.</summary>
+    public int AppendDocument(string otherPath)
+    {
+        lock (Lock)
+        {
+            EnsureOpen();
+            IntPtr other = Native.FPDF_LoadDocument(otherPath, null);
+            if (other == IntPtr.Zero) throw new PdfException((PdfError)Native.FPDF_GetLastError());
+            try
+            {
+                int count = Native.FPDF_GetPageCount(other);
+                if (Native.FPDF_ImportPages(_doc, other, null, PageCount) == 0) throw new PdfException(PdfError.Format);
+                PageCount = Native.FPDF_GetPageCount(_doc);
+                return count;
+            }
+            finally
+            {
+                Native.FPDF_CloseDocument(other);
+            }
+        }
+    }
+
+    /// <summary>Saves the pages in <paramref name="pageRange"/> ("1,3,5-7", 1-based) as a new PDF.</summary>
+    public void ExtractPages(string pageRange, string targetPath)
+    {
+        lock (Lock)
+        {
+            EnsureOpen();
+            IntPtr created = Native.FPDF_CreateNewDocument();
+            try
+            {
+                if (Native.FPDF_ImportPages(created, _doc, pageRange, 0) == 0) throw new PdfException(PdfError.Page);
+                Write(created, targetPath);
+            }
+            finally
+            {
+                Native.FPDF_CloseDocument(created);
+            }
+        }
+    }
+
+    /// <summary>Saves the document as it is now (with the edits) to <paramref name="targetPath"/>.</summary>
+    public void SaveAs(string targetPath)
+    {
+        lock (Lock)
+        {
+            EnsureOpen();
+            Write(_doc, targetPath);
+        }
+    }
+
+    private static void Write(IntPtr doc, string targetPath)
+    {
+        using var output = new System.IO.FileStream(targetPath, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.None);
+        Exception? error = null;
+        Native.WriteBlockProc write = (_, data, size) =>
+        {
+            try
+            {
+                var chunk = new byte[size];
+                Marshal.Copy(data, chunk, 0, (int)size);
+                output.Write(chunk, 0, chunk.Length);
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+                return 0;
+            }
+        };
+        var writer = new Native.FPDF_FILEWRITE { version = 1, WriteBlock = Marshal.GetFunctionPointerForDelegate(write) };
+        // No incremental update: a clean, complete file (deleted pages are really gone)
+        bool ok = Native.FPDF_SaveAsCopy(doc, ref writer, Native.FPDF_NO_INCREMENTAL) != 0;
+        GC.KeepAlive(write);
+        if (error != null) throw new System.IO.IOException(error.Message, error);
+        if (!ok) throw new System.IO.IOException("PDFium couldn't save the document.");
     }
 
     /// <summary>Opens a PDF (or a PDF-compatible .ai). Throws <see cref="PdfException"/> when it can't.</summary>
@@ -221,6 +324,19 @@ public sealed class PdfDocument : IDisposable
         [DllImport(Dll)] public static extern void FPDFBitmap_FillRect(IntPtr bitmap, int left, int top, int width, int height, uint color);
         [DllImport(Dll)] public static extern void FPDF_RenderPageBitmap(IntPtr bitmap, IntPtr page, int startX, int startY, int sizeX, int sizeY, int rotate, int flags);
         [DllImport(Dll)] public static extern void FPDFBitmap_Destroy(IntPtr bitmap);
+
+        // Editing and saving
+        public const uint FPDF_NO_INCREMENTAL = 2;
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int WriteBlockProc(IntPtr self, IntPtr data, uint size);
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FPDF_FILEWRITE { public int version; public IntPtr WriteBlock; }
+        [DllImport(Dll)] public static extern int FPDFPage_GetRotation(IntPtr page);
+        [DllImport(Dll)] public static extern void FPDFPage_SetRotation(IntPtr page, int rotate);
+        [DllImport(Dll)] public static extern void FPDFPage_Delete(IntPtr document, int index);
+        [DllImport(Dll)] public static extern IntPtr FPDF_CreateNewDocument();
+        [DllImport(Dll)] public static extern int FPDF_ImportPages(IntPtr dest, IntPtr src, [MarshalAs(UnmanagedType.LPStr)] string? pageRange, int index);
+        [DllImport(Dll)] public static extern int FPDF_SaveAsCopy(IntPtr document, ref FPDF_FILEWRITE fileWrite, uint flags);
 
         // Text (search)
         [DllImport(Dll)] public static extern IntPtr FPDFText_LoadPage(IntPtr page);

@@ -52,7 +52,7 @@ public partial class MainWindow
         string target = dialog.FileName;
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, Loc.T("save.sameName"), "Lupik");
+            Views.MessageCard.Show(this, Loc.T("save.sameName"), error: false);
             return;
         }
 
@@ -79,7 +79,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Crop failed: {ex}");
-            MessageBox.Show(this, Loc.T("crop.saveError", ex.Message), "Lupik");
+            Views.MessageCard.Show(this, Loc.T("crop.saveError", ex.Message));
         }
     }
 
@@ -109,7 +109,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Could not open print dialog: {ex}");
-            MessageBox.Show(this, Loc.T("print.prepareError", ex.Message), "Lupik");
+            Views.MessageCard.Show(this, Loc.T("print.prepareError", ex.Message));
         }
     }
 
@@ -196,7 +196,7 @@ public partial class MainWindow
 
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(source), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, Loc.T("save.sameNameOrFolder"), "Lupik");
+            Views.MessageCard.Show(this, Loc.T("save.sameNameOrFolder"), error: false);
             return;
         }
 
@@ -238,7 +238,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Save As failed: {ex}");
-            MessageBox.Show(this, Loc.T("save.error", ex.Message), "Lupik");
+            Views.MessageCard.Show(this, Loc.T("save.error", ex.Message));
         }
     }
 
@@ -297,7 +297,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Delete failed: {ex}");
-            MessageBox.Show(this, Loc.T("delete.error", ex.Message), "Lupik");
+            Views.MessageCard.Show(this, Loc.T("delete.error", ex.Message));
             _ = ShowFile(path);
             return;
         }

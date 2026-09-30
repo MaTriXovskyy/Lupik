@@ -247,7 +247,7 @@ public partial class ArchiveViewer : UserControl
             App.Log($"[ArchiveViewer] Extract failed: {ex}");
             ResetExtractUi();
             if (!MainWindow.SuppressActivationForTests) // tests: log only, a message box would grab focus
-                MessageBox.Show(Window.GetWindow(this)!, Loc.T("archive.extractError", ex.Message), "Lupik");
+                MessageCard.Show(Window.GetWindow(this)!, Loc.T("archive.extractError", ex.Message));
         }
         finally
         {
@@ -302,7 +302,7 @@ public partial class ArchiveViewer : UserControl
     {
         App.Log($"[ArchiveViewer] Single extract failed: {ex}");
         if (!MainWindow.SuppressActivationForTests)
-            MessageBox.Show(Window.GetWindow(this)!, Loc.T("archive.extractError", ex.Message), "Lupik");
+            MessageCard.Show(Window.GetWindow(this)!, Loc.T("archive.extractError", ex.Message));
     }
 
     /// <summary>Extracted copy in the temp folder (reused while the archive doesn't change).</summary>
