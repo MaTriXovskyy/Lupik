@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Windows 10 API set: needed for the built-in OCR (Windows.Media.Ocr) -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <!-- precompiled native code on publish: faster startup / first preview -->
     <PublishReadyToRun>true</PublishReadyToRun>
     <Nullable>enable</Nullable>
@@ -16,7 +18,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>1.4.1</Version>
+    <Version>1.5.0</Version>
     <Product>Lupik</Product>
   </PropertyGroup>
 
@@ -43,6 +45,7 @@
     <PackageReference Include="bblanchon.PDFium.Win32" Version="156.0.8076" />
     <PackageReference Include="DiffPlex" Version="1.9.0" />
     <PackageReference Include="Magick.NET-Q8-x64" Version="14.17.2" />
+    <PackageReference Include="Markdig" Version="1.4.0" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
     <PackageReference Include="System.IO.Hashing" Version="10.0.12" />
     <PackageReference Include="Velopack" Version="1.2.161" />

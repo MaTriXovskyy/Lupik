@@ -153,6 +153,11 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
         area.TextView.CurrentLineBackground = new SolidColorBrush(light ? Color.FromArgb(0x0E, 0x00, 0x00, 0x00) : Color.FromArgb(0x40, 0x31, 0x32, 0x44));
     }
 
+    /// <summary>"Document" clicked on a Markdown file: show it rendered.</summary>
+    public event Action? RenderedRequested;
+
+    private void OnRenderedClicked(object sender, RoutedEventArgs e) => RenderedRequested?.Invoke();
+
     public async Task<bool> LoadFileAsync(string filePath)
     {
         ApplyEditorColors();
@@ -179,6 +184,7 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
 
             _currentFilePath = filePath;
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            RenderedButton.Visibility = MarkdownViewer.CanOpen(ext) ? Visibility.Visible : Visibility.Collapsed;
             SetHighlightingForExtension(ext);
 
             _search.Clear();

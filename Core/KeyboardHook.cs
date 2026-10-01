@@ -313,7 +313,8 @@ public class KeyboardHook : IDisposable
         {
             case 0x46 when (mods & Ctrl) != 0: return window.SearchableInPreview; // Ctrl+F: search
             case 0x72: return window.SearchableInPreview; // F3: next match
-            case 0x54: return mods == 0; // T: filmstrip
+            case 0x54: return mods == 0; // T: text in a picture (OCR)
+            case 0x70: return mods == 0; // F1: shortcuts card
             case 0x42: return mods == 0; // B: background behind pictures
             case 0x45: return mods == 0 && window.EditableInPreview; // E: edit mode
             case 0x71: return mods == 0; // F2: rename
@@ -322,7 +323,7 @@ public class KeyboardHook : IDisposable
                 return (mods & Ctrl) == 0;
             case 0x43: return (mods & Ctrl) == 0 || window.CopyInPreview; // C: compare; Ctrl+C only where the preview copies something
             case 0x41: return (mods & Ctrl) != 0 && window.CopyInPreview; // Ctrl+A (table)
-            case 0x53: case 0x50: return true; // Ctrl+S / Ctrl+P, S (compare mode)
+            case 0x53: case 0x50: return true; // Ctrl+S / Ctrl+P, S (filmstrip, compare mode)
             case 0x21: case 0x22: case 0x23: case 0x24: // PgUp, PgDn, End, Home: paging through a PDF
                 return (mods & Ctrl) == 0 && window.PdfInPreview;
             case >= 0x31 and <= 0x39: case >= 0x61 and <= 0x69: // 1–9 (0 is zoom, above): typing a page number in a PDF

@@ -145,6 +145,31 @@
     </Style>
 
     <!-- Icon button for a destructive action: turns red on hover -->
+    <!-- "?" in the footer hints: a key cap you can click (opens the shortcuts card) -->
+    <Style x:Key="HelpCapButton" TargetType="ButtonBase">
+        <Setter Property="Foreground" Value="{DynamicResource cB5AB9D}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="0,0,18,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ButtonBase">
+                    <Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource c3B3631}" BorderThickness="1,1,1,2" CornerRadius="4" Padding="6,0,6,1">
+                        <TextBlock Text="?" FontSize="10.5" FontWeight="SemiBold" Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c302B26}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource GoldHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource GoldHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="DangerIconButton" TargetType="ButtonBase" BasedOn="{StaticResource IconButton}">
         <Setter Property="Template">
             <Setter.Value>

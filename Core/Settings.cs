@@ -45,6 +45,9 @@ public class Settings
     /// <summary>Behind pictures: "theme", "checker", "black" or "white" (B).</summary>
     public string ImageBackground { get; set; } = "theme";
 
+    /// <summary>Markdown opens as a document (true) or as its source (false); M switches.</summary>
+    public bool MarkdownRendered { get; set; } = true;
+
     /// <summary>The preview remembers its size and place separately for each kind of file.</summary>
     public bool RememberBounds { get; set; } = true;
 

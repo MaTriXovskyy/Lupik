@@ -13,6 +13,7 @@ public partial class MainWindow
     private void WireImageExtras()
     {
         ImageViewerControl.FilmstripPicked += path => _ = ShowFile(path);
+        ImageViewerControl.TextCopied += message => ShowNotice(message, success: true);
         ImageViewerControl.FilmstripToggled += () =>
         {
             if (!_isFullScreen && ImageViewerControl.Visibility == Visibility.Visible)

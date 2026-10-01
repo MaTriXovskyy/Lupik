@@ -34,11 +34,25 @@ public partial class MainWindow
 
     private void UpdateEditable()
     {
-        EditableInPreview = CurrentEditable() != null && File.Exists(_currentFilePath) && !EditMode;
-        EditButton.Visibility = CurrentEditable() != null && !EditMode ? Visibility.Visible : Visibility.Collapsed;
+        // Markdown shown as a document is edited as its source (E switches to it first)
+        bool editable = CurrentEditable() != null || MarkdownViewerControl.Visibility == Visibility.Visible;
+        EditableInPreview = editable && File.Exists(_currentFilePath) && !EditMode;
+        EditButton.Visibility = editable && !EditMode ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void OnEditClicked(object sender, RoutedEventArgs e) => EnterEdit();
+    /// <summary>E on a Markdown document: show its source, then edit that.</summary>
+    private async Task EditMarkdownSourceAsync()
+    {
+        if (Settings.Current.MarkdownRendered) Settings.Update(s => s.MarkdownRendered = false);
+        await ShowFile(_currentFilePath);
+        if (CurrentEditable() != null) EnterEdit();
+    }
+
+    private void OnEditClicked(object sender, RoutedEventArgs e)
+    {
+        if (MarkdownViewerControl.Visibility == Visibility.Visible) _ = EditMarkdownSourceAsync();
+        else EnterEdit();
+    }
     private void OnEditSaveClicked(object sender, RoutedEventArgs e) => _ = SaveEditAsync();
     private void OnEditDoneClicked(object sender, RoutedEventArgs e) => ExitEdit();
 

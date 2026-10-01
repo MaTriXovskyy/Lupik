@@ -30,7 +30,7 @@ public partial class MainWindow
     /// <summary>The shown viewer, if it supports search.</summary>
     private Views.ISearchable? CurrentSearchable()
     {
-        foreach (UIElement viewer in new UIElement[] { CodeViewerControl, CsvViewerControl, DocxViewerControl, PdfViewerControl, DiffViewerControl })
+        foreach (UIElement viewer in new UIElement[] { CodeViewerControl, CsvViewerControl, DocxViewerControl, MarkdownViewerControl, PdfViewerControl, DiffViewerControl })
             if (viewer.Visibility == Visibility.Visible && viewer is Views.ISearchable s) return s;
         return null;
     }
@@ -57,7 +57,7 @@ public partial class MainWindow
         _caretBlink?.Stop(this);
         _searchCts?.Cancel();
         _searchDebounce?.Stop();
-        foreach (var viewer in new Views.ISearchable[] { CodeViewerControl, CsvViewerControl, DocxViewerControl, PdfViewerControl, DiffViewerControl })
+        foreach (var viewer in new Views.ISearchable[] { CodeViewerControl, CsvViewerControl, DocxViewerControl, MarkdownViewerControl, PdfViewerControl, DiffViewerControl })
             viewer.ClearSearch();
         _matchCount = 0;
         _matchIndex = -1;

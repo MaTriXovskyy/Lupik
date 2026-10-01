@@ -32,6 +32,7 @@ public partial class ImageViewer : UserControl
     {
         InitializeComponent();
         ViewportBorder.MouseLeftButtonDown += OnViewportDoubleClick;
+        WirePipette();
         ApplyBackground();
         // The checkerboard follows light/dark; the choice can also change in Settings
         Loaded += (_, _) => { Unwatch(); Core.Accent.Changed += OnLookChanged; Core.Settings.Changed += OnLookChanged; };
@@ -72,9 +73,6 @@ public partial class ImageViewer : UserControl
             "white" => Brushes.White,
             _ => Brushes.Transparent, // the window's own background
         };
-        BackgroundButton.ToolTip = Localization.Loc.T("image.backgroundTip", Localization.Loc.T("image.background." + mode));
-        if (mode == "theme") BackgroundButton.ClearValue(ForegroundProperty);
-        else BackgroundButton.SetResourceReference(ForegroundProperty, "Gold");
     }
 
     /// <summary>The classic transparency checkerboard, in greys that suit the theme.</summary>
@@ -94,7 +92,7 @@ public partial class ImageViewer : UserControl
         return brush;
     }
 
-    // --- Filmstrip (T) ---
+    // --- Filmstrip (S) ---
 
     public const double FilmstripHeight = 78;
 
@@ -169,12 +167,9 @@ public partial class ImageViewer : UserControl
     {
         bool show = Lupik.Core.Settings.Current.ShowFilmstrip && _filmstrip.Count > 1;
         Filmstrip.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-        FilmstripButton.IsChecked = Lupik.Core.Settings.Current.ShowFilmstrip;
-        FilmstripButton.Foreground = FilmstripButton.IsChecked == true ? (Brush)FindResource("Gold") : null;
-        if (FilmstripButton.Foreground == null) FilmstripButton.ClearValue(ForegroundProperty);
     }
 
-    /// <summary>T or the footer button: strip on/off (remembered).</summary>
+    /// <summary>S: strip on/off (remembered).</summary>
     public void ToggleFilmstrip()
     {
         Lupik.Core.Settings.Update(s => s.ShowFilmstrip = !s.ShowFilmstrip);
@@ -187,7 +182,10 @@ public partial class ImageViewer : UserControl
     /// <summary>The strip appeared or went away: the window may need to grow or shrink.</summary>
     public event Action? FilmstripToggled;
 
-    private void OnFilmstripClicked(object sender, RoutedEventArgs e) => ToggleFilmstrip();
+    /// <summary>The "?" in the footer: the window shows the shortcuts card above it.</summary>
+    public event Action? HelpRequested;
+
+    private void OnHelpClicked(object sender, RoutedEventArgs e) => HelpRequested?.Invoke();
 
     private void OnFilmstripItemLoaded(object sender, RoutedEventArgs e)
     {
@@ -217,6 +215,7 @@ public partial class ImageViewer : UserControl
     public async Task<bool> LoadImageAsync(string filePath)
     {
         int token = ++_loadToken;
+        if (IsReadingText) EndTextMode(); // another picture: its own text
         try
         {
             // The shown image stays cached too: reopening it (Space, Space) is instant instead of a fresh decode
@@ -449,6 +448,7 @@ public partial class ImageViewer : UserControl
     /// <summary>Drops the shown image and all preloaded ones (called when Lupik goes idle).</summary>
     public void Release()
     {
+        EndTextMode();
         _loadToken++;
         PreviewImage.Source = null;
         _cache.Clear();
@@ -736,6 +736,7 @@ public partial class ImageViewer : UserControl
 
     public void Rotate(int degrees)
     {
+        if (IsReadingText) EndTextMode(); // the words were found on the picture as it was turned before
         ImageRotation.Angle = ((int)ImageRotation.Angle + degrees + 360) % 360;
         ResetZoom();
         if (Rotation is 90 or 270) EnsureDetail();
@@ -793,6 +794,7 @@ public partial class ImageViewer : UserControl
     public void BeginCrop()
     {
         if (PreviewImage.Source == null) return;
+        if (IsReadingText) EndTextMode();
         ResetZoom();
         CropLayer.Visibility = Visibility.Visible;
         UpdateLayout();

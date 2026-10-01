@@ -12,5 +12,6 @@ including in closed or paid software, as long as the notices below travel with t
 | [AvalonEdit](https://github.com/icsharpcode/AvalonEdit) | the code and text viewer | MIT |
 | [SharpCompress](https://github.com/adamhathcock/sharpcompress) | reading and extracting archives | MIT |
 | [DiffPlex](https://github.com/mmanela/diffplex) | comparing two text files | Apache-2.0 |
+| [Markdig](https://github.com/xoofx/markdig) | reading Markdown | BSD-2-Clause |
 | [Velopack](https://github.com/velopack/velopack) | the installer and updates | MIT |
 | [Lucide](https://lucide.dev) | icons | ISC |

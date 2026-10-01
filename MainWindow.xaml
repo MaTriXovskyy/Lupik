@@ -70,6 +70,7 @@
                     <GradientStop Color="{DynamicResource c2F2B27Color}" Offset="1"/>
                 </LinearGradientBrush>
             </Border.BorderBrush>
+            <Grid>
             <DockPanel LastChildFill="True">
                 <!-- Close Button -->
                 <Button DockPanel.Dock="Right" Width="44" Height="38"
@@ -119,9 +120,6 @@
 
                 <!-- File tools, top right -->
                 <StackPanel x:Name="HeaderTools" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,6,0">
-                    <Button x:Name="PinButton" Style="{StaticResource IconButton}" Click="OnPinClicked">
-                        <views:LucideIcon x:Name="PinIcon" Kind="pin" Size="15"/>
-                    </Button>
                     <Button x:Name="EditButton" Style="{StaticResource IconButton}" ToolTip="{loc:T edit.tip}" Click="OnEditClicked" Visibility="Collapsed">
                         <views:LucideIcon Kind="pencil" Size="15"/>
                     </Button>
@@ -134,12 +132,6 @@
                     <StackPanel x:Name="FileActions" Orientation="Horizontal">
                         <Button x:Name="PrintActionButton" Style="{StaticResource IconButton}" ToolTip="{loc:T main.printTip}" Click="OnPrintClicked">
                             <views:LucideIcon Kind="printer" Size="15"/>
-                        </Button>
-                        <Button Style="{StaticResource IconButton}" ToolTip="{loc:T main.showInFolderTip}" Click="OnShowInFolderClicked">
-                            <views:LucideIcon Kind="folder-open" Size="15"/>
-                        </Button>
-                        <Button Style="{StaticResource IconButton}" ToolTip="{loc:T main.openDefaultTip}" Click="OnOpenDefaultClicked">
-                            <views:LucideIcon Kind="square-arrow-out-up-right" Size="15"/>
                         </Button>
                         <Button x:Name="OpenWithButton" Style="{StaticResource IconButton}" ToolTip="{loc:T main.openWithTip}" Click="OnOpenWithClicked">
                             <views:LucideIcon Kind="app-window" Size="15"/>
@@ -175,15 +167,15 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Short messages ("Saved", "Can't edit this file…") -->
-                <TextBlock x:Name="NoticeText" DockPanel.Dock="Right" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"
-                           Visibility="Collapsed" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
 
                 <!-- Back, file icon and name -->
                 <DockPanel HorizontalAlignment="Left" LastChildFill="True" Margin="14,0,0,0" VerticalAlignment="Center">
                     <Button x:Name="BackButton" DockPanel.Dock="Left" Style="{StaticResource IconButton}" Margin="-6,0,4,0"
                             ToolTip="{loc:T main.backTip}" Click="OnBackClicked" Visibility="Collapsed">
                         <views:LucideIcon Kind="chevron-left" Size="16"/>
+                    </Button>
+                    <Button x:Name="PinButton" Style="{StaticResource IconButton}" DockPanel.Dock="Left" Margin="-6,0,4,0" Click="OnPinClicked">
+                        <views:LucideIcon x:Name="PinIcon" Kind="pin" Size="15"/>
                     </Button>
                     <Image x:Name="TitleIconImage" DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,8,0"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -192,6 +184,13 @@
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
             </DockPanel>
+
+            <!-- Short messages ("Saved", "Can't edit this file…"), centred over the title bar -->
+            <Border x:Name="NoticeBox" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="12,0"
+                    Background="{DynamicResource c1B1917}" IsHitTestVisible="False" Visibility="{Binding Visibility, ElementName=NoticeText}">
+                <TextBlock x:Name="NoticeText" FontSize="12" Visibility="Collapsed" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+            </Border>
+            </Grid>
         </Border>
 
         <!-- Content Area Hosting Viewers -->
@@ -205,6 +204,7 @@
             <views:ArchiveViewer x:Name="ArchiveViewerControl" Visibility="Collapsed"/>
             <views:CsvViewer x:Name="CsvViewerControl" Visibility="Collapsed"/>
             <views:DocxViewer x:Name="DocxViewerControl" Visibility="Collapsed"/>
+            <views:MarkdownViewer x:Name="MarkdownViewerControl" Visibility="Collapsed"/>
             <views:FolderViewer x:Name="FolderViewerControl" Visibility="Collapsed"/>
             <views:PreviewHandlerHost x:Name="SystemPreviewControl" Visibility="Collapsed"/>
             <views:MediaViewer x:Name="MediaViewerControl" Visibility="Collapsed"/>
@@ -247,6 +247,7 @@
                                 <TextBlock Text="{loc:T welcome.previewClose}" Margin="6,0,0,0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,5,28,5">
+                                <Button x:Name="HelpButton" Style="{StaticResource HelpCapButton}" ToolTip="{loc:T help.tip}" Click="OnHelpClicked"/>
                                 <Border Style="{StaticResource Cap}"><TextBlock Text="←" Foreground="{DynamicResource GoldHover}"/></Border>
                                 <Border Style="{StaticResource Cap}"><TextBlock Text="→" Foreground="{DynamicResource GoldHover}"/></Border>
                                 <TextBlock Text="{loc:T welcome.nextFile}" Margin="6,0,0,0"/>

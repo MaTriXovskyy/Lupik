@@ -46,6 +46,45 @@
                 MouseLeftButtonDown="OnAnnotateMouseDown" MouseMove="OnAnnotateMouseMove" MouseLeftButtonUp="OnAnnotateMouseUp"
                 SizeChanged="OnAnnotationLayerSizeChanged"/>
 
+        <!-- Pipette: holding Ctrl over the picture shows the pixels under the cursor and their colour; Ctrl+click copies it -->
+        <Popup x:Name="PipettePopup" Placement="Relative" PlacementTarget="{Binding ElementName=ViewportBorder}" AllowsTransparency="True"
+               IsHitTestVisible="False" StaysOpen="True">
+            <Border Margin="6,6,14,14" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="10" Padding="6">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Opacity="0.5" Color="Black"/>
+                </Border.Effect>
+                <StackPanel>
+                    <Grid Width="110" Height="110">
+                        <Border CornerRadius="6" ClipToBounds="True">
+                            <Image x:Name="PipetteZoom" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                        </Border>
+                        <!-- The sampled pixel, in the middle of the 11 x 11 shown -->
+                        <Rectangle Width="12" Height="12" Stroke="White" StrokeThickness="1.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Rectangle Width="14" Height="14" Stroke="Black" StrokeThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <DockPanel Margin="2,6,2,0">
+                        <Border x:Name="PipetteSwatch" DockPanel.Dock="Left" Width="14" Height="14" CornerRadius="3" BorderBrush="{DynamicResource c4A433B}" BorderThickness="1" Margin="0,0,7,0"/>
+                        <TextBlock x:Name="PipetteHex" FontFamily="Cascadia Mono, Consolas" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource cECE6DC}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <TextBlock Text="{loc:T pipette.hint}" FontSize="10.5" Foreground="{DynamicResource TextMuted}" Margin="2,3,2,0"/>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- Text mode (O): the words found are outlined; drag over some to copy them, click one to copy it -->
+        <Canvas x:Name="TextLayer" Grid.Row="0" Background="Transparent" Visibility="Collapsed" ClipToBounds="True" Cursor="Cross"
+                MouseLeftButtonDown="OnTextMouseDown" MouseMove="OnTextMouseMove" MouseLeftButtonUp="OnTextMouseUp" MouseWheel="OnMouseWheel"
+                SizeChanged="OnTextLayerSizeChanged">
+            <Rectangle x:Name="TextSelection" Stroke="{DynamicResource Gold}" StrokeThickness="1.5" StrokeDashArray="4 3" RadiusX="3" RadiusY="3"
+                       Fill="{DynamicResource GoldTint}" Opacity="0.85" Visibility="Collapsed" IsHitTestVisible="False"/>
+            <Border x:Name="TextHint" Background="{DynamicResource cE61B1917}" BorderBrush="{DynamicResource c3B3631}" BorderThickness="1" CornerRadius="8" Padding="12,6" IsHitTestVisible="False">
+                <StackPanel Orientation="Horizontal">
+                    <views:LucideIcon x:Name="TextHintIcon" Kind="scan-text" Size="14" Margin="0,0,8,0" VerticalAlignment="Center" TextElement.Foreground="{DynamicResource Gold}"/>
+                    <TextBlock x:Name="TextHintText" Foreground="{DynamicResource cECE6DC}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Canvas>
+
         <!-- Crop mode: dimmed surroundings, gold frame with corner handles -->
         <Canvas x:Name="CropLayer" Grid.Row="0" Background="Transparent" Visibility="Collapsed" ClipToBounds="True" Cursor="Cross"
                 MouseLeftButtonDown="OnCropMouseDown" MouseMove="OnCropMouseMove" MouseLeftButtonUp="OnCropMouseUp" SizeChanged="OnCropLayerSizeChanged">
@@ -239,6 +278,7 @@
                         <Setter Property="VerticalAlignment" Value="Center"/>
                     </Style>
                 </StackPanel.Resources>
+                <Button x:Name="HelpButton" Style="{StaticResource HelpCapButton}" ToolTip="{loc:T help.tip}" Click="OnHelpClicked"/>
                 <Border Style="{StaticResource Cap}"><TextBlock Text="←" FontSize="10.5" Foreground="{DynamicResource cB5AB9D}"/></Border>
                 <Border Style="{StaticResource Cap}"><TextBlock Text="→" FontSize="10.5" Foreground="{DynamicResource cB5AB9D}"/></Border>
                 <TextBlock Text="{loc:T hint.prevNext}" FontSize="11" VerticalAlignment="Center" Margin="3,0,18,0"/>
@@ -260,25 +300,13 @@
                 </StackPanel>
 
                 <StackPanel x:Name="FooterRight" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" SizeChanged="OnFooterLayoutChanged">
-                    <Button x:Name="BackgroundButton" Style="{StaticResource IconButton}" Click="OnBackgroundClicked">
-                        <views:LucideIcon Kind="grid-2x2" Size="15"/>
-                    </Button>
-                    <ToggleButton x:Name="FilmstripButton" Style="{StaticResource IconButton}" ToolTip="{loc:T image.filmstripTip}" Click="OnFilmstripClicked">
-                        <views:LucideIcon Kind="gallery" Size="15"/>
-                    </ToggleButton>
-
-                    <Rectangle Width="1" Height="16" Fill="{DynamicResource c3B3631}" Margin="8,0"/>
-
-                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.out}" Click="OnZoomOutClicked">
+<Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.out}" Click="OnZoomOutClicked">
                         <views:LucideIcon Kind="zoom-out" Size="15"/>
                     </Button>
                     <TextBlock x:Name="ZoomText" Text="100%" Foreground="{DynamicResource Gold}" FontSize="12" FontWeight="Medium"
                                Width="44" TextAlignment="Center" VerticalAlignment="Center"/>
                     <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.in}" Click="OnZoomInClicked">
                         <views:LucideIcon Kind="zoom-in" Size="15"/>
-                    </Button>
-                    <Button Style="{StaticResource IconButton}" ToolTip="{loc:T zoom.fit}" Click="OnResetZoomClicked">
-                        <views:LucideIcon Kind="scan" Size="15"/>
                     </Button>
 
                     <Rectangle Width="1" Height="16" Fill="{DynamicResource c3B3631}" Margin="8,0"/>
@@ -295,6 +323,10 @@
                     <Button x:Name="CopyImageButton" Style="{StaticResource IconButton}" ToolTip="{loc:T image.copyTip}" Click="OnCopyImageClicked">
                         <views:LucideIcon x:Name="CopyImageIcon" Kind="clipboard-copy" Size="15"/>
                     </Button>
+                    <!-- Text in the picture (O), next to copying the picture -->
+                    <ToggleButton x:Name="TextButton" Style="{StaticResource IconButton}" Click="OnTextClicked" ToolTip="{loc:T image.textTip}">
+                        <views:LucideIcon Kind="scan-text" Size="15"/>
+                    </ToggleButton>
                 </StackPanel>
             </DockPanel>
             </Grid>

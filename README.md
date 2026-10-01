@@ -29,7 +29,7 @@ Lupik checks GitHub for new versions and asks before installing one. You can tur
 - **Audio and video**: MP4, MKV, MOV, WebM, AVI, WMV, MP3, FLAC, WAV, OGG, Opus... whatever codecs Windows has
 - **Folders**: a grid of what's inside
 
-Pictures have a filmstrip of the folder's images underneath (T).
+Pictures have a filmstrip of the folder's images underneath (S).
 
 **Edit mode (E)** is for quick fixes, not for replacing real editors:
 - text, code and config files: edit in place (the file keeps its encoding and line endings)
@@ -54,16 +54,20 @@ embedded Type 1 fonts included.
 | Key | |
 |---|---|
 | Space | open / close the preview |
+| F1 or ? in the footer | the shortcuts that work for the file on screen |
 | ← → | previous / next file |
-| Enter | open in the default app |
+| Enter | open with… (the apps Windows suggests for the file) |
 | Delete | move to the Recycle Bin (asks first) |
 | F | full screen |
 | + − 0 | zoom in, zoom out, fit |
 | R / Shift+R | rotate |
 | K | crop (Shift keeps proportions, Alt resizes from the center) |
 | I | image details |
-| T | filmstrip of the folder's images |
+| S | filmstrip of the folder's images |
 | B | background behind pictures: theme, checkerboard, black, white |
+| T | text in a picture: drag over some to copy it, click one to copy it, Enter copies all |
+| Ctrl (held over a picture) | pipette: a loupe with the colour under the cursor; Ctrl+click copies it |
+| M | Markdown as a document or as its source |
 | P | pin: the file moves to a window of its own that stays on top and no longer follows Explorer (in that window P toggles "always on top") |
 | C | compare the two selected images / text files, or back to one |
 | Ctrl+F, F3 | search (Enter / Shift+Enter: next / previous, Esc closes) |
@@ -86,7 +90,7 @@ You need the .NET 10 SDK.
 dotnet build -c Release
 ```
 
-The exe ends up in `bin/Release/net10.0-windows/Lupik.exe`. Run it and it sits in the tray.
+The exe ends up in `bin/Release/net10.0-windows10.0.19041.0/Lupik.exe`. Run it and it sits in the tray.
 Right-click the tray icon for Settings: language (Lupik speaks Polish, English, German, Spanish, French, Italian,
 Russian and Ukrainian, and follows Windows by default), the preview key, start with Windows, closing the preview
 when you click another app, window size (remembered separately for each kind of file once you move or resize

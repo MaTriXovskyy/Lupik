@@ -114,11 +114,12 @@ public partial class MainWindow
     }
 
     private void OnShowInFolderClicked(object sender, RoutedEventArgs e) => RunShell("explorer.exe", $"/select,\"{_currentFilePath}\"");
-    private void OnOpenDefaultClicked(object sender, RoutedEventArgs e) => OpenInDefaultApp();
-    // Windows' own "Open with…" picker, so any installed app (Photoshop, etc.) can be chosen
     // --- Open with: Lupik's menu of the apps Windows suggests, plus Windows' own "choose another app"
 
-    private void OnOpenWithClicked(object sender, RoutedEventArgs e)
+    private void OnOpenWithClicked(object sender, RoutedEventArgs e) => ToggleOpenWith();
+
+    /// <summary>The Open with menu (also Enter), under the header button or under <paramref name="anchor"/>.</summary>
+    private void ToggleOpenWith(FrameworkElement? anchor = null)
     {
         if (OpenWithMenu.IsOpen) { CloseOpenWithMenu(); return; }
         if (!File.Exists(_currentFilePath)) return;
@@ -155,6 +156,8 @@ public partial class MainWindow
             none.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextMuted");
             OpenWithList.Children.Add(none);
         }
+        OpenWithMenu.PlacementTarget = anchor ?? OpenWithButton;
+        OpenWithMenu.HorizontalOffset = anchor == null ? -200 : (anchor.ActualWidth - 284) / 2; // 284: the menu with its margins
         OpenWithMenu.IsOpen = true;
     }
 
@@ -165,20 +168,6 @@ public partial class MainWindow
     }
 
     private void CloseOpenWithMenu() => OpenWithMenu.IsOpen = false;
-
-    private void OpenInDefaultApp()
-    {
-        if (!PathExists(_currentFilePath)) return;
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_currentFilePath) { UseShellExecute = true });
-            HideWindow();
-        }
-        catch (Exception ex)
-        {
-            App.Log($"[MainWindow] Open in default app failed: {ex.Message}");
-        }
-    }
 
     private void RunShell(string exe, string args)
     {

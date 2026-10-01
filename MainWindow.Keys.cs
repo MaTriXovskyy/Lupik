@@ -63,6 +63,9 @@ public partial class MainWindow
     private bool HandleKey(Key key, ModifierKeys mods)
     {
         bool handled = false;
+        // The shortcuts card: F1 toggles it, any other key closes it first (Esc does nothing else)
+        if (key == Key.F1 && mods == 0) { ToggleHelp(); return true; }
+        if (HelpOpen) { CloseHelp(); if (key == Key.Escape) return true; }
         bool imageShown = ImageViewerControl.Visibility == Visibility.Visible;
         bool csvShown = CsvViewerControl.Visibility == Visibility.Visible;
         bool mediaShown = MediaViewerControl.Visibility == Visibility.Visible;
@@ -71,12 +74,30 @@ public partial class MainWindow
         if (PdfViewerControl.Visibility == Visibility.Visible && mods == ModifierKeys.None && PdfViewerControl.HandlePageEntryKey(key))
             return true;
 
+        if (imageShown && ImageViewerControl.IsReadingText)
+        {
+            // Text mode: Enter copies everything, Esc / T leave; the rest (arrows, zoom) works as usual
+            if (key is Key.Enter or Key.Return || (key == Key.A && mods == ModifierKeys.Control)) { ImageViewerControl.CopyAllText(); return true; }
+            if ((key == Key.Escape || key == Key.T) && mods == 0) { ImageViewerControl.EndTextMode(); return true; }
+        }
+
         if (imageShown && ImageViewerControl.IsCropping)
         {
             // Crop mode owns the keyboard: Enter saves the crop, Esc leaves; nothing else (no file switching)
             if (key is Key.Enter or Key.Return) SaveCrop();
             else if (key == Key.Escape) ImageViewerControl.CancelCrop();
             else ImageViewerControl.CropModifiersChanged(); // Shift / Alt pressed mid-drag
+            return true;
+        }
+
+        if (key == Key.E && mods == 0 && MarkdownViewerControl.Visibility == Visibility.Visible)
+        {
+            _ = EditMarkdownSourceAsync();
+            return true;
+        }
+        if (key == Key.M && mods == 0 && IsMarkdownShown)
+        {
+            SetMarkdownRendered(MarkdownViewerControl.Visibility != Visibility.Visible);
             return true;
         }
 
@@ -150,9 +171,14 @@ public partial class MainWindow
             ImageViewerControl.ZoomBy(1 / 1.25);
             handled = true;
         }
-        else if (imageShown && key == Key.T && mods == 0)
+        else if (imageShown && key == Key.S && mods == 0)
         {
             ImageViewerControl.ToggleFilmstrip();
+            handled = true;
+        }
+        else if (imageShown && key == Key.T && mods == 0)
+        {
+            ImageViewerControl.ToggleTextMode();
             handled = true;
         }
         else if (imageShown && key == Key.B && mods == 0)
@@ -236,7 +262,7 @@ public partial class MainWindow
         }
         else if (key == Key.Enter && mods == 0)
         {
-            OpenInDefaultApp();
+            ToggleOpenWith();
             handled = true;
         }
         else if (key == Key.Space || key == Key.Escape)
@@ -256,6 +282,11 @@ public partial class MainWindow
                 case Key.Home: PdfViewerControl.FirstPage(); break;
                 case Key.End: PdfViewerControl.LastPage(); break;
             }
+            handled = true;
+        }
+        else if ((key == Key.Up || key == Key.Down) && MarkdownViewerControl.Visibility == Visibility.Visible)
+        {
+            MarkdownViewerControl.ScrollBy(key == Key.Up ? -60 : 60);
             handled = true;
         }
         else if ((key == Key.Up || key == Key.Down) && CodeViewerControl.Visibility == Visibility.Visible)

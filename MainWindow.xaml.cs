@@ -46,12 +46,27 @@ public partial class MainWindow : Window
         Loc.Instance.LanguageChanged += UpdateWelcomeText;
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
         WireImageExtras();
+        WireHelp();
+        GenericViewerControl.OpenWithRequested += anchor => ToggleOpenWith(anchor);
         PdfViewerControl.Notice += message => ShowNotice(message);
+        MarkdownViewerControl.CodeRequested += () => SetMarkdownRendered(false);
+        CodeViewerControl.RenderedRequested += () => SetMarkdownRendered(true);
         WatchAppearance();
         PreviewTextInput += OnWindowTextInput;
         UpdatePinButton();
         if (_pinned) Closed += (_, _) => ReleasePinned();
     }
+
+    /// <summary>Markdown as a document or as its source (M, or the button in either view's toolbar); remembered.</summary>
+    private void SetMarkdownRendered(bool rendered)
+    {
+        if (Settings.Current.MarkdownRendered != rendered) Settings.Update(s => s.MarkdownRendered = rendered);
+        if (PathExists(_currentFilePath)) _ = ShowFile(_currentFilePath);
+    }
+
+    private bool IsMarkdownShown =>
+        MarkdownViewerControl.Visibility == Visibility.Visible ||
+        (CodeViewerControl.Visibility == Visibility.Visible && Views.MarkdownViewer.CanOpen(Path.GetExtension(_currentFilePath).ToLowerInvariant()));
 
     /// <summary>A pinned window closed: let go of its file and of the app-wide events.</summary>
     private void ReleasePinned()
@@ -65,6 +80,7 @@ public partial class MainWindow : Window
         FolderViewerControl.Release();
         CsvViewerControl.Release();
         DocxViewerControl.Release();
+        MarkdownViewerControl.Release();
         ArchiveViewerControl.Release();
     }
 
@@ -206,6 +222,14 @@ public partial class MainWindow : Window
                 ShowOnlyViewer(ArchiveViewerControl);
                 SetBounds(ComputeDefaultBounds(ext));
             }
+            else if (Views.MarkdownViewer.CanOpen(ext) && Settings.Current.MarkdownRendered && await MarkdownViewerControl.LoadAsync(filePath))
+            {
+                // Markdown as a document (M or "Code" shows the source)
+                if (token != _showToken) return;
+                ApplyFileHeader(filePath);
+                ShowOnlyViewer(MarkdownViewerControl);
+                SetBounds(ComputeDefaultBounds(ext));
+            }
             else if (Array.IndexOf(CodeExtensions, ext) >= 0)
             {
                 bool loaded = await CodeViewerControl.LoadFileAsync(filePath);
@@ -323,7 +347,7 @@ public partial class MainWindow : Window
     /// <summary>Switches viewers without ever collapsing the one that stays, so nothing blinks.</summary>
     private void ShowOnlyViewer(UIElement target)
     {
-        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, DiffViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, DocxViewerControl, FolderViewerControl, SystemPreviewControl, MediaViewerControl })
+        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, DiffViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, DocxViewerControl, MarkdownViewerControl, FolderViewerControl, SystemPreviewControl, MediaViewerControl })
         {
             var visibility = viewer == target ? Visibility.Visible : Visibility.Collapsed;
             // Release the system previewer / player (they hold the file open) as soon as they're not shown
@@ -387,6 +411,7 @@ public partial class MainWindow : Window
         FolderViewerControl.Release();
         CsvViewerControl.Release();
         DocxViewerControl.Release();
+        MarkdownViewerControl.Release();
         ArchiveViewerControl.Release();
         CompareViewerControl.Release();
         DiffViewerControl.Release();
@@ -414,6 +439,7 @@ public partial class MainWindow : Window
         App.Log("[MainWindow] HideWindow called");
         if (EditMode && !ExitEdit()) return; // unsaved changes: the user chose to stay
         CloseOpenWithMenu();
+        CloseHelp();
         if (_pinned) { Close(); return; } // a pinned window is done once closed
 
         // Nothing to hand back: the preview never took the focus from Explorer
