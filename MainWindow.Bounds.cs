@@ -132,11 +132,12 @@ public partial class MainWindow
     /// Moves and resizes the window in a single native call. Setting Left/Top/Width/Height one by one
     /// makes the window visibly jump through intermediate states.
     /// </summary>
-    private void SetBounds(Rect bounds)
+    /// <param name="exact">Exactly these bounds (full screen), not the size remembered for this kind of file.</param>
+    private void SetBounds(Rect bounds, bool exact = false)
     {
         if (_isFullScreen) return; // full screen keeps covering the monitor while switching files
-        if (_pinned && IsVisible) return; // a pinned window stays where it was put
-        if (RememberedBounds() is Rect remembered) bounds = remembered;
+        if (_pinned && IsVisible && !exact) return; // a pinned window stays where it was put (full screen aside)
+        if (!exact && RememberedBounds() is Rect remembered) bounds = remembered;
 
         if (Math.Abs(Left - bounds.Left) < 0.5 && Math.Abs(Top - bounds.Top) < 0.5 &&
             Math.Abs(Width - bounds.Width) < 0.5 && Math.Abs(Height - bounds.Height) < 0.5)

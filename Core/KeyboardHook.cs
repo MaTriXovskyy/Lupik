@@ -116,6 +116,10 @@ public class KeyboardHook : IDisposable
         {
             var kb = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
 
+            // A key Lupik handed back to the window it came from (see ReplayToSystem): not ours
+            if (kb.dwExtraInfo == ReplayMarker)
+                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+
             // Our own dialogs (e.g. "Save As") get Space/Esc untouched
             if (IsOwnDialogInForeground())
                 return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
@@ -196,6 +200,10 @@ public class KeyboardHook : IDisposable
         else if (nCode >= 0 && (wParam == (IntPtr)NativeMethods.WM_KEYUP || wParam == (IntPtr)NativeMethods.WM_SYSKEYUP))
         {
             var kb = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+
+            // A key Lupik handed back to the window it came from (see ReplayToSystem): not ours
+            if (kb.dwExtraInfo == ReplayMarker)
+                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
             RouteToPreview(kb.vkCode, keyUp: true); // Shift / Alt released: the crop frame reacts; never swallowed
         }
 
@@ -209,6 +217,22 @@ public class KeyboardHook : IDisposable
     /// while it's open and its source window (or Lupik) is in front, and handed to it asynchronously.
     /// Other keys, and every key in other apps, pass through untouched.
     /// </summary>
+    private static readonly UIntPtr ReplayMarker = (UIntPtr)0x4C55504BU; // "LUPK"
+
+    [DllImport("user32.dll")] private static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extraInfo);
+
+    /// <summary>
+    /// Presses a key again for the foreground window (Explorer), past the hook: for a key Lupik took that turned out
+    /// to be meant for Explorer, like Delete on files picked there after the preview opened.
+    /// </summary>
+    public static void ReplayToSystem(int vk)
+    {
+        const uint KEYEVENTF_KEYUP = 0x2, KEYEVENTF_EXTENDEDKEY = 0x1;
+        uint ext = vk is 0x2E or 0x2D or 0x24 or 0x23 or 0x21 or 0x22 or 0x25 or 0x26 or 0x27 or 0x28 ? KEYEVENTF_EXTENDEDKEY : 0;
+        keybd_event((byte)vk, 0, ext, ReplayMarker);
+        keybd_event((byte)vk, 0, ext | KEYEVENTF_KEYUP, ReplayMarker);
+    }
+
     private static bool RouteToPreview(uint vk, bool keyUp)
     {
         var window = MainWindowRef;

@@ -106,14 +106,28 @@ public partial class MainWindow
         if (!IsVisible) Show();
         // WPF skips Topmost when the property didn't change, and a window shown without activation keeps its old
         // place in the z-order (seen: behind Explorer). Put it on top explicitly, every time, without activating.
-        SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-        App.Log($"[MainWindow] BringToFront: shown in {sw.ElapsedMilliseconds} ms, source={DescribeWindow(SourceWindow)}");
+        if (!SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW))
+            App.Log($"[MainWindow] BringToFront: SetWindowPos(TOPMOST) failed, error {Marshal.GetLastWin32Error()}");
+        App.Log($"[MainWindow] BringToFront: shown in {sw.ElapsedMilliseconds} ms, source={DescribeWindow(SourceWindow)}, topmost bit={IsTopmostBitSet()}");
 
-        // First frame on screen: log how long it took and whether anything covers the preview
+        // First frame on screen: log how long it took and whether anything covers the preview. Seen once: the
+        // window stuck under Explorer for a whole session despite the call above, until a foreground change
+        // (Win+Shift+S) re-toggled Topmost. If something covers it, drop and re-take the topmost state the same way.
         Dispatcher.InvokeAsync(() =>
-            App.Log($"[MainWindow] BringToFront: first frame after {sw.ElapsedMilliseconds} ms, covered by: {WindowsAbove()}"),
-            System.Windows.Threading.DispatcherPriority.ContextIdle);
+        {
+            string above = WindowsAbove();
+            App.Log($"[MainWindow] BringToFront: first frame after {sw.ElapsedMilliseconds} ms, covered by: {above}");
+            if (above == "nothing" || !IsVisible) return;
+            SetWindowPos(Hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            Topmost = false; Topmost = true; // and WPF's own idea of it
+            App.Log($"[MainWindow] BringToFront: re-took topmost, now covered by: {WindowsAbove()}, topmost bit={IsTopmostBitSet()}");
+        }, System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
+
+    private static readonly IntPtr HWND_NOTOPMOST = new(-2);
+
+    private bool IsTopmostBitSet() => (GetWindowLong(Hwnd, -20) & 0x8) != 0; // WS_EX_TOPMOST
 
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_SHOWWINDOW = 0x0040;

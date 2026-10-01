@@ -107,7 +107,8 @@ public partial class MainWindow
         }
         else if (key == Key.Delete && mods == 0 && !string.IsNullOrEmpty(_currentFilePath))
         {
-            DeleteCurrent();
+            if (ExplorerSelectionMoved()) KeyboardHook.ReplayToSystem(0x2E); // meant for the files picked in Explorer
+            else DeleteCurrent();
             handled = true;
         }
         else if (mediaShown && mods == 0 && key is Key.K or Key.J or Key.L or Key.M)
@@ -186,6 +187,16 @@ public partial class MainWindow
         else if (imageShown && mods == 0 && key is Key.D0 or Key.NumPad0)
         {
             ImageViewerControl.ResetZoom();
+            handled = true;
+        }
+        else if (ArchiveViewerControl.Visibility == Visibility.Visible && mods == ModifierKeys.Control && key is Key.A or Key.C)
+        {
+            if (key == Key.A) ArchiveViewerControl.SelectAll(); else ArchiveViewerControl.CopySelection();
+            handled = true;
+        }
+        else if (ArchiveViewerControl.Visibility == Visibility.Visible && key == Key.Escape && ArchiveViewerControl.HasSelection)
+        {
+            ArchiveViewerControl.ClearSelection(); // first Esc clears the selection, the next one closes
             handled = true;
         }
         else if (csvShown && key == Key.C && mods == ModifierKeys.Control)
@@ -298,14 +309,19 @@ public partial class MainWindow
                                                   (int)((Top + Height / 2) * VisualTreeHelper.GetDpi(this).DpiScaleY));
             var screen = System.Windows.Forms.Screen.FromPoint(center).WorkingArea;
             var dpi = VisualTreeHelper.GetDpi(this);
-            SetBounds(new Rect(screen.Left / dpi.DpiScaleX, screen.Top / dpi.DpiScaleY, screen.Width / dpi.DpiScaleX, screen.Height / dpi.DpiScaleY));
+            _boundsBeforeFullScreen = new Rect(Left, Top, Width, Height);
+            SetBounds(new Rect(screen.Left / dpi.DpiScaleX, screen.Top / dpi.DpiScaleY, screen.Width / dpi.DpiScaleX, screen.Height / dpi.DpiScaleY), exact: true);
             _isFullScreen = true; // after SetBounds: while full screen, file switches don't resize the window
             return;
         }
 
         _isFullScreen = false;
-        RestoreNormalBounds();
+        // A pinned window goes back to exactly where it was; the preview to the size the file normally gets
+        if (_pinned) SetBounds(_boundsBeforeFullScreen, exact: true);
+        else RestoreNormalBounds();
     }
+
+    private Rect _boundsBeforeFullScreen;
 
     /// <summary>Back from full screen: the size the file would normally get.</summary>
     private void RestoreNormalBounds()

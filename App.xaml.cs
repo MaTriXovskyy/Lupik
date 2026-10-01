@@ -132,23 +132,9 @@ public partial class App : Application
             // Launched by autostart with --tray: stay silent in the tray
             bool startInTray = e.Args.Any(a => string.Equals(a, "--tray", StringComparison.OrdinalIgnoreCase));
 
-            if (!startInTray)
-            {
-                _trayService.ShowBalloonNotification(
-                    Loc.T("tray.readyTitle"),
-                    Loc.T("tray.readyBody", Loc.T("key.preview")));
-            }
-
+            // Starts quietly in the tray: no notification, no welcome window (the preview key, or a double-click
+            // on the tray icon, opens it)
             Log($"Lupik initialized successfully and running (startInTray={startInTray}).");
-
-            // 6. Immediately toggle/show window so user sees it right away (unless autostarted)
-            if (!startInTray)
-            {
-                Dispatcher.InvokeAsync(() =>
-                {
-                    _mainWindow.ToggleWindow();
-                });
-            }
         }
         catch (Exception ex)
         {
@@ -164,7 +150,7 @@ public partial class App : Application
         Dispatcher.InvokeAsync(() =>
         {
             Log("[App] Calling _mainWindow.ToggleWindow()...");
-            _mainWindow?.ToggleWindow();
+            _mainWindow?.ToggleWindow(fromPreviewKey: true);
         });
     }
 

@@ -66,18 +66,6 @@ public class TrayService : IDisposable
         old?.Dispose();
     }
 
-    public void ShowBalloonNotification(string title, string text)
-    {
-        try
-        {
-            _notifyIcon?.ShowBalloonTip(3000, title, text, ToolTipIcon.Info);
-        }
-        catch (Exception ex)
-        {
-            App.Log($"[TrayService] ShowBalloonNotification error: {ex.Message}");
-        }
-    }
-
     /// <summary>The app icon (same as the exe and taskbar), at the tray's small-icon size; drawn in the accent when it isn't the gold.</summary>
     private static Icon LoadAppIcon()
     {

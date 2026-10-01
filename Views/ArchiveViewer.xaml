@@ -17,6 +17,20 @@
             <DockPanel LastChildFill="True">
                 <!-- Extract: button, then progress, then result -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Shown while something is selected -->
+                    <StackPanel x:Name="SelectionPanel" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <TextBlock x:Name="SelectionText" Foreground="{DynamicResource GoldHover}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <Button Style="{StaticResource PrimaryButton}" Padding="12,5" FontSize="12" Click="OnExtractSelectedClicked" ToolTip="{loc:T archive.extractSelectedTip}">
+                            <StackPanel Orientation="Horizontal">
+                                <views:LucideIcon Kind="package-open" Size="13" Margin="0,0,7,0"/>
+                                <TextBlock Text="{loc:T archive.extractSelected}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource IconButton}" Margin="4,0,0,0" Click="OnClearSelectionClicked" ToolTip="{loc:T archive.clearSelectionTip}">
+                            <views:LucideIcon Kind="x" Size="14"/>
+                        </Button>
+                    </StackPanel>
+
                     <Button x:Name="ExtractButton" Style="{StaticResource PillButton}" Click="OnExtractClicked"
                             ToolTip="{loc:T archive.extractTip}">
                         <StackPanel Orientation="Horizontal">
@@ -74,6 +88,7 @@
         <!-- Entries (virtualized: archives can hold thousands of files) -->
         <ListBox Grid.Row="2" x:Name="EntriesList" Background="Transparent" BorderThickness="0" Padding="6,0,6,8"
                  PreviewMouseLeftButtonDown="OnRowMouseDown" PreviewMouseMove="OnRowMouseMove" PreviewMouseLeftButtonUp="OnRowMouseUp"
+                 PreviewMouseRightButtonDown="OnRowRightDown" SelectionMode="Extended" SelectionChanged="OnSelectionChanged"
                  Focusable="False" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemContainerStyle>
@@ -88,6 +103,9 @@
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c1F1C1A}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource GoldTint}"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -128,7 +146,36 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <!-- How to get single files out -->
+        <!-- Holding the right button on a file: a small preview next to the cursor -->
+        <Popup x:Name="PeekPopup" Placement="Mouse" HorizontalOffset="18" VerticalOffset="12" AllowsTransparency="True"
+               StaysOpen="True" IsHitTestVisible="False" PopupAnimation="Fade">
+            <Border Margin="8,4,16,18" MaxWidth="440" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}"
+                    BorderThickness="1" CornerRadius="12" Padding="10">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="22" ShadowDepth="6" Direction="270" Opacity="0.5" Color="Black"/>
+                </Border.Effect>
+                <StackPanel>
+                    <DockPanel Margin="2,0,2,8">
+                        <Image x:Name="PeekIcon" Width="16" Height="16" Margin="0,0,8,0" DockPanel.Dock="Left"/>
+                        <TextBlock x:Name="PeekSize" DockPanel.Dock="Right" FontSize="11.5" Foreground="{DynamicResource TextMuted}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="PeekName" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <Grid MinWidth="220" MinHeight="90">
+                        <Border Background="{DynamicResource c131211}" CornerRadius="8"/>
+                        <Image x:Name="PeekImage" MaxWidth="420" MaxHeight="300" Margin="4" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock x:Name="PeekText" MaxWidth="420" MaxHeight="300" Margin="10,8" FontFamily="Cascadia Mono, Consolas" FontSize="11"
+                                   Foreground="{DynamicResource cECE6DC}" TextTrimming="CharacterEllipsis"/>
+                        <views:LucideIcon x:Name="PeekLoading" Kind="loader-circle" Size="22" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextElement.Foreground="{DynamicResource Gold}"/>
+                    </Grid>
+                    <!-- Footer: the picture's real size -->
+                    <TextBlock x:Name="PeekFooter" HorizontalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Margin="0,8,0,0"
+                               Foreground="{DynamicResource cB5AB9D}" Visibility="Collapsed"/>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- How to get files out -->
         <TextBlock Grid.Row="3" Text="{loc:T archive.itemHint}" Foreground="{DynamicResource c6B6259}" FontSize="11.5" HorizontalAlignment="Center"
                    Margin="0,4,0,8" TextTrimming="CharacterEllipsis"/>
     </Grid>

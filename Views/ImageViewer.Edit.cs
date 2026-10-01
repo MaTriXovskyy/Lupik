@@ -91,7 +91,7 @@ public partial class ImageViewer : IEditable
                 case Key.B: ToolBlur.IsChecked = true; return true;
                 case Key.A: ToolArrow.IsChecked = true; return true;
                 case Key.R when _marks.Count == 0: Rotate(90); Changed(); return true;
-                case Key.F: ToolFrame.IsChecked = true; return true;
+                case Key.O: ToolFrame.IsChecked = true; return true; // (F is full screen)
                 case Key.T: ToolText.IsChecked = true; return true;
             }
         }

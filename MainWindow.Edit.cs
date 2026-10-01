@@ -149,11 +149,21 @@ public partial class MainWindow
     private bool HandleEditModeKey(Key key, ModifierKeys mods)
     {
         if (_editing == null) return false;
+        // Full screen works while editing too, just not while typing (then F is a letter)
+        if (key == Key.F && mods == 0 && !IsTypingInEditor()) { ToggleFullScreen(); return true; }
         if (_editing.HandleEditKey(key, mods)) return true;
         if (key == Key.S && mods == ModifierKeys.Control) { _ = SaveEditAsync(); return true; }
         if (key == Key.Escape && mods == 0) { ExitEdit(); return true; }
         return false;
     }
+
+    /// <summary>
+    /// Would F type a letter? In a text field or the code editor, and in a table with a selected cell (typing there
+    /// starts editing the cell, like in Excel).
+    /// </summary>
+    private bool IsTypingInEditor() =>
+        Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase or ICSharpCode.AvalonEdit.Editing.TextArea
+        || (CsvViewerControl.Visibility == Visibility.Visible && CsvViewerControl.HasSelection);
 
     // ---------- Focus ----------
 

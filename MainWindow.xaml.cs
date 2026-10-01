@@ -42,7 +42,7 @@ public partial class MainWindow : Window
         InitNativeHandle();
         IsVisibleChanged += (_, _) => IsShown = IsVisible;
         FolderViewerControl.OpenRequested += OpenFromFolder;
-        ArchiveViewerControl.PeekRequested += PeekFromArchive;
+        ArchiveViewerControl.Copied += n => ShowNotice(Loc.T("archive.copied", n), success: true);
         Loc.Instance.LanguageChanged += UpdateWelcomeText;
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
         WireImageExtras();
@@ -332,7 +332,7 @@ public partial class MainWindow : Window
             if (viewer.Visibility != visibility) viewer.Visibility = visibility;
         }
         UpdateFooter();
-        CopyInPreview = target == ImageViewerControl || target == CsvViewerControl;
+        CopyInPreview = target == ImageViewerControl || target == CsvViewerControl || target == ArchiveViewerControl;
         PdfInPreview = target == PdfViewerControl;
         UpdateSearchable();
         UpdateEditable();
@@ -456,6 +456,7 @@ public partial class MainWindow : Window
         // So Space with the same Explorer selection as before means "close", not "go back to that file".
         bool selectionChanged = !string.Equals(selected, _explorerSelection, StringComparison.OrdinalIgnoreCase);
         _explorerSelection = selected;
+        _explorerSelectionCount = ExplorerService.LastSelection.Count;
 
         if (selectionChanged && !string.IsNullOrEmpty(selected) && PathExists(selected) && !samePairShown &&
             (ComparePair() != null || !string.Equals(selected, _currentFilePath, StringComparison.OrdinalIgnoreCase)))
@@ -470,8 +471,29 @@ public partial class MainWindow : Window
 
     /// <summary>What Explorer had selected when the preview last looked (to tell "Space again" from "picked another file").</summary>
     private string? _explorerSelection;
+    private int _explorerSelectionCount;
 
-    public void ToggleWindow()
+    /// <summary>
+    /// Since the preview opened, did the user pick other files in its Explorer window (clicked there, selected
+    /// something else)? Then keys like Delete are for those files, not for the previewed one.
+    /// </summary>
+    private bool ExplorerSelectionMoved()
+    {
+        if (_pinned || SourceWindow == IntPtr.Zero) return false;
+        IntPtr root = GetAncestor(NativeMethods.GetForegroundWindow(), GA_ROOT);
+        if (root != SourceWindow) return false; // Lupik itself in front: the key is for the preview
+        string? selected = ExplorerService.GetSelectedFilePath();
+        int count = ExplorerService.LastSelection.Count;
+        bool moved = !string.Equals(selected, _explorerSelection, StringComparison.OrdinalIgnoreCase) || count != _explorerSelectionCount;
+        if (moved) App.Log($"[MainWindow] Explorer selection changed ('{selected}', {count} items): the key goes to Explorer");
+        return moved;
+    }
+
+    /// <param name="fromPreviewKey">
+    /// The preview key in Explorer: with nothing selected nothing happens (the welcome screen is for opening Lupik
+    /// on purpose, from the tray or the Start menu).
+    /// </param>
+    public void ToggleWindow(bool fromPreviewKey = false)
     {
         App.Log($"[MainWindow] ToggleWindow called. Current IsVisible: {IsVisible}");
         if (IsVisible)
@@ -485,9 +507,14 @@ public partial class MainWindow : Window
         ResetFolderHistory(); // opened from Explorer, not from a folder preview
             App.Log($"[MainWindow] ExplorerService returned: '{selected}'");
             _explorerSelection = selected;
+            _explorerSelectionCount = ExplorerService.LastSelection.Count;
             if (!string.IsNullOrEmpty(selected) && PathExists(selected))
             {
                 ShowSelection(selected);
+            }
+            else if (fromPreviewKey)
+            {
+                App.Log("[MainWindow] Preview key with nothing selected: staying hidden");
             }
             else
             {

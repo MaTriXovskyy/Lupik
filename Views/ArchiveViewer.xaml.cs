@@ -264,30 +264,89 @@ public partial class ArchiveViewer : UserControl
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{_extractResult}\"") { UseShellExecute = true });
     }
 
-    // ---------- Single entries: extract one, drag out, hold to peek ----------
-
-    /// <summary>A file (or folder) from the archive, extracted to a temp folder, to show while the mouse button is held.</summary>
-    public event Action<string>? PeekRequested;
+    // ---------- Entries: select, open, extract, drag out, copy, peek ----------
+    // Like Explorer / WinRAR: click selects (Ctrl / Shift add to it), double-click opens the file in its app,
+    // dragging takes the selection out, holding the right button shows a small preview next to the cursor.
 
     private static readonly string TempRoot = Path.Combine(Path.GetTempPath(), "Lupik", "archive");
 
-    /// <summary>Leftovers from earlier runs (peeks and drags).</summary>
+    /// <summary>Leftovers from earlier runs (opened, copied and dragged files).</summary>
     public static void CleanTemp()
     {
         try { if (Directory.Exists(TempRoot)) Directory.Delete(TempRoot, true); }
         catch { /* a file may still be open somewhere: next time */ }
     }
 
+    /// <summary>Something is selected (Esc clears it before closing the preview).</summary>
+    public bool HasSelection => EntriesList.SelectedItems.Count > 0;
+
+    public void SelectAll() => EntriesList.SelectAll();
+
+    public void ClearSelection() => EntriesList.UnselectAll();
+
+    private void OnClearSelectionClicked(object sender, RoutedEventArgs e) => ClearSelection();
+
+    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        int files = 0, folders = 0;
+        foreach (ArchiveEntryRow row in EntriesList.SelectedItems)
+            if (row.IsFolder) folders++; else files++;
+        SelectionPanel.Visibility = files + folders > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ExtractButton.Visibility = files + folders > 0 || _extractCts != null || ExtractDonePanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed : Visibility.Visible;
+        var parts = new List<string>();
+        if (files > 0) parts.Add(Loc.Plural("count.files", files));
+        if (folders > 0) parts.Add(Loc.Plural("count.folders", folders));
+        SelectionText.Text = Loc.T("archive.selected", string.Join(", ", parts));
+    }
+
+    /// <summary>The selection in list order, without entries already inside a selected folder.</summary>
+    private List<ArchiveEntryRow> SelectedRows()
+    {
+        var rows = EntriesList.Items.Cast<ArchiveEntryRow>().Where(r => EntriesList.SelectedItems.Contains(r)).ToList();
+        var folders = rows.Where(r => r.IsFolder).Select(r => r.Key + "/").ToList();
+        return rows.Where(r => !folders.Any(f => r.Key.StartsWith(f, StringComparison.OrdinalIgnoreCase))).ToList();
+    }
+
+    // --- Extract the selection
+
+    private async void OnExtractSelectedClicked(object sender, RoutedEventArgs e) => await ExtractRowsAsync(SelectedRows());
+
     private async void OnExtractOneClicked(object sender, RoutedEventArgs e)
     {
-        if (_archive == null || (sender as FrameworkElement)?.DataContext is not ArchiveEntryRow row) return;
+        if ((sender as FrameworkElement)?.DataContext is not ArchiveEntryRow row) return;
         e.Handled = true;
+        await ExtractRowsAsync(new List<ArchiveEntryRow> { row });
+    }
+
+    /// <summary>
+    /// One entry goes next to the archive; several go into a new folder named after the archive, so they don't get
+    /// scattered among the files that are already there.
+    /// </summary>
+    private async Task ExtractRowsAsync(List<ArchiveEntryRow> rows)
+    {
+        if (_archive == null || rows.Count == 0 || _busy) return;
+        string archive = _archive;
+        _busy = true;
+        Mouse.OverrideCursor = Cursors.AppStarting;
         try
         {
-            string output = await ArchiveExtractor.ExtractPartAsync(_archive, row.Key, row.IsFolder, Path.GetDirectoryName(_archive)!);
-            App.Log($"[ArchiveViewer] Extracted '{row.Key}' -> '{output}'");
+            string dest = Path.GetDirectoryName(archive)!;
+            if (rows.Count > 1)
+            {
+                dest = ArchiveExtractor.UniqueFilePath(Path.Combine(dest, Path.GetFileNameWithoutExtension(archive)));
+                Directory.CreateDirectory(dest);
+            }
+            string output = dest;
+            foreach (var row in rows)
+            {
+                string one = await ArchiveExtractor.ExtractPartAsync(archive, row.Key, row.IsFolder, dest);
+                if (rows.Count == 1) output = one;
+            }
+            App.Log($"[ArchiveViewer] Extracted {rows.Count} entries -> '{output}'");
             _extractResult = output;
-            ExtractDoneText.Text = Path.GetFileName(output);
+            ExtractDoneText.Text = rows.Count == 1 ? Path.GetFileName(output) : Loc.T("archive.extractedCount", Path.GetFileName(output), rows.Count);
+            ClearSelection();
             ExtractButton.Visibility = Visibility.Collapsed;
             ExtractProgressPanel.Visibility = Visibility.Collapsed;
             ExtractDonePanel.Visibility = Visibility.Visible;
@@ -296,11 +355,16 @@ public partial class ArchiveViewer : UserControl
         {
             ShowError(ex);
         }
+        finally
+        {
+            Mouse.OverrideCursor = null;
+            _busy = false;
+        }
     }
 
     private void ShowError(Exception ex)
     {
-        App.Log($"[ArchiveViewer] Single extract failed: {ex}");
+        App.Log($"[ArchiveViewer] Extract failed: {ex}");
         if (!MainWindow.SuppressActivationForTests)
             MessageCard.Show(Window.GetWindow(this)!, Loc.T("archive.extractError", ex.Message));
     }
@@ -317,12 +381,58 @@ public partial class ArchiveViewer : UserControl
         return await ArchiveExtractor.ExtractPartAsync(archive, row.Key, row.IsFolder, dir);
     }
 
+    private async Task<string[]> ExtractToTempAsync(string archive, IEnumerable<ArchiveEntryRow> rows)
+    {
+        var paths = new List<string>();
+        foreach (var row in rows) paths.Add(await ExtractToTempAsync(archive, row));
+        return paths.ToArray();
+    }
+
+    // --- Copy (Ctrl+C): the selected files, ready to paste in Explorer
+
+    public async void CopySelection()
+    {
+        var rows = SelectedRows();
+        if (_archive == null || rows.Count == 0 || _busy) return;
+        _busy = true;
+        Mouse.OverrideCursor = Cursors.AppStarting;
+        try
+        {
+            var paths = await ExtractToTempAsync(_archive, rows);
+            var files = new System.Collections.Specialized.StringCollection();
+            files.AddRange(paths);
+            var data = new DataObject();
+            data.SetFileDropList(files);
+            data.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes((int)DragDropEffects.Copy)));
+            Clipboard.SetDataObject(data, copy: true);
+            App.Log($"[ArchiveViewer] Copied {paths.Length} entries to the clipboard");
+            Copied?.Invoke(rows.Count);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
+        finally
+        {
+            Mouse.OverrideCursor = null;
+            _busy = false;
+        }
+    }
+
+    /// <summary>Entries copied to the clipboard (for a short notice).</summary>
+    public event Action<int>? Copied;
+
+    // --- Mouse: select, double-click opens, drag takes the selection out
+
     private static bool LeftButtonDown => System.Windows.Forms.Control.MouseButtons.HasFlag(System.Windows.Forms.MouseButtons.Left);
+    private static bool RightButtonDown => System.Windows.Forms.Control.MouseButtons.HasFlag(System.Windows.Forms.MouseButtons.Right);
 
     private ArchiveEntryRow? _pressedRow;
     private Point _pressPoint;
-    private System.Windows.Threading.DispatcherTimer? _holdTimer;
     private bool _busy;
+    // A plain click on a row that's part of a bigger selection: keep the selection (it may be dragged), and
+    // narrow it down to that row on release if it wasn't
+    private bool _narrowOnRelease;
 
     private static ArchiveEntryRow? RowAt(object source)
     {
@@ -337,38 +447,73 @@ public partial class ArchiveViewer : UserControl
     private void OnRowMouseDown(object sender, MouseButtonEventArgs e)
     {
         _pressedRow = RowAt(e.OriginalSource);
+        _narrowOnRelease = false;
+        // A click on the empty space below the rows clears the selection (not on the scrollbar)
+        if (_pressedRow == null && e.OriginalSource is DependencyObject source && !IsInside<System.Windows.Controls.Primitives.ScrollBar>(source)
+            && !IsInside<Button>(source))
+            ClearSelection();
         if (_pressedRow == null || _archive == null || _busy) return;
         _pressPoint = e.GetPosition(EntriesList);
 
-        // Folders can be dragged out, but not peeked at: their contents are already listed right here
-        if (_pressedRow.IsFolder) return;
-
-        // Held still for a moment: peek at it
-        _holdTimer?.Stop();
-        _holdTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(280) };
-        _holdTimer.Tick += async (_, _) =>
+        if (e.ClickCount == 2)
         {
-            _holdTimer?.Stop();
-            var row = _pressedRow;
-            if (row == null || _archive == null) return;
-            await PeekAsync(_archive, row);
-        };
-        _holdTimer.Start();
+            e.Handled = true;
+            if (!_pressedRow.IsFolder) _ = OpenAsync(_archive, _pressedRow);
+            _pressedRow = null;
+            return;
+        }
+
+        // Selection is done here, not by the ListBox: the preview never has the keyboard focus, so WPF doesn't see
+        // Ctrl / Shift being held; Windows is asked directly
+        e.Handled = true;
+        var mods = KeyState.Modifiers;
+        var items = EntriesList.Items;
+        if ((mods & ModifierKeys.Shift) != 0 && _anchor != null && items.Contains(_anchor))
+        {
+            int from = items.IndexOf(_anchor), to = items.IndexOf(_pressedRow);
+            if ((mods & ModifierKeys.Control) == 0) EntriesList.SelectedItems.Clear();
+            for (int i = Math.Min(from, to); i <= Math.Max(from, to); i++)
+                if (!EntriesList.SelectedItems.Contains(items[i])) EntriesList.SelectedItems.Add(items[i]);
+        }
+        else if ((mods & ModifierKeys.Control) != 0)
+        {
+            if (EntriesList.SelectedItems.Contains(_pressedRow)) EntriesList.SelectedItems.Remove(_pressedRow);
+            else EntriesList.SelectedItems.Add(_pressedRow);
+            _anchor = _pressedRow;
+        }
+        else if (EntriesList.SelectedItems.Count > 1 && EntriesList.SelectedItems.Contains(_pressedRow))
+        {
+            _narrowOnRelease = true; // keep the selection: it may be about to be dragged
+            _anchor = _pressedRow;
+        }
+        else
+        {
+            EntriesList.SelectedItems.Clear();
+            EntriesList.SelectedItems.Add(_pressedRow);
+            _anchor = _pressedRow;
+        }
     }
 
-    private async Task PeekAsync(string archive, ArchiveEntryRow row)
+    private static bool IsInside<T>(DependencyObject d) where T : DependencyObject
+    {
+        for (DependencyObject? p = d; p != null; p = p is Visual ? VisualTreeHelper.GetParent(p) : LogicalTreeHelper.GetParent(p))
+            if (p is T) return true;
+        return false;
+    }
+
+    /// <summary>Where a Shift+click range starts (the last plain or Ctrl click).</summary>
+    private ArchiveEntryRow? _anchor;
+
+    /// <summary>Double-click: the file opens in its own app (from a temp copy), like in WinRAR.</summary>
+    private async Task OpenAsync(string archive, ArchiveEntryRow row)
     {
         _busy = true;
         Mouse.OverrideCursor = Cursors.AppStarting;
         try
         {
             string path = await ExtractToTempAsync(archive, row);
-            // Only while the button is still held (released during a slow extraction = changed their mind)
-            if (LeftButtonDown && archive == _archive)
-            {
-                App.Log($"[ArchiveViewer] Peek '{row.Key}'");
-                PeekRequested?.Invoke(path);
-            }
+            App.Log($"[ArchiveViewer] Opening '{row.Key}'");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -378,7 +523,6 @@ public partial class ArchiveViewer : UserControl
         {
             Mouse.OverrideCursor = null;
             _busy = false;
-            _pressedRow = null;
         }
     }
 
@@ -389,20 +533,28 @@ public partial class ArchiveViewer : UserControl
         if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance &&
             Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
 
-        // Dragged: out of the archive, into Explorer / the desktop (like WinRAR)
-        _holdTimer?.Stop();
-        var row = _pressedRow;
+        // Dragged: the selection (or just this row) out of the archive, into Explorer / the desktop
+        var pressed = _pressedRow;
         _pressedRow = null;
+        _narrowOnRelease = false;
+        var rows = EntriesList.SelectedItems.Contains(pressed) ? SelectedRows() : new List<ArchiveEntryRow> { pressed };
         _busy = true;
         Mouse.OverrideCursor = Cursors.AppStarting;
         try
         {
-            string path = await ExtractToTempAsync(_archive, row);
+            var paths = await ExtractToTempAsync(_archive, rows);
             Mouse.OverrideCursor = null;
             if (!LeftButtonDown) return;
-            var data = new DataObject(DataFormats.FileDrop, new[] { path });
-            App.Log($"[ArchiveViewer] Dragging '{row.Key}' out");
-            DragDrop.DoDragDrop(EntriesList, data, DragDropEffects.Copy);
+            App.Log($"[ArchiveViewer] Dragging {paths.Length} entries out");
+            // What really goes out: files inside a dragged folder travel with it, so they aren't counted on their own
+            int files = rows.Count(r => !r.IsFolder), folders = rows.Count - files;
+            string label = rows.Count == 1 ? rows[0].Name : string.Join(", ", new[]
+            {
+                files > 0 ? Loc.Plural("count.files", files) : null,
+                folders > 0 ? Loc.Plural("count.folders", folders) : null,
+            }.Where(s => s != null));
+            using (DragCursor.Attach(EntriesList, ShellIcons.For(rows[0].Name, rows[0].IsFolder), label))
+                DragDrop.DoDragDrop(EntriesList, new DataObject(DataFormats.FileDrop, paths), DragDropEffects.Copy);
         }
         catch (Exception ex)
         {
@@ -417,8 +569,129 @@ public partial class ArchiveViewer : UserControl
 
     private void OnRowMouseUp(object sender, MouseButtonEventArgs e)
     {
-        _holdTimer?.Stop();
+        if (_narrowOnRelease && _pressedRow != null)
+        {
+            EntriesList.SelectedItems.Clear();
+            EntriesList.SelectedItem = _pressedRow;
+        }
+        _narrowOnRelease = false;
         if (!_busy) _pressedRow = null;
+    }
+
+    // --- Right button held: a small preview next to the cursor
+
+    private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".txt", ".md", ".log", ".csv", ".json", ".xml", ".html", ".htm", ".css", ".js", ".ts", ".cs", ".py", ".java", ".c", ".cpp",
+        ".h", ".ini", ".cfg", ".yaml", ".yml", ".toml", ".sql", ".ps1", ".bat", ".cmd", ".sh", ".php", ".go", ".rs", ".kt", ".svg",
+    };
+
+    private static readonly HashSet<string> PictureExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".jfif", ".bmp", ".gif", ".webp", ".ico", ".tif", ".tiff",
+    };
+
+    private System.Windows.Threading.DispatcherTimer? _peekWatch;
+    private int _peekToken;
+
+    private async void OnRowRightDown(object sender, MouseButtonEventArgs e)
+    {
+        var row = RowAt(e.OriginalSource);
+        if (row == null || row.IsFolder || _archive == null) return;
+        e.Handled = true;
+        string archive = _archive;
+        int token = ++_peekToken;
+
+        PeekName.Text = row.Name;
+        PeekSize.Text = row.SizeText;
+        PeekIcon.Source = row.Icon;
+        PeekImage.Source = null;
+        PeekText.Text = "";
+        PeekLoading.Visibility = Visibility.Visible;
+        PeekFooter.Visibility = Visibility.Collapsed;
+        PeekPopup.IsOpen = true;
+
+        // Closes as soon as the button is let go (wherever the cursor is by then)
+        _peekWatch?.Stop();
+        _peekWatch = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
+        _peekWatch.Tick += (_, _) =>
+        {
+            if (RightButtonDown) return;
+            _peekWatch?.Stop();
+            _peekToken++;
+            PeekPopup.IsOpen = false;
+        };
+        _peekWatch.Start();
+
+        try
+        {
+            string path = await ExtractToTempAsync(archive, row);
+            if (token != _peekToken) return;
+            string ext = Path.GetExtension(path);
+            if (PictureExtensions.Contains(ext))
+            {
+                var (width, height) = await Task.Run(() =>
+                {
+                    // Header only: the real size, without decoding the whole picture
+                    var frame = System.Windows.Media.Imaging.BitmapDecoder.Create(new Uri(path),
+                        System.Windows.Media.Imaging.BitmapCreateOptions.DelayCreation | System.Windows.Media.Imaging.BitmapCreateOptions.IgnoreColorProfile,
+                        System.Windows.Media.Imaging.BitmapCacheOption.None).Frames[0];
+                    return (frame.PixelWidth, frame.PixelHeight);
+                });
+                if (token != _peekToken) return;
+                PeekFooter.Text = $"{width} × {height} px";
+                PeekFooter.Visibility = Visibility.Visible;
+                var bmp = await Task.Run(() =>
+                {
+                    var b = new System.Windows.Media.Imaging.BitmapImage();
+                    b.BeginInit();
+                    b.UriSource = new Uri(path);
+                    b.DecodePixelWidth = 840; // sharp at 420 px on a 200% screen
+                    b.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    b.EndInit();
+                    b.Freeze();
+                    return b;
+                });
+                if (token != _peekToken) return;
+                PeekImage.Source = bmp;
+                PeekLoading.Visibility = Visibility.Collapsed;
+            }
+            else if (TextExtensions.Contains(ext))
+            {
+                string text = await Task.Run(() => ReadStart(path));
+                if (token != _peekToken) return;
+                PeekText.Text = text;
+                PeekLoading.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                // Anything else: Windows' own thumbnail (PDF pages, video frames, documents), or the big icon
+                PeekImage.Source = ShellIcons.For(row.Name, false);
+                ShellThumbnails.Request(path, 420, ShellThumbnails.CurrentGeneration, bmp => Dispatcher.BeginInvoke(() =>
+                {
+                    if (token == _peekToken) PeekImage.Source = bmp;
+                }));
+                PeekLoading.Visibility = Visibility.Collapsed;
+            }
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[ArchiveViewer] Peek failed: {ex.Message}");
+            if (token == _peekToken) PeekPopup.IsOpen = false;
+        }
+    }
+
+    /// <summary>The first lines of a text file, for the peek.</summary>
+    private static string ReadStart(string path)
+    {
+        using var stream = File.OpenRead(path);
+        var (encoding, _) = TextEncoding.Detect(stream);
+        stream.Position = 0;
+        using var reader = new StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true);
+        var lines = new List<string>();
+        for (int i = 0; i < 24 && reader.ReadLine() is string line; i++)
+            lines.Add(line.Length > 90 ? line[..90] + "…" : line.Replace("\t", "    "));
+        return string.Join("\n", lines);
     }
 
     private void ResetExtractUi()
