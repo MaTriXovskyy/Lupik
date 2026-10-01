@@ -35,7 +35,7 @@ jobs:
         continue-on-error: true
 
       - name: Pack the installer
-        run: vpk pack --packId Lupik --packVersion ${{ env.VERSION }} --packDir publish --mainExe Lupik.exe --packTitle Lupik --packAuthors MaTriXovskyy --icon app.ico
+        run: vpk pack --packId Lupik --packVersion ${{ env.VERSION }} --packDir publish --mainExe Lupik.exe --packTitle Lupik --packAuthors MaTriXovskyy --icon app.ico --splashImage tools/splash.png --splashProgressColor "#E3B341"
 
       - name: Upload the release
         run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "Lupik ${{ env.VERSION }}" --tag ${{ github.ref_name }} --token ${{ secrets.GITHUB_TOKEN }}

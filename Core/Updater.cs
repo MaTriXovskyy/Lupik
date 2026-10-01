@@ -131,19 +131,32 @@ public static class Updater
         }
 
         IsBusy = true;
+        // Lupik's own progress card; Velopack's plain dialog is switched off (silent) below
+        var progress = new UpdateProgressWindow(version);
+        progress.Show();
         try
         {
             SetStatus(Loc.T("update.downloading", 0));
-            await Manager.DownloadUpdatesAsync(info, p =>
-                Application.Current.Dispatcher.BeginInvoke(() => SetStatus(Loc.T("update.downloading", p))));
+            await Manager.DownloadUpdatesAsync(info, p => Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                SetStatus(Loc.T("update.downloading", p));
+                progress.SetProgress(p);
+            }));
             App.Log($"[Updater] Downloaded {version}, restarting");
-            Manager.ApplyUpdatesAndRestart(info.TargetFullRelease, new[] { "--tray" });
+            progress.SetRestarting();
+            await Task.Delay(900); // long enough to read "restarting", short enough not to wait for nothing
+            // The updater waits for Lupik to exit, swaps the files without any window, and starts the new version
+            // in the tray
+            Manager.WaitExitThenApplyUpdates(info.TargetFullRelease, silent: true, restart: true, restartArgs: new[] { "--tray" });
+            Application.Current.Shutdown();
         }
         catch (Exception ex)
         {
             App.Log($"[Updater] Update failed: {ex.Message}");
+            progress.Close();
             SetStatus(Loc.T("update.failed", ex.Message));
             IsBusy = false;
+            MessageCard.Show(owner, Loc.T("update.failed", ex.Message));
         }
     }
 }
