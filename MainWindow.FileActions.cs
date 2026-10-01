@@ -113,13 +113,12 @@ public partial class MainWindow
         }
     }
 
-    private void OnShowInFolderClicked(object sender, RoutedEventArgs e) => RunShell("explorer.exe", $"/select,\"{_currentFilePath}\"");
     // --- Open with: Lupik's menu of the apps Windows suggests, plus Windows' own "choose another app"
 
     private void OnOpenWithClicked(object sender, RoutedEventArgs e) => ToggleOpenWith();
 
-    /// <summary>The Open with menu (also Enter), under the header button or under <paramref name="anchor"/>.</summary>
-    private void ToggleOpenWith(FrameworkElement? anchor = null)
+    /// <summary>The Open with menu (also Enter), in the middle of the preview; ↑/↓ pick an app, Enter opens it.</summary>
+    private void ToggleOpenWith()
     {
         if (OpenWithMenu.IsOpen) { CloseOpenWithMenu(); return; }
         if (!File.Exists(_currentFilePath)) return;
@@ -156,9 +155,43 @@ public partial class MainWindow
             none.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextMuted");
             OpenWithList.Children.Add(none);
         }
-        OpenWithMenu.PlacementTarget = anchor ?? OpenWithButton;
-        OpenWithMenu.HorizontalOffset = anchor == null ? -200 : (anchor.ActualWidth - 284) / 2; // 284: the menu with its margins
+        SelectOpenWith(0); // the default app first: Enter, Enter opens the file like a double-click
         OpenWithMenu.IsOpen = true;
+    }
+
+    private int _openWithIndex;
+
+    /// <summary>The rows ↑/↓ move through: the apps, then "Choose another app".</summary>
+    private List<System.Windows.Controls.Button> OpenWithRows()
+    {
+        var rows = OpenWithList.Children.OfType<System.Windows.Controls.Button>().ToList();
+        rows.Add(OpenWithOther);
+        return rows;
+    }
+
+    private void SelectOpenWith(int index)
+    {
+        var rows = OpenWithRows();
+        _openWithIndex = (index % rows.Count + rows.Count) % rows.Count;
+        for (int i = 0; i < rows.Count; i++) rows[i].Tag = i == _openWithIndex ? "selected" : null;
+        rows[_openWithIndex].BringIntoView();
+    }
+
+    /// <summary>Keys while the menu is open: ↑/↓ pick, Enter opens, Esc closes. Returns true when handled.</summary>
+    private bool HandleOpenWithKey(Key key)
+    {
+        if (!OpenWithMenu.IsOpen) return false;
+        switch (key)
+        {
+            case Key.Up: case Key.Left: SelectOpenWith(_openWithIndex - 1); return true;
+            case Key.Down: case Key.Right: SelectOpenWith(_openWithIndex + 1); return true;
+            case Key.Enter:
+                var row = OpenWithRows()[_openWithIndex];
+                row.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, row));
+                return true;
+            case Key.Escape: CloseOpenWithMenu(); return true;
+            default: return false;
+        }
     }
 
     private void OnOpenWithOtherClicked(object sender, RoutedEventArgs e)

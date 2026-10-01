@@ -22,7 +22,13 @@ public partial class MainWindow
 
     private bool HelpOpen => _helpPopup?.IsOpen == true;
 
-    private void WireHelp() => ImageViewerControl.HelpRequested += ToggleHelp;
+    private void WireHelp()
+    {
+        ImageViewerControl.HelpRequested += ToggleHelp;
+        // Popups don't follow the window: moving or resizing it closes them
+        LocationChanged += (_, _) => { CloseHelp(); CloseOpenWithMenu(); };
+        SizeChanged += (_, _) => { CloseHelp(); CloseOpenWithMenu(); };
+    }
 
     private void OnHelpClicked(object sender, RoutedEventArgs e) => ToggleHelp();
 
@@ -103,6 +109,12 @@ public partial class MainWindow
                 new(new[] { "M" }, Loc.T("help.markdownSource")),
                 new(new[] { "↑", "↓" }, Loc.T("help.scroll")),
             });
+        if (FontViewerControl.Visibility == Visibility.Visible)
+            return (Loc.T("help.font"), new()
+            {
+                new(new[] { "↑", "↓" }, Loc.T("help.scroll")),
+                new(Array.Empty<string>(), Loc.T("help.copyChar")),
+            });
         if (DiffViewerControl.Visibility == Visibility.Visible)
             return (Loc.T("help.diff"), new() { new(new[] { "↑", "↓" }, Loc.T("help.nextChange")) });
         if (CodeViewerControl.Visibility == Visibility.Visible)
@@ -129,6 +141,7 @@ public partial class MainWindow
         if (CurrentEditable() != null || IsMarkdownShown) rows.Add(new(new[] { "E" }, Loc.T("help.edit")));
         if (CanToggleCompare()) rows.Add(new(new[] { "C" }, Loc.T("help.compareToggle")));
         if (SearchableInPreview) rows.Add(new(new[] { "Ctrl+F" }, Loc.T("help.search")));
+        rows.Add(new(new[] { "Ctrl+Shift+C" }, Loc.T("help.copyPath")));
         rows.Add(new(new[] { "F2" }, Loc.T("help.rename")));
         rows.Add(new(new[] { "Delete" }, Loc.T("help.delete")));
         rows.Add(new(new[] { "Ctrl+S" }, Loc.T("help.saveAs")));

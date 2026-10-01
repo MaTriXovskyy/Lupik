@@ -13,5 +13,6 @@ including in closed or paid software, as long as the notices below travel with t
 | [SharpCompress](https://github.com/adamhathcock/sharpcompress) | reading and extracting archives | MIT |
 | [DiffPlex](https://github.com/mmanela/diffplex) | comparing two text files | Apache-2.0 |
 | [Markdig](https://github.com/xoofx/markdig) | reading Markdown | BSD-2-Clause |
+| [ZXing.Net](https://github.com/micjahn/ZXing.Net) | reading QR codes and barcodes | Apache-2.0 |
 | [Velopack](https://github.com/velopack/velopack) | the installer and updates | MIT |
 | [Lucide](https://lucide.dev) | icons | ISC |

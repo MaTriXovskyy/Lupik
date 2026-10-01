@@ -212,10 +212,10 @@ public partial class GenericViewer : UserControl
 
     // --- Actions
 
-    /// <summary>"Open with…": the window's menu of apps, shown under this button.</summary>
-    public event Action<FrameworkElement>? OpenWithRequested;
+    /// <summary>"Open with…": the window's menu of apps.</summary>
+    public event Action? OpenWithRequested;
 
-    private void OnOpenClicked(object sender, RoutedEventArgs e) => OpenWithRequested?.Invoke(OpenWithButton);
+    private void OnOpenClicked(object sender, RoutedEventArgs e) => OpenWithRequested?.Invoke();
 
     /// <summary>A shortcut's target (a folder opens in Explorer, a web address in the browser).</summary>
     private void OnOpenTargetClicked(object sender, RoutedEventArgs e)

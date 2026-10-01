@@ -71,7 +71,7 @@
             </Border>
         </Popup>
 
-        <!-- Text mode (O): the words found are outlined; drag over some to copy them, click one to copy it -->
+        <!-- Text mode (T): drag over text to copy it, click a word to copy it; QR codes and barcodes found get a card at the top -->
         <Canvas x:Name="TextLayer" Grid.Row="0" Background="Transparent" Visibility="Collapsed" ClipToBounds="True" Cursor="Cross"
                 MouseLeftButtonDown="OnTextMouseDown" MouseMove="OnTextMouseMove" MouseLeftButtonUp="OnTextMouseUp" MouseWheel="OnMouseWheel"
                 SizeChanged="OnTextLayerSizeChanged">
@@ -82,6 +82,13 @@
                     <views:LucideIcon x:Name="TextHintIcon" Kind="scan-text" Size="14" Margin="0,0,8,0" VerticalAlignment="Center" TextElement.Foreground="{DynamicResource Gold}"/>
                     <TextBlock x:Name="TextHintText" Foreground="{DynamicResource cECE6DC}" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
+            </Border>
+            <Border x:Name="CodeCard" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="10"
+                    Padding="12,8" Visibility="Collapsed" Cursor="Arrow" MaxWidth="560">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.45" Color="Black"/>
+                </Border.Effect>
+                <StackPanel x:Name="CodeList"/>
             </Border>
         </Canvas>
 

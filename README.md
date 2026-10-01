@@ -27,6 +27,7 @@ Lupik checks GitHub for new versions and asks before installing one. You can tur
 - **Archives**: ZIP, RAR, 7z, TAR, GZ, BZ2, XZ. Browse the contents as a tree, hold the mouse on a file to peek at it,
   drag a file out to Explorer or extract just that one, or extract the whole archive
 - **Audio and video**: MP4, MKV, MOV, WebM, AVI, WMV, MP3, FLAC, WAV, OGG, Opus... whatever codecs Windows has
+- **Fonts**: TTF, OTF, TTC: the alphabet, a sample at growing sizes and every character (click one to copy it)
 - **Folders**: a grid of what's inside
 
 Pictures have a filmstrip of the folder's images underneath (S).
@@ -56,6 +57,7 @@ embedded Type 1 fonts included.
 | Space | open / close the preview |
 | F1 or ? in the footer | the shortcuts that work for the file on screen |
 | ← → | previous / next file |
+| Ctrl+Shift+C | copy the file's path |
 | Enter | open with… (the apps Windows suggests for the file) |
 | Delete | move to the Recycle Bin (asks first) |
 | F | full screen |
@@ -65,8 +67,8 @@ embedded Type 1 fonts included.
 | I | image details |
 | S | filmstrip of the folder's images |
 | B | background behind pictures: theme, checkerboard, black, white |
-| T | text in a picture: drag over some to copy it, click one to copy it, Enter copies all |
-| Ctrl (held over a picture) | pipette: a loupe with the colour under the cursor; Ctrl+click copies it |
+| T | text in a picture (and QR codes / barcodes: copy or open them): drag over some to copy it, click one to copy it, Enter copies all |
+| Ctrl (held over a picture) | pipette: a loupe with the colour under the cursor; Ctrl+click copies it (HEX; with Shift rgb(), with Alt hsl()) |
 | M | Markdown as a document or as its source |
 | P | pin: the file moves to a window of its own that stays on top and no longer follows Explorer (in that window P toggles "always on top") |
 | C | compare the two selected images / text files, or back to one |

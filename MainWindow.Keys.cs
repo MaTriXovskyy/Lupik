@@ -101,9 +101,8 @@ public partial class MainWindow
             return true;
         }
 
-        if (key == Key.Escape && OpenWithMenu.IsOpen)
+        if (HandleOpenWithKey(key))
         {
-            CloseOpenWithMenu();
             handled = true;
         }
         else if (key == Key.E && mods == 0 && CurrentEditable() != null)
@@ -149,6 +148,16 @@ public partial class MainWindow
         else if (key == Key.P && mods == ModifierKeys.Control)
         {
             OpenPrintDialog();
+            handled = true;
+        }
+        else if (key == Key.C && mods == (ModifierKeys.Control | ModifierKeys.Shift) && PathExists(_currentFilePath))
+        {
+            try
+            {
+                Clipboard.SetText(_currentFilePath);
+                ShowNotice(Loc.T("notice.pathCopied"), success: true);
+            }
+            catch (Exception ex) { App.Log($"[MainWindow] Copy path: {ex.Message}"); }
             handled = true;
         }
         else if (imageShown && key == Key.C && mods == ModifierKeys.Control)
@@ -282,6 +291,11 @@ public partial class MainWindow
                 case Key.Home: PdfViewerControl.FirstPage(); break;
                 case Key.End: PdfViewerControl.LastPage(); break;
             }
+            handled = true;
+        }
+        else if ((key == Key.Up || key == Key.Down) && FontViewerControl.Visibility == Visibility.Visible)
+        {
+            FontViewerControl.ScrollBy(key == Key.Up ? -60 : 60);
             handled = true;
         }
         else if ((key == Key.Up || key == Key.Down) && MarkdownViewerControl.Visibility == Visibility.Visible)

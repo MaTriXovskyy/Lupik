@@ -18,7 +18,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>1.5.0</Version>
+    <Version>1.6.0</Version>
     <Product>Lupik</Product>
   </PropertyGroup>
 
@@ -49,6 +49,7 @@
     <PackageReference Include="SharpCompress" Version="0.50.4" />
     <PackageReference Include="System.IO.Hashing" Version="10.0.12" />
     <PackageReference Include="Velopack" Version="1.2.161" />
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
 </Project>

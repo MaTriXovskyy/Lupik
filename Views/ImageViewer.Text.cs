@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -67,6 +68,11 @@ public partial class ImageViewer
             _textBitmap?.Dispose();
             _textBitmap = bitmap;
 
+            // QR codes and barcodes first (quick), then the text (the bitmap is read by one at a time)
+            var codes = await Task.Run(() => CodeReader.Read(bitmap));
+            if (token != _textToken) return;
+            ShowCodes(codes);
+
             var lines = await TextRecognition.RecognizeAsync(bitmap);
             if (token != _textToken) return;
             _textLines = lines;
@@ -87,6 +93,7 @@ public partial class ImageViewer
         TextLayer.Visibility = Visibility.Collapsed;
         TextButton.IsChecked = false;
         TextSelection.Visibility = Visibility.Collapsed;
+        ShowCodes(Array.Empty<CodeReader.Code>());
         _textLines = Array.Empty<TextRecognition.Line>();
         _textBitmap?.Dispose();
         _textBitmap = null;
@@ -108,6 +115,60 @@ public partial class ImageViewer
             TextCopied?.Invoke(Loc.T("ocr.copied", text.Length > 40 ? text[..40].Replace('\n', ' ') + "…" : text.Replace('\n', ' ')));
         }
         catch (Exception ex) { App.Log($"[ImageViewer] Clipboard: {ex.Message}"); }
+    }
+
+    /// <summary>The QR codes / barcodes found: a card at the top with each one's content, Copy and (for links) Open.</summary>
+    private void ShowCodes(IReadOnlyList<CodeReader.Code> codes)
+    {
+        CodeList.Children.Clear();
+        CodeCard.Visibility = codes.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var code in codes)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
+            var icon = new LucideIcon { Kind = code.Kind == "QR" ? "qr-code" : "scan-barcode", Size = 16, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
+            icon.SetResourceReference(TextElement.ForegroundProperty, "Gold");
+            DockPanel.SetDock(icon, Dock.Left);
+            row.Children.Add(icon);
+
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 0, 0, 0) };
+            DockPanel.SetDock(buttons, Dock.Right);
+            buttons.Children.Add(CodeButton(Loc.T("ocr.codeCopy"), "copy", () => Copy(code.Text)));
+            if (code.IsLink)
+                buttons.Children.Add(CodeButton(Loc.T("ocr.codeOpen"), "external-link", () =>
+                {
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(code.Text.Trim()) { UseShellExecute = true }); }
+                    catch (Exception ex) { App.Log($"[ImageViewer] Open code link: {ex.Message}"); }
+                }));
+            row.Children.Add(buttons);
+
+            var text = new TextBlock { FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = code.Text };
+            var kind = new Run(code.Kind + "  ") { FontWeight = FontWeights.SemiBold };
+            kind.SetResourceReference(TextElement.ForegroundProperty, "TextMuted");
+            text.Inlines.Add(kind);
+            text.Inlines.Add(new Run(code.Text.ReplaceLineEndings(" ")));
+            text.SetResourceReference(TextBlock.ForegroundProperty, "cECE6DC");
+            row.Children.Add(text);
+            CodeList.Children.Add(row);
+        }
+        PlaceCodeCard();
+    }
+
+    private Button CodeButton(string label, string icon, Action click)
+    {
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        content.Children.Add(new LucideIcon { Kind = icon, Size = 13, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+        content.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+        var button = new Button { Content = content, Style = (Style)FindResource("SecondaryButton"), Padding = new Thickness(10, 3, 10, 3), FontSize = 12, Margin = new Thickness(6, 0, 0, 0) };
+        button.Click += (_, e) => { click(); e.Handled = true; };
+        return button;
+    }
+
+    private void PlaceCodeCard()
+    {
+        if (CodeCard.Visibility != Visibility.Visible) return;
+        CodeCard.Measure(new Size(Math.Max(0, TextLayer.ActualWidth - 32), double.PositiveInfinity));
+        Canvas.SetLeft(CodeCard, Math.Max(16, (TextLayer.ActualWidth - CodeCard.DesiredSize.Width) / 2));
+        Canvas.SetTop(CodeCard, 14);
     }
 
     private void SetTextHint(string icon, string text)
@@ -149,6 +210,7 @@ public partial class ImageViewer
     {
         if (!IsReadingText) return;
         PlaceTextHint();
+        PlaceCodeCard();
     }
 
     // --- Mouse

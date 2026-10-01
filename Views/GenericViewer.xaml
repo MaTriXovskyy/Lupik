@@ -46,7 +46,7 @@
 
                 <!-- Actions -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <Button x:Name="OpenWithButton" Style="{StaticResource PrimaryButton}" Click="OnOpenClicked">
+                    <Button Style="{StaticResource PrimaryButton}" Click="OnOpenClicked">
                         <StackPanel Orientation="Horizontal">
                             <views:LucideIcon Kind="app-window" Size="15" Margin="0,0,8,0"/>
                             <TextBlock Text="{loc:T help.openWith}" VerticalAlignment="Center"/>

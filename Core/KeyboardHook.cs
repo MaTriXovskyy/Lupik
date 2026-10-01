@@ -321,6 +321,7 @@ public class KeyboardHook : IDisposable
             case 0x25: case 0x26: case 0x27: case 0x28: // arrows (Alt+←/→ = back / forward)
             case 0x1B: case 0x0D: case 0x2E: case 0x08: // Esc, Enter, Delete, Backspace
                 return (mods & Ctrl) == 0;
+            case 0x43 when mods == (Ctrl | System.Windows.Input.ModifierKeys.Shift): return true; // Ctrl+Shift+C: copy the path
             case 0x43: return (mods & Ctrl) == 0 || window.CopyInPreview; // C: compare; Ctrl+C only where the preview copies something
             case 0x41: return (mods & Ctrl) != 0 && window.CopyInPreview; // Ctrl+A (table)
             case 0x53: case 0x50: return true; // Ctrl+S / Ctrl+P, S (filmstrip, compare mode)

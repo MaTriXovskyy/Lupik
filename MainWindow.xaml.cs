@@ -47,7 +47,8 @@ public partial class MainWindow : Window
         CompareViewerControl.SingleRequested += path => _ = ShowFile(path);
         WireImageExtras();
         WireHelp();
-        GenericViewerControl.OpenWithRequested += anchor => ToggleOpenWith(anchor);
+        GenericViewerControl.OpenWithRequested += ToggleOpenWith;
+        FontViewerControl.CharacterCopied += message => ShowNotice(message, success: true);
         PdfViewerControl.Notice += message => ShowNotice(message);
         MarkdownViewerControl.CodeRequested += () => SetMarkdownRendered(false);
         CodeViewerControl.RenderedRequested += () => SetMarkdownRendered(true);
@@ -230,6 +231,14 @@ public partial class MainWindow : Window
                 ShowOnlyViewer(MarkdownViewerControl);
                 SetBounds(ComputeDefaultBounds(ext));
             }
+            else if (Views.FontViewer.CanOpen(ext) && await FontViewerControl.LoadAsync(filePath))
+            {
+                // Fonts: Lupik's own sheet (a font WPF can't read falls through to Windows' previewer below)
+                if (token != _showToken) return;
+                ApplyFileHeader(filePath);
+                ShowOnlyViewer(FontViewerControl);
+                SetBounds(ComputeDefaultBounds(ext));
+            }
             else if (Array.IndexOf(CodeExtensions, ext) >= 0)
             {
                 bool loaded = await CodeViewerControl.LoadFileAsync(filePath);
@@ -347,7 +356,7 @@ public partial class MainWindow : Window
     /// <summary>Switches viewers without ever collapsing the one that stays, so nothing blinks.</summary>
     private void ShowOnlyViewer(UIElement target)
     {
-        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, DiffViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, DocxViewerControl, MarkdownViewerControl, FolderViewerControl, SystemPreviewControl, MediaViewerControl })
+        foreach (var viewer in new UIElement[] { WelcomeView, ImageViewerControl, CompareViewerControl, DiffViewerControl, CodeViewerControl, PdfViewerControl, GenericViewerControl, ArchiveViewerControl, CsvViewerControl, DocxViewerControl, MarkdownViewerControl, FontViewerControl, FolderViewerControl, SystemPreviewControl, MediaViewerControl })
         {
             var visibility = viewer == target ? Visibility.Visible : Visibility.Collapsed;
             // Release the system previewer / player (they hold the file open) as soon as they're not shown

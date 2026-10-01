@@ -12,7 +12,7 @@ namespace Lupik.Views;
 
 /// <summary>
 /// Pipette without a button: holding Ctrl over the picture shows a loupe with the pixels under the cursor and the
-/// colour's hex code; Ctrl+click copies it. (The preview never has the keyboard focus, so Ctrl is read from Windows.)
+/// colour's hex code; Ctrl+click copies it (with Shift as rgb(), with Alt as hsl()). (The preview never has the keyboard focus, so Ctrl is read from Windows.)
 /// </summary>
 public partial class ImageViewer
 {
@@ -27,11 +27,14 @@ public partial class ImageViewer
         ViewportBorder.PreviewMouseLeftButtonDown += (_, e) =>
         {
             if (!PipettePopup.IsOpen || (KeyState.Modifiers & ModifierKeys.Control) == 0) return;
-            string hex = Accent.ToHex(_pipetteColor);
+            var mods = KeyState.Modifiers;
+            string text = (mods & ModifierKeys.Shift) != 0 ? $"rgb({_pipetteColor.R}, {_pipetteColor.G}, {_pipetteColor.B})"
+                        : (mods & ModifierKeys.Alt) != 0 ? ToHsl(_pipetteColor)
+                        : Accent.ToHex(_pipetteColor);
             try
             {
-                Clipboard.SetText(hex);
-                TextCopied?.Invoke(Loc.T("pipette.copied", hex, $"{_pipetteColor.R}, {_pipetteColor.G}, {_pipetteColor.B}"));
+                Clipboard.SetText(text);
+                TextCopied?.Invoke(Loc.T("pipette.copied", text));
             }
             catch (Exception ex) { App.Log($"[ImageViewer] Clipboard: {ex.Message}"); }
             e.Handled = true; // no panning
@@ -89,6 +92,22 @@ public partial class ImageViewer
         _pipetteWatch = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
         _pipetteWatch.Tick += (_, _) => { if ((KeyState.Modifiers & ModifierKeys.Control) == 0) HidePipette(); };
         _pipetteWatch.Start();
+    }
+
+    /// <summary>CSS hsl(): hue in degrees, saturation and lightness in percent.</summary>
+    private static string ToHsl(Color c)
+    {
+        double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
+        double max = Math.Max(r, Math.Max(g, b)), min = Math.Min(r, Math.Min(g, b)), d = max - min;
+        double l = (max + min) / 2, s = d == 0 ? 0 : d / (1 - Math.Abs(2 * l - 1)), h = 0;
+        if (d != 0)
+        {
+            if (max == r) h = 60 * (((g - b) / d) % 6);
+            else if (max == g) h = 60 * ((b - r) / d + 2);
+            else h = 60 * ((r - g) / d + 4);
+        }
+        if (h < 0) h += 360;
+        return $"hsl({Math.Round(h)}, {Math.Round(s * 100)}%, {Math.Round(l * 100)}%)";
     }
 
     private void HidePipette()

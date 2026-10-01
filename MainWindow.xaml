@@ -40,6 +40,11 @@
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c2C2721}"/>
                                 <Setter Property="Foreground" Value="{DynamicResource GoldHover}"/>
                             </Trigger>
+                            <!-- Picked with ↑/↓ -->
+                            <Trigger Property="Tag" Value="selected">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c2C2721}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource GoldHover}"/>
+                            </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c352F27}"/>
                             </Trigger>
@@ -136,10 +141,10 @@
                         <Button x:Name="OpenWithButton" Style="{StaticResource IconButton}" ToolTip="{loc:T main.openWithTip}" Click="OnOpenWithClicked">
                             <views:LucideIcon Kind="app-window" Size="15"/>
                         </Button>
-                        <!-- "Open with": the apps Windows suggests for this kind of file -->
-                        <Popup x:Name="OpenWithMenu" PlacementTarget="{Binding ElementName=OpenWithButton}" Placement="Bottom"
-                               HorizontalOffset="-200" VerticalOffset="2" AllowsTransparency="True" StaysOpen="False" PopupAnimation="Fade">
-                            <Border Margin="12,4,12,16" Width="260" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}"
+                        <!-- "Open with": the apps Windows suggests for this kind of file, in the middle of the preview (↑/↓, Enter) -->
+                        <Popup x:Name="OpenWithMenu" PlacementTarget="{Binding ElementName=ContentContainer}" Placement="Center"
+                               AllowsTransparency="True" StaysOpen="False" PopupAnimation="Fade">
+                            <Border Margin="16,8,16,20" Width="320" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}"
                                     BorderThickness="1" CornerRadius="12" Padding="6">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="22" ShadowDepth="6" Direction="270" Opacity="0.5" Color="Black"/>
@@ -151,7 +156,7 @@
                                         <StackPanel x:Name="OpenWithList"/>
                                     </ScrollViewer>
                                     <Rectangle Height="1" Fill="{DynamicResource c2F2B27}" Margin="6,4"/>
-                                    <Button Style="{StaticResource MenuRow}" Click="OnOpenWithOtherClicked">
+                                    <Button x:Name="OpenWithOther" Style="{StaticResource MenuRow}" Click="OnOpenWithOtherClicked">
                                         <DockPanel>
                                             <views:LucideIcon Kind="app-window" Size="16" Margin="2,0,12,0"/>
                                             <TextBlock Text="{loc:T openWith.other}" VerticalAlignment="Center"/>
@@ -205,6 +210,7 @@
             <views:CsvViewer x:Name="CsvViewerControl" Visibility="Collapsed"/>
             <views:DocxViewer x:Name="DocxViewerControl" Visibility="Collapsed"/>
             <views:MarkdownViewer x:Name="MarkdownViewerControl" Visibility="Collapsed"/>
+            <views:FontViewer x:Name="FontViewerControl" Visibility="Collapsed"/>
             <views:FolderViewer x:Name="FolderViewerControl" Visibility="Collapsed"/>
             <views:PreviewHandlerHost x:Name="SystemPreviewControl" Visibility="Collapsed"/>
             <views:MediaViewer x:Name="MediaViewerControl" Visibility="Collapsed"/>
