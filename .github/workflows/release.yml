@@ -15,6 +15,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node tools/release-notes.cjs "$env:RELEASE_TAG" "$env:RUNNER_TEMP/release-notes.md"
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -35,7 +42,7 @@ jobs:
         continue-on-error: true
 
       - name: Pack the installer
-        run: vpk pack --packId Lupik --packVersion ${{ env.VERSION }} --packDir publish --mainExe Lupik.exe --packTitle Lupik --packAuthors MaTriXovskyy --icon app.ico --splashImage tools/splash.png --splashProgressColor "#E3B341"
+        run: vpk pack --packId Lupik --packVersion ${{ env.VERSION }} --packDir publish --mainExe Lupik.exe --packTitle Lupik --packAuthors MaTriXovskyy --icon app.ico --splashImage tools/splash.png --splashProgressColor "#E3B341" --releaseNotes "$env:RUNNER_TEMP/release-notes.md"
 
       - name: Upload the release
         run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "Lupik ${{ env.VERSION }}" --tag ${{ github.ref_name }} --token ${{ secrets.GITHUB_TOKEN }}

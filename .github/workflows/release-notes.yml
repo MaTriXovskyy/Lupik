@@ -1,0 +1,32 @@
+# Backfill existing releases from curated notes without rebuilding or uploading assets.
+name: Backfill release notes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'release-notes/v*.md'
+      - 'tools/release-notes.cjs'
+      - 'tools/sync-release-notes.cjs'
+      - '.github/workflows/release-notes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backfill-release-notes
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check release notes scripts
+        run: node --test tools/release-notes.test.cjs
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { syncReleaseNotes } = require('./tools/sync-release-notes.cjs');
+            await syncReleaseNotes({ github, context, core });
