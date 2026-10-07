@@ -67,6 +67,7 @@ public partial class ArchiveViewer : UserControl
         _loadedStamp = stamp;
         if (_extractCts == null) ResetExtractUi(); // a running extraction keeps going and reports when done
         FormatText.Text = Path.GetExtension(filePath).TrimStart('.').ToUpperInvariant();
+        ExtractToFolderText.Text = Loc.T("archive.extractToFolder", ArchiveExtractor.ArchiveStem(filePath));
 
         try
         {
@@ -202,7 +203,10 @@ public partial class ArchiveViewer : UserControl
     private string? _extractResult;
     private CancellationTokenSource? _extractCts;
 
-    private async void OnExtractClicked(object sender, RoutedEventArgs e)
+    private void OnExtractHereClicked(object sender, RoutedEventArgs e) => _ = ExtractAllAsync(intoFolder: false);
+    private void OnExtractToFolderClicked(object sender, RoutedEventArgs e) => _ = ExtractAllAsync(intoFolder: true);
+
+    private async Task ExtractAllAsync(bool intoFolder)
     {
         if (string.IsNullOrEmpty(_archive) || _extractCts != null) return;
 
@@ -229,14 +233,13 @@ public partial class ArchiveViewer : UserControl
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            string target = await ArchiveExtractor.ExtractAsync(archive, progress, token,
+            var (target, count) = await ArchiveExtractor.ExtractAsync(archive, intoFolder, progress, token,
                 t => PendingCleanup.Register(temp = t, cts));
             _extractResult = target;
-            App.Log($"[ArchiveViewer] Extracted '{archive}' -> '{target}' in {sw.ElapsedMilliseconds} ms");
+            App.Log($"[ArchiveViewer] Extracted '{archive}' -> '{target}' ({count} items, into folder: {intoFolder}) in {sw.ElapsedMilliseconds} ms");
 
-            ExtractDoneText.Text = Path.GetFileName(target);
-            ExtractProgressPanel.Visibility = Visibility.Collapsed;
-            ExtractDonePanel.Visibility = Visibility.Visible;
+            ExtractDoneText.Text = count == 1 ? Path.GetFileName(target) : Loc.T("archive.extractedHere", count);
+            ShowExtractDone();
         }
         catch (OperationCanceledException)
         {
@@ -347,9 +350,7 @@ public partial class ArchiveViewer : UserControl
             _extractResult = output;
             ExtractDoneText.Text = rows.Count == 1 ? Path.GetFileName(output) : Loc.T("archive.extractedCount", Path.GetFileName(output), rows.Count);
             ClearSelection();
-            ExtractButton.Visibility = Visibility.Collapsed;
-            ExtractProgressPanel.Visibility = Visibility.Collapsed;
-            ExtractDonePanel.Visibility = Visibility.Visible;
+            ShowExtractDone();
         }
         catch (Exception ex)
         {
@@ -694,8 +695,29 @@ public partial class ArchiveViewer : UserControl
         return string.Join("\n", lines);
     }
 
+    private System.Windows.Threading.DispatcherTimer? _extractDoneTimer;
+
+    /// <summary>"Extracted" for 5 s, then the extract buttons come back (to extract again without closing).</summary>
+    private void ShowExtractDone()
+    {
+        ExtractButton.Visibility = Visibility.Collapsed;
+        ExtractProgressPanel.Visibility = Visibility.Collapsed;
+        ExtractDonePanel.Visibility = Visibility.Visible;
+        _extractDoneTimer?.Stop();
+        _extractDoneTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _extractDoneTimer.Tick += (_, _) =>
+        {
+            _extractDoneTimer?.Stop();
+            if (_extractCts != null || ExtractDonePanel.Visibility != Visibility.Visible) return;
+            ResetExtractUi();
+            if (EntriesList.SelectedItems.Count > 0) ExtractButton.Visibility = Visibility.Collapsed; // the selection's own button shows
+        };
+        _extractDoneTimer.Start();
+    }
+
     private void ResetExtractUi()
     {
+        _extractDoneTimer?.Stop();
         ExtractButton.Visibility = Visibility.Visible;
         ExtractProgressPanel.Visibility = Visibility.Collapsed;
         ExtractDonePanel.Visibility = Visibility.Collapsed;

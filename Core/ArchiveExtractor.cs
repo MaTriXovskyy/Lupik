@@ -38,11 +38,12 @@ public static class ArchiveExtractor
         new() { ArchiveEncoding = new ArchiveEncoding { Default = LegacyNameEncoding } };
 
     /// <summary>
-    /// Extracts into a temporary "*.part" folder, then moves it into place:
-    /// a single top-level folder in the archive lands directly next to it (like macOS), otherwise the
-    /// content goes into a folder named after the archive. Returns the final folder.
+    /// Extracts into a temporary "*.part" folder, then moves it into place, like WinRAR's two choices:
+    /// <paramref name="intoFolder"/> puts everything in a folder named after the archive ("Extract to Name\"),
+    /// otherwise the archive's top-level items land right next to it ("Extract here"). Returns what to show in
+    /// Explorer (the folder, or the first item placed) and how many top-level items were placed.
     /// </summary>
-    public static async Task<string> ExtractAsync(string archivePath, IProgress<(long done, long total, int files)> progress, CancellationToken token, Action<string>? tempCreated = null)
+    public static async Task<(string Path, int Count)> ExtractAsync(string archivePath, bool intoFolder, IProgress<(long done, long total, int files)> progress, CancellationToken token, Action<string>? tempCreated = null)
     {
         string parent = Path.GetDirectoryName(Path.GetFullPath(archivePath))!;
         string stem = ArchiveStem(archivePath);
@@ -73,7 +74,7 @@ public static class ArchiveExtractor
             if (!done)
                 await Task.Run(() => ExtractSequential(archivePath, temp, progress, token), token);
 
-            return MoveIntoPlace(temp, parent, stem);
+            return MoveIntoPlace(temp, parent, stem, intoFolder);
         }
         catch
         {
@@ -348,20 +349,43 @@ public static class ArchiveExtractor
     }
 
     /// <summary>One archive-wide top folder → move it next to the archive; otherwise rename the temp folder after the archive.</summary>
-    private static string MoveIntoPlace(string temp, string parent, string stem)
+    private static (string Path, int Count) MoveIntoPlace(string temp, string parent, string stem, bool intoFolder)
     {
         var dirs = Directory.GetDirectories(temp);
-        bool singleFolder = dirs.Length == 1 && Directory.GetFiles(temp).Length == 0;
-        if (singleFolder)
+        var files = Directory.GetFiles(temp);
+
+        if (!intoFolder)
+        {
+            // "Extract here": everything at the archive's top level lands next to it
+            string first = parent;
+            foreach (string dir in dirs)
+            {
+                string target = UniquePath(Path.Combine(parent, Path.GetFileName(dir)));
+                Directory.Move(dir, target);
+                if (first == parent) first = target;
+            }
+            foreach (string file in files)
+            {
+                string target = UniqueFilePath(Path.Combine(parent, Path.GetFileName(file)));
+                File.Move(file, target);
+                if (first == parent) first = target;
+            }
+            Directory.Delete(temp, false);
+            return (first, dirs.Length + files.Length);
+        }
+
+        // "Extract to Name\": a folder named after the archive; one that already holds a single "Name" folder isn't
+        // nested inside another one
+        if (dirs.Length == 1 && files.Length == 0 && string.Equals(Path.GetFileName(dirs[0]), stem, StringComparison.OrdinalIgnoreCase))
         {
             string target = UniquePath(Path.Combine(parent, Path.GetFileName(dirs[0])));
             Directory.Move(dirs[0], target);
             Directory.Delete(temp, false);
-            return target;
+            return (target, 1);
         }
         string final = UniquePath(Path.Combine(parent, stem));
         Directory.Move(temp, final);
-        return final;
+        return (final, 1);
     }
 
     /// <summary>"Name", or "Name (2)", "Name (3)"… if a file or folder already has that name.</summary>
@@ -374,7 +398,7 @@ public static class ArchiveExtractor
     }
 
     /// <summary>"photos.tar.gz" → "photos".</summary>
-    private static string ArchiveStem(string path)
+    public static string ArchiveStem(string path)
     {
         string name = Path.GetFileNameWithoutExtension(path);
         if (name.EndsWith(".tar", StringComparison.OrdinalIgnoreCase)) name = name[..^4];

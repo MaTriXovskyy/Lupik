@@ -25,7 +25,8 @@ Lupik checks GitHub for new versions and asks before installing one. You can tur
 - **Comparing**: select two pictures, or two text/code files (a diff: removed lines red, added green, changed words
   marked; ↑/↓ jump between changes), and press the preview key
 - **Archives**: ZIP, RAR, 7z, TAR, GZ, BZ2, XZ. Browse the contents as a tree, hold the mouse on a file to peek at it,
-  drag a file out to Explorer or extract just that one, or extract the whole archive
+  drag a file out to Explorer or extract just that one, or extract the whole archive like WinRAR does
+  ("Extract here" or "Extract to "Name"")
 - **Audio and video**: MP4, MKV, MOV, WebM, AVI, WMV, MP3, FLAC, WAV, OGG, Opus... whatever codecs Windows has
 - **Fonts**: TTF, OTF, TTC: the alphabet, a sample at growing sizes and every character (click one to copy it)
 - **Folders**: a grid of what's inside
