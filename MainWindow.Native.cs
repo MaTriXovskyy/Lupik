@@ -167,9 +167,21 @@ public partial class MainWindow
             HideWindow();
             return;
         }
-        if (Topmost != keepOnTop) Topmost = keepOnTop;
-        // Back to its Explorer window: make sure the preview is really above it again
-        if (keepOnTop) SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        if (keepOnTop)
+        {
+            if (!Topmost) Topmost = true;
+            // Back to its Explorer window: make sure the preview is really above it again
+            SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            return;
+        }
+        if (!Topmost) return;
+        // Another app came to the front: let it cover the preview. Dropping the topmost state alone (HWND_NOTOPMOST)
+        // puts the window at the top of the normal windows, i.e. right back above the app that was just clicked;
+        // so slide it in just under that app's window.
+        Topmost = false;
+        if (root != IntPtr.Zero && !IsShellWindow(root) && (GetWindowLong(root, -20) & 0x8) == 0)
+            SetWindowPos(Hwnd, root, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        App.Log($"[MainWindow] {DescribeWindow(root)} in front: preview no longer on top, covered by: {WindowsAbove()}");
     }
 
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
