@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -132,15 +132,79 @@ public sealed class PdfDocument : IDisposable
         if (!ok) throw new System.IO.IOException("PDFium couldn't save the document.");
     }
 
-    /// <summary>Opens a PDF (or a PDF-compatible .ai). Throws <see cref="PdfException"/> when it can't.</summary>
+    /// <summary>
+    /// Opens a PDF (or a PDF-compatible .ai). Throws <see cref="PdfException"/> when it can't.
+    /// PDFium reads through Lupik's own handle, opened with delete/write sharing: FPDF_LoadDocument keeps the file
+    /// open without it for as long as the document lives, so Explorer couldn't delete, move or rename a previewed PDF
+    /// ("file is open in Lupik") until the idle cleanup or until Lupik quit.
+    /// </summary>
     public static PdfDocument Open(string path, string? password = null)
     {
+        var file = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite | System.IO.FileShare.Delete, 1 << 16);
+        if (file.Length > uint.MaxValue) { file.Dispose(); throw new PdfException(PdfError.File); } // FPDF_FILEACCESS: 32-bit length
+        var reader = new BlockReader(file);
+        IntPtr access = Marshal.AllocHGlobal(Marshal.SizeOf<Native.FPDF_FILEACCESS>());
+        Marshal.StructureToPtr(new Native.FPDF_FILEACCESS
+        {
+            m_FileLen = (uint)file.Length,
+            m_GetBlock = Marshal.GetFunctionPointerForDelegate(reader.Proc),
+            m_Param = IntPtr.Zero,
+        }, access, false);
         lock (Lock)
         {
-            IntPtr doc = Native.FPDF_LoadDocument(path, password);
-            if (doc == IntPtr.Zero) throw new PdfException((PdfError)Native.FPDF_GetLastError());
-            return new PdfDocument(path, doc);
+            IntPtr doc = Native.FPDF_LoadCustomDocument(access, password);
+            if (doc == IntPtr.Zero)
+            {
+                var error = (PdfError)Native.FPDF_GetLastError();
+                Marshal.FreeHGlobal(access);
+                reader.Dispose();
+                throw new PdfException(error);
+            }
+            return new PdfDocument(path, doc) { _access = access, _reader = reader };
         }
+    }
+
+    // PDFium reads the file through these for as long as the document is open
+    private IntPtr _access;
+    private BlockReader? _reader;
+
+    private sealed class BlockReader : IDisposable
+    {
+        public readonly Native.GetBlockProc Proc; // kept alive: PDFium calls into it
+        private readonly System.IO.FileStream _file;
+        private byte[] _buffer = Array.Empty<byte>();
+
+        public BlockReader(System.IO.FileStream file)
+        {
+            _file = file;
+            Proc = Read;
+        }
+
+        /// <summary>PDFium wants <paramref name="size"/> bytes from <paramref name="position"/>; 1 = done, 0 = failed.</summary>
+        private int Read(IntPtr param, uint position, IntPtr target, uint size)
+        {
+            try
+            {
+                if (_buffer.Length < size) _buffer = new byte[size];
+                _file.Position = position;
+                int done = 0;
+                while (done < size)
+                {
+                    int read = _file.Read(_buffer, done, (int)size - done);
+                    if (read == 0) return 0;
+                    done += read;
+                }
+                Marshal.Copy(_buffer, 0, target, (int)size);
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                App.Log($"[Pdfium] Reading the file failed: {ex.Message}");
+                return 0;
+            }
+        }
+
+        public void Dispose() => _file.Dispose();
     }
 
     public static Task<PdfDocument> OpenAsync(string path, string? password = null) => Task.Run(() => Open(path, password));
@@ -299,6 +363,10 @@ public sealed class PdfDocument : IDisposable
             if (_doc == IntPtr.Zero) return;
             Native.FPDF_CloseDocument(_doc);
             _doc = IntPtr.Zero;
+            if (_access != IntPtr.Zero) Marshal.FreeHGlobal(_access);
+            _access = IntPtr.Zero;
+            _reader?.Dispose();
+            _reader = null;
         }
     }
 
@@ -314,6 +382,12 @@ public sealed class PdfDocument : IDisposable
 
         [DllImport(Dll)] public static extern void FPDF_InitLibrary();
         [DllImport(Dll)] public static extern IntPtr FPDF_LoadDocument([MarshalAs(UnmanagedType.LPUTF8Str)] string path, [MarshalAs(UnmanagedType.LPUTF8Str)] string? password);
+        // FPDF_FILEACCESS: the length is a C "unsigned long", 32 bits on Windows
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int GetBlockProc(IntPtr param, uint position, IntPtr buffer, uint size);
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FPDF_FILEACCESS { public uint m_FileLen; public IntPtr m_GetBlock; public IntPtr m_Param; }
+        [DllImport(Dll)] public static extern IntPtr FPDF_LoadCustomDocument(IntPtr fileAccess, [MarshalAs(UnmanagedType.LPUTF8Str)] string? password);
         [DllImport(Dll)] public static extern uint FPDF_GetLastError();
         [DllImport(Dll)] public static extern void FPDF_CloseDocument(IntPtr document);
         [DllImport(Dll)] public static extern int FPDF_GetPageCount(IntPtr document);
