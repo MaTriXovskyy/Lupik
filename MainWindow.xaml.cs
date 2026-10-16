@@ -55,6 +55,7 @@ public partial class MainWindow : Window
         WatchAppearance();
         PreviewTextInput += OnWindowTextInput;
         UpdatePinButton();
+        Closing += OnWindowClosing;
         if (_pinned) Closed += (_, _) => ReleasePinned();
     }
 
@@ -73,16 +74,10 @@ public partial class MainWindow : Window
     private void ReleasePinned()
     {
         Loc.Instance.LanguageChanged -= UpdateWelcomeText;
-        SystemPreviewControl.Close();
-        MediaViewerControl.Stop();
-        ImageViewerControl.Release();
-        PdfViewerControl.Release();
-        CodeViewerControl.Release();
-        FolderViewerControl.Release();
-        CsvViewerControl.Release();
-        DocxViewerControl.Release();
-        MarkdownViewerControl.Release();
-        ArchiveViewerControl.Release();
+        CloseSearch();
+        _showToken++;
+        EndLoading();
+        ReleaseResources();
     }
 
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
@@ -92,6 +87,8 @@ public partial class MainWindow : Window
 
     public void ShowWelcome()
     {
+        if (_saving) return;
+        if (EditMode && !ExitEdit(afterSave: ShowWelcome, reloadDiscarded: false)) return;
         App.Log("[MainWindow] ShowWelcome called.");
         UpdateWelcomeText();
         _currentFilePath = "";
@@ -102,7 +99,6 @@ public partial class MainWindow : Window
         FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // nothing to act on
 
         _showToken++; // cancel any image still loading
-        CancelIdleRelease();
         ShowOnlyViewer(WelcomeView);
         SetBounds(ComputeDefaultBounds(""));
 
@@ -111,6 +107,7 @@ public partial class MainWindow : Window
 
     public async Task ShowFile(string filePath)
     {
+        if (_saving) return;
         App.Log($"[MainWindow] ShowFile: '{filePath}'");
         if (string.IsNullOrEmpty(filePath) || !PathExists(filePath))
         {
@@ -120,8 +117,8 @@ public partial class MainWindow : Window
         }
 
         // Another file while editing: finish editing first (asks about unsaved changes)
-        if (EditMode && !string.Equals(filePath, _editingPath, StringComparison.OrdinalIgnoreCase) && !ExitEdit()) return;
-        CancelIdleRelease();
+        if (EditMode && !string.Equals(filePath, _editingPath, StringComparison.OrdinalIgnoreCase) &&
+            !ExitEdit(afterSave: () => _ = ShowFile(filePath), reloadDiscarded: false)) return;
         CloseSearch(); // a new file: the old matches mean nothing there
         CloseOpenWithMenu();
         _boundsKind = KindOf(filePath);
@@ -197,7 +194,7 @@ public partial class MainWindow : Window
                 ShowOnlyViewer(DocxViewerControl);
                 SetBounds(ComputeDefaultBounds(ext));
             }
-            else if (Views.CsvViewer.IsWorkbook(ext) && await CsvViewerControl.LoadWorkbookAsync(filePath))
+            else if (token == _showToken && Views.CsvViewer.IsWorkbook(ext) && await CsvViewerControl.LoadWorkbookAsync(filePath))
             {
                 // Excel workbooks: the table view, a tab per sheet
                 if (token != _showToken) return;
@@ -223,7 +220,7 @@ public partial class MainWindow : Window
                 ShowOnlyViewer(ArchiveViewerControl);
                 SetBounds(ComputeDefaultBounds(ext));
             }
-            else if (Views.MarkdownViewer.CanOpen(ext) && Settings.Current.MarkdownRendered && await MarkdownViewerControl.LoadAsync(filePath))
+            else if (token == _showToken && Views.MarkdownViewer.CanOpen(ext) && Settings.Current.MarkdownRendered && await MarkdownViewerControl.LoadAsync(filePath))
             {
                 // Markdown as a document (M or "Code" shows the source)
                 if (token != _showToken) return;
@@ -231,7 +228,7 @@ public partial class MainWindow : Window
                 ShowOnlyViewer(MarkdownViewerControl);
                 SetBounds(ComputeDefaultBounds(ext));
             }
-            else if (Views.FontViewer.CanOpen(ext) && await FontViewerControl.LoadAsync(filePath))
+            else if (token == _showToken && Views.FontViewer.CanOpen(ext) && await FontViewerControl.LoadAsync(filePath))
             {
                 // Fonts: Lupik's own sheet (a font WPF can't read falls through to Windows' previewer below)
                 if (token != _showToken) return;
@@ -241,6 +238,7 @@ public partial class MainWindow : Window
             }
             else if (Array.IndexOf(CodeExtensions, ext) >= 0)
             {
+                if (token != _showToken) return;
                 bool loaded = await CodeViewerControl.LoadFileAsync(filePath);
                 if (!loaded || token != _showToken) return;
 
@@ -250,9 +248,9 @@ public partial class MainWindow : Window
             }
             else
             {
+                if (token != _showToken) return;
                 ApplyFileHeader(filePath);
                 SetBounds(ComputeDefaultBounds(ext));
-
                 // Anything Windows can preview (Office documents, .msg, fonts, ...) uses the system previewer;
                 // otherwise fall back to the file info card
                 var previewer = Views.PreviewHandlerHost.FindHandler(ext);
@@ -378,10 +376,6 @@ public partial class MainWindow : Window
     public volatile bool PdfInPreview;
 
     /// <summary>
-    /// Shows the window above everything else. Topmost is only held for the moment of opening,
-    /// so other windows can cover the preview again once the user switches away.
-    /// </summary>
-    /// <summary>
     /// For automated tests only: show the window without activating it, so a test never steals
     /// keyboard focus from whatever the user is doing.
     /// </summary>
@@ -389,31 +383,11 @@ public partial class MainWindow : Window
     internal static bool SuppressActivationForTests;
 #pragma warning restore CS0649
 
-    // --- Idle cleanup ---
-    // After the preview has been closed for a while, drop everything it holds (images, preloads, PDF pages,
-    // CSV rows, text) and hand the memory back to Windows. Not immediately, so reopening right away stays instant.
-
-    private DispatcherTimer? _idleTimer;
-
-    private void ScheduleIdleRelease()
-    {
-        _idleTimer?.Stop();
-        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
-        _idleTimer.Tick += (_, _) =>
-        {
-            _idleTimer!.Stop();
-            if (IsVisible) return;
-            ReleaseResources();
-        };
-        _idleTimer.Start();
-    }
-
-    private void CancelIdleRelease() => _idleTimer?.Stop();
-
+    // Release synchronously on close, including cached previews.
     private void ReleaseResources()
     {
-        long before = Environment.WorkingSet;
-
+        SystemPreviewControl.Close();
+        FontViewerControl.Release();
         ImageViewerControl.Release();
         PdfViewerControl.Release();
         CodeViewerControl.Release();
@@ -428,25 +402,15 @@ public partial class MainWindow : Window
         TitleIconImage.Source = null;
         _selectionSet = Array.Empty<string>();
 
-        // Large bitmaps live on the large-object heap, which is only compacted on request
-        System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        // Return the freed pages to Windows (otherwise Task Manager keeps showing the peak)
-        using (var self = System.Diagnostics.Process.GetCurrentProcess())
-            EmptyWorkingSet(self.Handle);
-
-        App.Log($"[MainWindow] Idle cleanup: working set {before / 1048576} MB -> {Environment.WorkingSet / 1048576} MB");
+        // Handles are closed above immediately. Let the runtime reclaim managed memory
+        // without blocking the UI on full collections or unrelated finalizers.
+        App.Log("[MainWindow] Preview resources released");
     }
-
-    [DllImport("psapi.dll")] private static extern bool EmptyWorkingSet(IntPtr process);
 
     public void HideWindow()
     {
         App.Log("[MainWindow] HideWindow called");
-        if (EditMode && !ExitEdit()) return; // unsaved changes: the user chose to stay
+        if (_saving || (EditMode && !ExitEdit(afterSave: HideWindow, reloadDiscarded: false))) return;
         CloseOpenWithMenu();
         CloseHelp();
         if (_pinned) { Close(); return; } // a pinned window is done once closed
@@ -462,7 +426,8 @@ public partial class MainWindow : Window
         SystemPreviewControl.Visibility = Visibility.Collapsed;
         MediaViewerControl.Stop(); // no music playing from a hidden window
         MediaViewerControl.Visibility = Visibility.Collapsed;
-        ScheduleIdleRelease();
+        ReleaseResources();
+        CopyInPreview = PdfInPreview = false;
         _currentFilePath = "";
         WelcomeView.Visibility = Visibility.Collapsed;
         ImageViewerControl.Visibility = Visibility.Collapsed;

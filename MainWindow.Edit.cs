@@ -10,8 +10,8 @@ using Lupik.Localization;
 namespace Lupik;
 
 /// <summary>
-/// Edit mode (E): text and code, CSV cells, PDF pages, quick picture fixes. The preview normally never takes the
-/// focus; in edit mode it does (typing needs a real keyboard focus), and gives it back to Explorer afterwards.
+/// Edit mode (E): text and code, CSV cells, PDF pages, quick picture fixes. Opening a preview leaves the
+/// source focused; clicking it or entering edit mode gives Lupik normal keyboard focus.
 /// Saving writes the new version next to the file, sends the original to the Recycle Bin and puts the new one in place.
 /// </summary>
 public partial class MainWindow
@@ -83,28 +83,35 @@ public partial class MainWindow
         App.Log($"[MainWindow] Edit mode: '{_editingPath}'");
     }
 
+    private bool _askingToExit;
+
     /// <summary>
-    /// Leaves edit mode; with unsaved changes asks first (save / discard / stay). False if the user chose to stay.
+    /// Leaves edit mode; with unsaved changes asks first (save / discard / stay).
+    /// A deferred close/navigation is resumed only after saving succeeds.
     /// </summary>
-    private bool ExitEdit()
+    private bool ExitEdit(Action? afterSave = null, bool reloadDiscarded = true)
     {
+        if (_saving || _askingToExit) return false;
         if (!EditMode || _editing == null) return true;
         if (_editing.IsDirty)
         {
-            var answer = Views.UnsavedChangesDialog.Ask(this, _editingPath);
+            Views.UnsavedChoice answer;
+            _askingToExit = true;
+            try { answer = Views.UnsavedChangesDialog.Ask(this, _editingPath); }
+            finally { _askingToExit = false; }
             if (answer == Views.UnsavedChoice.Cancel) return false;
             if (answer == Views.UnsavedChoice.Save)
             {
                 // Save first; leave only if it worked
-                _ = SaveEditAsync(exitAfter: true);
+                _ = SaveEditAsync(exitAfter: true, afterSave: afterSave);
                 return false;
             }
         }
-        FinishEdit(discarded: _editing.IsDirty);
+        FinishEdit(discarded: _editing.IsDirty, reloadDiscarded: reloadDiscarded);
         return true;
     }
 
-    private void FinishEdit(bool discarded)
+    private void FinishEdit(bool discarded, bool reloadDiscarded = true)
     {
         var editable = _editing;
         if (editable == null) return;
@@ -115,40 +122,65 @@ public partial class MainWindow
 
         EditBar.Visibility = Visibility.Collapsed;
         HeaderTools.Visibility = Visibility.Visible;
-        GiveFocusBack();
         UpdateEditable();
         App.Log($"[MainWindow] Edit mode off{(discarded ? " (changes discarded)" : "")}");
         // Thrown-away changes: show the file as it is on disk
-        if (discarded && File.Exists(_editingPath)) _ = ShowFile(_editingPath);
+        if (discarded && reloadDiscarded && File.Exists(_editingPath)) _ = ShowFile(_editingPath);
+    }
+
+    private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (!_pinned)
+        {
+            // Alt+F4 and taskbar Close follow the same save/discard/cancel path as our X.
+            e.Cancel = true;
+            HideWindow();
+            return;
+        }
+        if (!ExitEdit(afterSave: Close, reloadDiscarded: false)) e.Cancel = true;
     }
 
     private bool _saving;
 
-    private async Task SaveEditAsync(bool exitAfter = false)
+    private async Task SaveEditAsync(bool exitAfter = false, Action? afterSave = null)
     {
         var editable = _editing;
         if (editable == null || _saving) return;
         _saving = true;
-        EditSaveButton.IsEnabled = false;
+        // All editors remain stable until their snapshot has been committed and reloaded.
+        // Window closing and navigation also check _saving, so they cannot release this editor.
+        var editorControl = editable as UIElement;
+        bool wasEnabled = editorControl?.IsEnabled ?? true;
+        if (editorControl != null) editorControl.IsEnabled = false;
+        EditBar.IsEnabled = false;
         string path = _editingPath;
+        bool saved = false;
         try
         {
             await SafeReplace.ReplaceAsync(path, editable.SaveToAsync, editable.ReleaseFile);
             await editable.ReloadAsync(path);
             ShowNotice(Loc.T("edit.saved", Path.GetFileName(path)), success: true);
-            if (exitAfter) FinishEdit(discarded: false);
+            saved = true;
         }
         catch (Exception ex)
         {
             App.Log($"[MainWindow] Saving the edit failed: {ex}");
-            Views.MessageCard.Show(this, Loc.T("edit.saveError", ex.Message));
-            try { await editable.ReloadAsync(path); } catch { /* the viewer keeps what it has */ }
+            // Reloading here would discard CSV/image edits or mark unsaved text as clean.
+            if (!SuppressActivationForTests) Views.MessageCard.Show(this, Loc.T("edit.saveError", ex.Message));
         }
         finally
         {
             _saving = false;
-            EditSaveButton.IsEnabled = true;
+            if (editorControl != null) editorControl.IsEnabled = wasEnabled;
+            EditBar.IsEnabled = true;
             OnEditDirtyChanged();
+        }
+        if (saved && exitAfter && !editable.IsDirty)
+        {
+            FinishEdit(discarded: false);
+            // A tiny save may complete inside Window.Closing; defer the next close/navigation
+            // until that event has returned and its cancellation has taken effect.
+            if (afterSave != null) _ = Dispatcher.InvokeAsync(afterSave);
         }
     }
 
@@ -162,6 +194,7 @@ public partial class MainWindow
     /// <summary>Keys while editing (the window has the focus now): the viewer first, then Ctrl+S and Esc.</summary>
     private bool HandleEditModeKey(Key key, ModifierKeys mods)
     {
+        if (_saving) return true;
         if (_editing == null) return false;
         // Full screen works while editing too, just not while typing (then F is a letter)
         if (key == Key.F && mods == 0 && !IsTypingInEditor()) { ToggleFullScreen(); return true; }
@@ -181,22 +214,12 @@ public partial class MainWindow
 
     // ---------- Focus ----------
 
-    private const int GWL_EXSTYLE = -20, WS_EX_NOACTIVATE = 0x08000000;
-
     /// <summary>Makes the preview a normal, activatable window and brings it to the front with the keyboard focus.</summary>
     private void TakeFocus()
     {
-        SetWindowLong(Hwnd, GWL_EXSTYLE, GetWindowLong(Hwnd, GWL_EXSTYLE) & ~WS_EX_NOACTIVATE);
+        if (SuppressActivationForTests) return;
         Core.Foreground.Take(Hwnd);
         Activate();
-    }
-
-    /// <summary>Back to how the preview always works: no activation, Explorer in front with the focus.</summary>
-    private void GiveFocusBack()
-    {
-        if (_pinned) return; // a pinned window is a normal window: it keeps the focus
-        SetWindowLong(Hwnd, GWL_EXSTYLE, GetWindowLong(Hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
-        if (SourceWindow != IntPtr.Zero) NativeMethods.SetForegroundWindow(SourceWindow);
     }
 
     /// <summary>A short message in the title bar area (reusing the toast on the save icon when it's not edit mode).</summary>
@@ -226,7 +249,6 @@ public partial class MainWindow
 
         string? newName = Views.InputDialog.Ask(this, Loc.T("rename.title"), null, name, Loc.T("rename.ok"), "pencil",
             text => ValidateName(text, name, dir), stem);
-        if (!EditMode && SourceWindow != IntPtr.Zero) NativeMethods.SetForegroundWindow(SourceWindow); // the keys go back to Explorer
         if (newName == null || newName == name) return;
 
         string target = Path.Combine(dir, newName.Trim());

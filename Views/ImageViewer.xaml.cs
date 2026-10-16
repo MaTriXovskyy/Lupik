@@ -445,7 +445,7 @@ public partial class ImageViewer : UserControl
     private readonly Dictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<string> _cacheOrder = new();
 
-    /// <summary>Drops the shown image and all preloaded ones (called when Lupik goes idle).</summary>
+    /// <summary>Drops the shown image and all preloaded ones (called when the preview closes).</summary>
     public void Release()
     {
         EndTextMode();
@@ -453,6 +453,8 @@ public partial class ImageViewer : UserControl
         PreviewImage.Source = null;
         _cache.Clear();
         _cacheOrder.Clear();
+        FilmstripList.ItemsSource = null;
+        _filmstrip.Clear();
     }
 
     public void Preload(string filePath)

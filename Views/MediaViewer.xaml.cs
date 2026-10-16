@@ -23,6 +23,7 @@ public partial class MediaViewer : UserControl
     private readonly DispatcherTimer _progressTimer;
     private TaskCompletionSource<bool>? _opening;
     private string _currentPath = "";
+    private string? _mediaCopyDirectory;
     private bool _isPlaying;
     private bool _updatingSeek; // timer moving the slider must not seek
     private static double _volume = 0.8; // kept for the whole session
@@ -42,11 +43,23 @@ public partial class MediaViewer : UserControl
     /// <summary>Opens and starts playing. False if Windows can't play the file (missing codec, damaged file).</summary>
     public async Task<bool> LoadAsync(string filePath)
     {
-        _opening?.TrySetResult(false); // an older load still waiting: superseded
+        Stop(); // also completes an older load still waiting
         var opening = _opening = new TaskCompletionSource<bool>();
-
-        Stop();
-        _currentPath = filePath;
+        // MediaElement closes asynchronously. Give it a disposable copy so its native
+        // decoder can never retain the user's original after this preview closes.
+        string directory = Path.Combine(Path.GetTempPath(), "Lupik", Guid.NewGuid().ToString("N") + ".part");
+        Directory.CreateDirectory(directory);
+        _mediaCopyDirectory = directory;
+        PendingCleanup.Register(directory, new System.Threading.CancellationTokenSource());
+        string playbackPath = Path.Combine(directory, Path.GetFileName(filePath));
+        try { File.Copy(filePath, playbackPath); }
+        catch (Exception ex)
+        {
+            App.Log($"[MediaViewer] Could not copy '{filePath}': {ex.Message}");
+            Stop();
+            return false;
+        }
+        _currentPath = playbackPath;
         IsVideo = Array.IndexOf(VideoExtensions, Path.GetExtension(filePath).ToLowerInvariant()) >= 0;
         AudioPanel.Visibility = IsVideo ? Visibility.Collapsed : Visibility.Visible;
         AudioTitleText.Text = Path.GetFileNameWithoutExtension(filePath);
@@ -54,12 +67,12 @@ public partial class MediaViewer : UserControl
         if (!IsVideo)
         {
             // Album art comes from the shell thumbnail (falls back to the file-type icon)
-            ShellThumbnails.Request(filePath, 256, ShellThumbnails.CurrentGeneration,
-                bmp => Dispatcher.BeginInvoke(() => { if (_currentPath == filePath) CoverImage.Source = bmp; }));
+            ShellThumbnails.Request(playbackPath, 256, ShellThumbnails.CurrentGeneration,
+                bmp => Dispatcher.BeginInvoke(() => { if (_currentPath == playbackPath) CoverImage.Source = bmp; }));
         }
 
         Player.Volume = _volume;
-        Player.Source = new Uri(filePath);
+        Player.Source = new Uri(playbackPath);
         Player.Play();
         bool autoplay = Core.Settings.Current.AutoplayMedia;
         if (!autoplay) Player.Pause(); // opens and shows the first frame, waits for K / the play button
@@ -79,15 +92,42 @@ public partial class MediaViewer : UserControl
     /// <summary>Stops playback and closes the file (so it isn't locked, e.g. before deleting it).</summary>
     public void Stop()
     {
+        _opening?.TrySetResult(false);
+        _opening = null;
+        _currentPath = "";
+        CoverImage.Source = null;
         _progressTimer.Stop();
         Player.Stop();
         Player.Close();
         Player.Source = null;
+        if (_mediaCopyDirectory is { } directory)
+        {
+            _mediaCopyDirectory = null;
+            _ = DeletePlaybackCopyAsync(directory);
+        }
         SetPlaying(false);
         _updatingSeek = true;
         SeekSlider.Value = 0;
         _updatingSeek = false;
         TimeText.Text = "0:00 / 0:00";
+    }
+
+    private static async Task DeletePlaybackCopyAsync(string directory)
+    {
+        // Native codecs may still be unwinding. Only the private copy is affected.
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+                PendingCleanup.Unregister(directory);
+                return;
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            await Task.Delay(250);
+        }
+        // PendingCleanup retries at application exit and after a crash on next start.
     }
 
     public void TogglePlay()

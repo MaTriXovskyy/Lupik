@@ -84,6 +84,14 @@ public partial class FontViewer : UserControl
         }
     }
 
+    public void Release()
+    {
+        _loadToken++;
+        AlphabetBig.ClearValue(TextBlock.FontFamilyProperty);
+        Sizes.Children.Clear();
+        Glyphs.Children.Clear();
+    }
+
     public void ScrollBy(double delta) => Scroller.ScrollToVerticalOffset(Scroller.VerticalOffset + delta);
 
     private static void Apply(TextBlock text, FontFamily family, Typeface typeface)

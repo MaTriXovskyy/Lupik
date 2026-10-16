@@ -27,6 +27,7 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
 
     private System.Text.Encoding _encoding = System.Text.Encoding.UTF8;
     private bool _bom, _truncated, _readFailed, _editing;
+    private string? _saveSnapshot;
 
     public event Action? DirtyChanged;
 
@@ -40,6 +41,7 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
     public void BeginEdit()
     {
         _editing = true;
+        _saveSnapshot = null;
         TextEditorControl.IsReadOnly = false;
         TextEditorControl.Document.UndoStack.MarkAsOriginalFile();
         TextEditorControl.Document.UndoStack.PropertyChanged += OnUndoStackChanged;
@@ -52,6 +54,7 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
     public void EndEdit()
     {
         _editing = false;
+        _saveSnapshot = null;
         TextEditorControl.IsReadOnly = true;
         TextEditorControl.Document.UndoStack.PropertyChanged -= OnUndoStackChanged;
         TextEditorControl.Document.TextChanged -= OnTextEdited;
@@ -84,6 +87,7 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
     public Task SaveToAsync(string path)
     {
         string text = TextEditorControl.Text;
+        _saveSnapshot = text;
         var encoding = _encoding;
         bool bom = _bom;
         return Task.Run(() => Lupik.Core.TextEncoding.Write(path, text, encoding, bom));
@@ -93,8 +97,11 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
 
     public Task ReloadAsync(string path)
     {
-        TextEditorControl.Document.UndoStack.MarkAsOriginalFile();
         FileSizeText.Text = FormatFileSize(new FileInfo(path).Length);
+        // Only the exact snapshot written to disk can become the clean undo position.
+        if (_saveSnapshot == TextEditorControl.Text)
+            TextEditorControl.Document.UndoStack.MarkAsOriginalFile();
+        _saveSnapshot = null;
         DirtyChanged?.Invoke();
         return Task.CompletedTask;
     }
@@ -250,6 +257,7 @@ public partial class CodeViewer : UserControl, ISearchable, IEditable
     /// <summary>Drops the loaded text (called when Lupik goes idle).</summary>
     public void Release()
     {
+        _saveSnapshot = null;
         _loadToken++;
         TextEditorControl.Text = "";
         _codeBlocks.Analyze(TextEditorControl.Document, false);

@@ -102,10 +102,12 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
         }
     }
 
-    /// <summary>Drops rendered pages and the open document (called when Lupik goes idle).</summary>
+    /// <summary>Drops rendered pages and the open document (called when the preview closes).</summary>
     public void Release()
     {
         _loadToken++;
+        _resizeTimer.Stop();
+        _currentFilePath = "";
         ClosePages();
     }
 
@@ -554,8 +556,9 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
     public void ReleaseFile()
     {
         _pageBeforeSave = CurrentPage();
-        _loadToken++;
-        ClosePages(); // PDFium keeps the file open while the document is loaded
+        // PdfDocument's reader shares delete access, so replacing the source doesn't
+        // require disposing this edited document. Keep it until a successful reload;
+        // a failed save must leave its unsaved pages available for another attempt.
     }
 
     public async Task ReloadAsync(string path)

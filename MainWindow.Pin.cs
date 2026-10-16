@@ -64,10 +64,10 @@ public partial class MainWindow
 
     private void OnPinClicked(object sender, RoutedEventArgs e) => TogglePin();
 
-    /// <summary>Typing into the search bar of a pinned window (it gets its keys the normal way, not from the hook).</summary>
+    /// <summary>Typing into a focused preview's search bar (ordinary or pinned).</summary>
     private void OnWindowTextInput(object sender, TextCompositionEventArgs e)
     {
-        if (!_pinned || !SearchActive || string.IsNullOrEmpty(e.Text)) return;
+        if (!SearchActive || string.IsNullOrEmpty(e.Text)) return;
         HandleSearchKey(0, ModifierKeys.None, e.Text);
         e.Handled = true;
     }

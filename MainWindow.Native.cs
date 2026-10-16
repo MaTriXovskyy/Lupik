@@ -15,7 +15,7 @@ using Lupik.Localization;
 
 namespace Lupik;
 
-/// <summary>Win32 side of the window: handle setup, staying on top of its Explorer window, z-order diagnostics.</summary>
+/// <summary>Win32 side of the window: handle setup, initial placement and foreground notifications.</summary>
 public partial class MainWindow
 {
     private void InitNativeHandle()
@@ -38,9 +38,7 @@ public partial class MainWindow
         }
         else
         {
-            // Never activated: Explorer keeps the focus (see BringToFront)
-            const int GWL_EXSTYLE = -20, WS_EX_NOACTIVATE = 0x08000000;
-            SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+            // Opening doesn't steal focus, but clicking the preview activates it normally.
             ShowActivated = false;
             WatchForeground();
         }
@@ -81,48 +79,27 @@ public partial class MainWindow
             if (!IsVisible) Show();
             return;
         }
-        if (SuppressActivationForTests)
-        {
-            ShowActivated = false;
-            if (!IsVisible) Show();
-            return;
-        }
 
+        bool opening = !IsVisible || WindowState == WindowState.Minimized;
         // Restored from the taskbar: a minimized preview comes back as it was
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
 
-        // The preview never takes the focus: activating it makes Windows wait until the previous foreground window
-        // (Explorer) acknowledges losing it, up to 5 s whenever Explorer is busy. Like Quick Look on the Mac, Explorer
-        // keeps the focus; the preview floats above it and gets its keys through the keyboard hook.
+        // Remember the shortcut source only on opening, not when an asynchronous load finishes.
         IntPtr foreground = NativeMethods.GetForegroundWindow();
-        if (foreground != Hwnd && foreground != IntPtr.Zero)
+        if (opening && !SuppressActivationForTests && foreground != Hwnd && foreground != IntPtr.Zero)
         {
             SourceWindow = GetAncestor(foreground, GA_ROOT);
         }
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        Topmost = true; // stays on top while its Explorer window is in front (see OnForegroundChanged)
+        Topmost = false;
         if (!IsVisible) Show();
-        // WPF skips Topmost when the property didn't change, and a window shown without activation keeps its old
-        // place in the z-order (seen: behind Explorer). Put it on top explicitly, every time, without activating.
-        if (!SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW))
-            App.Log($"[MainWindow] BringToFront: SetWindowPos(TOPMOST) failed, error {Marshal.GetLastWin32Error()}");
-        App.Log($"[MainWindow] BringToFront: shown in {sw.ElapsedMilliseconds} ms, source={DescribeWindow(SourceWindow)}, topmost bit={IsTopmostBitSet()}");
+        if (!opening) return;
 
-        // First frame on screen: log how long it took and whether anything covers the preview. Seen once: the
-        // window stuck under Explorer for a whole session despite the call above, until a foreground change
-        // (Win+Shift+S) re-toggled Topmost. If something covers it, drop and re-take the topmost state the same way.
-        Dispatcher.InvokeAsync(() =>
-        {
-            string above = WindowsAbove();
-            App.Log($"[MainWindow] BringToFront: first frame after {sw.ElapsedMilliseconds} ms, covered by: {above}");
-            if (above == "nothing" || !IsVisible) return;
-            SetWindowPos(Hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-            SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-            Topmost = false; Topmost = true; // and WPF's own idea of it
-            App.Log($"[MainWindow] BringToFront: re-took topmost, now covered by: {WindowsAbove()}, topmost bit={IsTopmostBitSet()}");
-        }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+        // One initial lift, without activation. Immediately return to the normal window band
+        // so switching applications can cover the preview, even while loading continues.
+        SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        SetWindowPos(Hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     private static readonly IntPtr HWND_NOTOPMOST = new(-2);
@@ -144,8 +121,8 @@ public partial class MainWindow
     private WinEventProc? _foregroundProc; // kept alive: the hook calls into it
 
     /// <summary>
-    /// Foreground changes (out-of-context WinEvent: delivered asynchronously, never waits on anyone). The preview stays
-    /// on top while its source window or Lupik itself is in front, and lets other apps cover it otherwise.
+    /// Foreground changes only implement the optional close-on-focus-loss setting.
+    /// The preview's z-order is independent of Explorer and other foreground windows.
     /// </summary>
     private void WatchForeground()
     {
@@ -160,28 +137,15 @@ public partial class MainWindow
         IntPtr root = GetAncestor(hwnd, GA_ROOT);
         GetWindowThreadProcessId(root, out uint pid);
         bool ours = pid == (uint)Environment.ProcessId;
-        bool keepOnTop = ours || root == SourceWindow;
-        if (!keepOnTop && Settings.Current.CloseOnFocusLoss && hwnd != IntPtr.Zero && !IsShellWindow(root))
+        bool fromPreviewContext = ours || root == SourceWindow;
+        if (!fromPreviewContext && Settings.Current.CloseOnFocusLoss && hwnd != IntPtr.Zero && !IsShellWindow(root))
         {
             App.Log($"[MainWindow] Another app in front ({DescribeWindow(root)}): closing (CloseOnFocusLoss)");
             HideWindow();
             return;
         }
-        if (keepOnTop)
-        {
-            if (!Topmost) Topmost = true;
-            // Back to its Explorer window: make sure the preview is really above it again
-            SetWindowPos(Hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-            return;
-        }
-        if (!Topmost) return;
-        // Another app came to the front: let it cover the preview. Dropping the topmost state alone (HWND_NOTOPMOST)
-        // puts the window at the top of the normal windows, i.e. right back above the app that was just clicked;
-        // so slide it in just under that app's window.
-        Topmost = false;
-        if (root != IntPtr.Zero && !IsShellWindow(root) && (GetWindowLong(root, -20) & 0x8) == 0)
-            SetWindowPos(Hwnd, root, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        App.Log($"[MainWindow] {DescribeWindow(root)} in front: preview no longer on top, covered by: {WindowsAbove()}");
+        // SourceWindow only routes shortcuts and the optional close-on-focus-loss setting.
+        // Foreground changes must never reorder the preview.
     }
 
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);

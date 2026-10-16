@@ -124,8 +124,8 @@ public class KeyboardHook : IDisposable
             if (IsOwnDialogInForeground())
                 return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
 
-            // Edit mode: Lupik is a normal focused window now; its keys go to it the normal way
-            if (MainWindowRef is { EditMode: true } editedIn && NativeMethods.GetForegroundWindow() == editedIn.Hwnd)
+            // A focused preview receives keys through WPF (including search text), exactly once.
+            if (MainWindowRef is { } focused && NativeMethods.GetForegroundWindow() == focused.Hwnd)
                 return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
 
             // The search bar is open: every key is typing for it (Space too, so this comes before the preview key)
@@ -203,6 +203,8 @@ public class KeyboardHook : IDisposable
 
             // A key Lupik handed back to the window it came from (see ReplayToSystem): not ours
             if (kb.dwExtraInfo == ReplayMarker)
+                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+            if (IsOwnDialogInForeground() || (MainWindowRef is { } focused && NativeMethods.GetForegroundWindow() == focused.Hwnd))
                 return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
             RouteToPreview(kb.vkCode, keyUp: true); // Shift / Alt released: the crop frame reacts; never swallowed
         }

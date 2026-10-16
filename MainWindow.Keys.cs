@@ -15,7 +15,7 @@ using Lupik.Localization;
 
 namespace Lupik;
 
-/// <summary>Keyboard: keys routed from the hook (the window never takes focus), full screen.</summary>
+/// <summary>Keyboard: normal focused-window input, shortcuts forwarded from Explorer, full screen.</summary>
 public partial class MainWindow
 {
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
@@ -23,8 +23,8 @@ public partial class MainWindow
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         // Editing: the keys are for the editor, except the few edit mode ones
         if (EditMode) { if (HandleEditModeKey(key, KeyState.Modifiers)) e.Handled = true; return; }
-        // A pinned window's search bar: editing keys here, the characters arrive as text input
-        if (_pinned && SearchActive)
+        // A focused preview's search bar: editing keys here, characters arrive as text input.
+        if (SearchActive)
         {
             var m = KeyState.Modifiers;
             if (key is Key.Escape or Key.Enter or Key.F3 or Key.Up or Key.Down or Key.Back || (key == Key.V && m == ModifierKeys.Control))
@@ -34,12 +34,17 @@ public partial class MainWindow
             }
             return;
         }
+        if (Settings.Current.PreviewKey?.Matches((uint)KeyInterop.VirtualKeyFromKey(key), KeyState.Modifiers) == true)
+        {
+            HideWindow();
+            e.Handled = true;
+            return;
+        }
         if (HandleKey(key, KeyState.Modifiers)) e.Handled = true;
     }
 
     /// <summary>
-    /// A key from the global keyboard hook (virtual-key code). The preview is never the focused window (taking the
-    /// focus from Explorer makes Windows wait on it, up to 5 s when it's busy), so its keys arrive this way.
+    /// A key forwarded from the source window while the preview has not taken keyboard focus.
     /// </summary>
     public void HandleHookKey(int vk, ModifierKeys mods)
     {

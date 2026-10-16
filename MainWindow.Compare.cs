@@ -66,8 +66,8 @@ public partial class MainWindow
 
     public async Task ShowDiff(string a, string b)
     {
+        if (_saving || (EditMode && !ExitEdit(afterSave: () => _ = ShowDiff(a, b), reloadDiscarded: false))) return;
         App.Log($"[MainWindow] ShowDiff: '{a}' vs '{b}'");
-        CancelIdleRelease();
         CloseSearch();
         int token = ++_showToken;
         BeginLoading(a, Path.GetExtension(a).ToLowerInvariant(), token);
@@ -99,8 +99,8 @@ public partial class MainWindow
 
     public async Task ShowCompare(string a, string b)
     {
+        if (_saving || (EditMode && !ExitEdit(afterSave: () => _ = ShowCompare(a, b), reloadDiscarded: false))) return;
         App.Log($"[MainWindow] ShowCompare: '{a}' vs '{b}'");
-        CancelIdleRelease();
         CloseSearch();
         int token = ++_showToken;
         BeginLoading(a, Path.GetExtension(a).ToLowerInvariant(), token);
