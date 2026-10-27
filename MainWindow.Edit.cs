@@ -19,9 +19,6 @@ public partial class MainWindow
     /// <summary>Edit mode is on: the keyboard hook leaves every key to the window (read by the hook thread).</summary>
     public volatile bool EditMode;
 
-    /// <summary>The current preview can be edited: E is routed (read by the hook thread).</summary>
-    public volatile bool EditableInPreview;
-
     private Views.IEditable? _editing;
     private string _editingPath = "";
 
@@ -36,7 +33,6 @@ public partial class MainWindow
     {
         // Markdown shown as a document is edited as its source (E switches to it first)
         bool editable = CurrentEditable() != null || MarkdownViewerControl.Visibility == Visibility.Visible;
-        EditableInPreview = editable && File.Exists(_currentFilePath) && !EditMode;
         EditButton.Visibility = editable && !EditMode ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -71,7 +67,6 @@ public partial class MainWindow
         _editing = editable;
         _editingPath = _currentFilePath;
         EditMode = true;
-        EditableInPreview = false;
         editable.DirtyChanged += OnEditDirtyChanged;
         editable.BeginEdit();
 
@@ -272,7 +267,6 @@ public partial class MainWindow
 
         _selectionSet = _selectionSet.Select(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase) ? target : p).ToArray();
         if (EditMode) _editingPath = target;
-        ExplorerSelectionChangedByUs();
         _ = ShowFile(target);
     }
 

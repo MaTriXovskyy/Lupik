@@ -15,7 +15,7 @@ using Lupik.Localization;
 
 namespace Lupik;
 
-/// <summary>Keyboard: normal focused-window input, shortcuts forwarded from Explorer, full screen.</summary>
+/// <summary>Keyboard: the preview is the active window and gets its keys the normal way; full screen.</summary>
 public partial class MainWindow
 {
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
@@ -36,32 +36,12 @@ public partial class MainWindow
         }
         if (Settings.Current.PreviewKey?.Matches((uint)KeyInterop.VirtualKeyFromKey(key), KeyState.Modifiers) == true)
         {
-            HideWindow();
+            // Not a held-down key: the press that opened the preview (in Explorer) repeats here once Lupik has the focus
+            if (!e.IsRepeat) HideWindow();
             e.Handled = true;
             return;
         }
         if (HandleKey(key, KeyState.Modifiers)) e.Handled = true;
-    }
-
-    /// <summary>
-    /// A key forwarded from the source window while the preview has not taken keyboard focus.
-    /// </summary>
-    public void HandleHookKey(int vk, ModifierKeys mods)
-    {
-        var key = KeyInterop.KeyFromVirtualKey(vk);
-        // The delete confirmation doesn't take the focus either: Enter / Esc answer it
-        if (Views.ConfirmDeleteWindow.Current is { } confirm)
-        {
-            if (key == Key.Enter) confirm.Answer(true);
-            else if (key == Key.Escape) confirm.Answer(false);
-            return;
-        }
-        if (key is Key.LeftShift or Key.RightShift or Key.LeftAlt or Key.RightAlt or Key.System)
-        {
-            ImageViewerControl.CropModifiersChanged();
-            return;
-        }
-        HandleKey(key, mods);
     }
 
     /// <summary>All preview shortcuts. Returns true if the key did something.</summary>
@@ -117,8 +97,7 @@ public partial class MainWindow
         }
         else if (key == Key.F2 && mods == 0 && PathExists(_currentFilePath) && CompareViewerControl.Visibility != Visibility.Visible && DiffViewerControl.Visibility != Visibility.Visible)
         {
-            if (ExplorerSelectionMoved()) KeyboardHook.ReplayToSystem(0x71); // renaming the files picked in Explorer
-            else RenameCurrent();
+            RenameCurrent();
             handled = true;
         }
         else if ((key == Key.F && mods == ModifierKeys.Control) || (key == Key.F3 && !SearchActive))
@@ -133,8 +112,7 @@ public partial class MainWindow
         }
         else if (key == Key.Delete && mods == 0 && !string.IsNullOrEmpty(_currentFilePath))
         {
-            if (ExplorerSelectionMoved()) KeyboardHook.ReplayToSystem(0x2E); // meant for the files picked in Explorer
-            else DeleteCurrent();
+            DeleteCurrent();
             handled = true;
         }
         else if (mediaShown && mods == 0 && key is Key.K or Key.J or Key.L or Key.M)
@@ -348,8 +326,8 @@ public partial class MainWindow
 
     /// <summary>
     /// Full screen (F): the window fills the whole screen above the taskbar, and keeps its title bar, file actions,
-    /// footer and key hints, like the window does. (Covering the taskbar would need Lupik to be the active window,
-    /// and the preview never takes the focus from Explorer.) Arrow keys keep switching files in full screen.
+    /// footer and key hints, like the window does; the taskbar stays visible. Arrow keys keep switching files in
+    /// full screen.
     /// </summary>
     private void ToggleFullScreen()
     {

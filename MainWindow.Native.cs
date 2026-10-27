@@ -85,15 +85,23 @@ public partial class MainWindow
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
 
-        // Remember the shortcut source only on opening, not when an asynchronous load finishes.
+        // The window the preview key came from (closing gives the focus back to it); not when a load finishes later
         IntPtr foreground = NativeMethods.GetForegroundWindow();
-        if (opening && !SuppressActivationForTests && foreground != Hwnd && foreground != IntPtr.Zero)
+        if ((opening || _focusOnShow) && !SuppressActivationForTests && foreground != Hwnd && foreground != IntPtr.Zero)
         {
             SourceWindow = GetAncestor(foreground, GA_ROOT);
         }
 
         Topmost = false;
         if (!IsVisible) Show();
+        if (_focusOnShow && !SuppressActivationForTests)
+        {
+            // Opened (or switched) on purpose: the preview is the active window now and gets its keys like any app
+            _focusOnShow = false;
+            TakeFocus();
+            if (Keyboard.FocusedElement == null) Focus();
+            return;
+        }
         if (!opening) return;
 
         // One initial lift, without activation. Immediately return to the normal window band
@@ -103,6 +111,17 @@ public partial class MainWindow
     }
 
     private static readonly IntPtr HWND_NOTOPMOST = new(-2);
+
+    /// <summary>The next time the window is shown, it takes the focus (set by the preview key and the tray).</summary>
+    private bool _focusOnShow;
+
+    /// <summary>Closing the active preview: the focus goes back to the Explorer window it was opened from.</summary>
+    private void ReturnFocusToSource()
+    {
+        if (_pinned || SuppressActivationForTests || !IsActive || SourceWindow == IntPtr.Zero) return;
+        if (!IsWindow(SourceWindow) || !IsWindowVisible(SourceWindow)) return;
+        NativeMethods.SetForegroundWindow(SourceWindow);
+    }
 
     private bool IsTopmostBitSet() => (GetWindowLong(Hwnd, -20) & 0x8) != 0; // WS_EX_TOPMOST
 

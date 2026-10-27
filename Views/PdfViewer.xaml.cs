@@ -672,7 +672,7 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
 
     // ---------- Typing a page number ----------
 
-    /// <summary>Digits typed so far (null = not typing). Keys arrive from MainWindow.HandleHookKey.</summary>
+    /// <summary>Digits typed so far (null = not typing). Keys arrive from MainWindow.HandleKey.</summary>
     private string? _pageEntry;
 
     public bool IsEnteringPage => _pageEntry != null;

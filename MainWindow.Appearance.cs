@@ -88,7 +88,7 @@ public partial class MainWindow
             else Resources.Remove(key);
         }
 
-        // The backdrop is drawn as for an active window: the preview never takes the focus, and an "inactive"
+        // The backdrop is drawn as for an active window, also while another app has the focus: an "inactive"
         // Mica is just a flat color
         if (on) SendMessage(Hwnd, WM_NCACTIVATE, (IntPtr)1, IntPtr.Zero);
     }

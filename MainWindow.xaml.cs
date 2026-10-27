@@ -363,29 +363,9 @@ public partial class MainWindow : Window
             if (viewer.Visibility != visibility) viewer.Visibility = visibility;
         }
         UpdateFooter();
-        CopyInPreview = target == ImageViewerControl || target == CsvViewerControl || target == ArchiveViewerControl;
-        PdfInPreview = target == PdfViewerControl;
-        ImageInPreview = target == ImageViewerControl;
-        MediaInPreview = target == MediaViewerControl;
-        CompareInPreview = target == CompareViewerControl;
-        MarkdownInPreview = IsMarkdownShown;
-        CompareAvailable = CanToggleCompare();
-        HasFolderHistory = _folderHistory.Count > 0;
         UpdateSearchable();
         UpdateEditable();
     }
-
-    /// <summary>Whether Ctrl+C / Ctrl+A mean something in the current preview (read by the keyboard hook thread).</summary>
-    public volatile bool CopyInPreview;
-
-    /// <summary>A PDF is shown: PgUp/PgDn/Home/End page through it (read by the keyboard hook thread).</summary>
-    public volatile bool PdfInPreview;
-
-    /// <summary>
-    /// What's shown, for the keyboard hook thread: a key is taken from Explorer only when it does something in the
-    /// preview now (otherwise Explorer keeps it: Backspace goes up a folder, letters jump to a file).
-    /// </summary>
-    public volatile bool ImageInPreview, MediaInPreview, CompareInPreview, MarkdownInPreview, CompareAvailable, HasFolderHistory;
 
     /// <summary>
     /// For automated tests only: show the window without activating it, so a test never steals
@@ -427,7 +407,8 @@ public partial class MainWindow : Window
         CloseHelp();
         if (_pinned) { Close(); return; } // a pinned window is done once closed
 
-        // Nothing to hand back: the preview never took the focus from Explorer
+        ReturnFocusToSource();
+        _focusOnShow = false;
         Hide();
         CloseSearch();
         _showToken++; // cancel any image still loading
@@ -439,7 +420,6 @@ public partial class MainWindow : Window
         MediaViewerControl.Stop(); // no music playing from a hidden window
         MediaViewerControl.Visibility = Visibility.Collapsed;
         ReleaseResources();
-        CopyInPreview = PdfInPreview = ImageInPreview = MediaInPreview = CompareInPreview = MarkdownInPreview = CompareAvailable = HasFolderHistory = false;
         _currentFilePath = "";
         WelcomeView.Visibility = Visibility.Collapsed;
         ImageViewerControl.Visibility = Visibility.Collapsed;
@@ -464,16 +444,15 @@ public partial class MainWindow : Window
             new[] { a, b }.Order(StringComparer.OrdinalIgnoreCase).SequenceEqual(
                 new[] { CompareViewerControl.PathA, CompareViewerControl.PathB }.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
 
-        // Arrow keys change the file in the preview only (Explorer keeps its selection, the preview has no focus).
+        // Arrow keys change the file in the preview only (Explorer keeps its selection).
         // So Space with the same Explorer selection as before means "close", not "go back to that file".
         bool selectionChanged = !string.Equals(selected, _explorerSelection, StringComparison.OrdinalIgnoreCase);
         _explorerSelection = selected;
-        _explorerSelectionCount = ExplorerService.LastSelection.Count;
-        _explorerSelectionStale = false;
 
         if (selectionChanged && !string.IsNullOrEmpty(selected) && PathExists(selected) && !samePairShown &&
             (ComparePair() != null || !string.Equals(selected, _currentFilePath, StringComparison.OrdinalIgnoreCase)))
         {
+            _focusOnShow = true;
             ShowSelection(selected);
         }
         else
@@ -484,59 +463,6 @@ public partial class MainWindow : Window
 
     /// <summary>What Explorer had selected when the preview last looked (to tell "Space again" from "picked another file").</summary>
     private string? _explorerSelection;
-    private int _explorerSelectionCount;
-
-    /// <summary>
-    /// Since the preview opened, did the user pick other files in its Explorer window (clicked there, selected
-    /// something else)? Then keys like Delete are for those files, not for the previewed one.
-    /// </summary>
-    private bool ExplorerSelectionMoved()
-    {
-        if (_pinned || SourceWindow == IntPtr.Zero) return false;
-        IntPtr root = GetAncestor(NativeMethods.GetForegroundWindow(), GA_ROOT);
-        if (root != SourceWindow) return false; // Lupik itself in front: the key is for the preview
-        if (_explorerSelectionStale)
-        {
-            // Lupik itself just deleted / renamed a file Explorer had selected: what Explorer shows now is the
-            // result of that, not the user picking something else
-            SnapshotExplorerSelection();
-            return false;
-        }
-        string? selected = ExplorerService.GetSelectedFilePath();
-        int count = ExplorerService.LastSelection.Count;
-        bool moved = !string.Equals(selected, _explorerSelection, StringComparison.OrdinalIgnoreCase) || count != _explorerSelectionCount;
-        if (moved) App.Log($"[MainWindow] Explorer selection changed ('{selected}', {count} items): the key goes to Explorer");
-        return moved;
-    }
-
-    private bool _explorerSelectionStale;
-    private DispatcherTimer? _snapshotTimer;
-
-    /// <summary>
-    /// After Lupik deletes or renames a file, Explorer's selection changes because of it. Take a new baseline once
-    /// Explorer has caught up (or at the next key, whichever comes first), so the next Delete / F2 isn't mistaken
-    /// for a key meant for Explorer.
-    /// </summary>
-    private void ExplorerSelectionChangedByUs()
-    {
-        if (_pinned || SourceWindow == IntPtr.Zero) return;
-        _explorerSelectionStale = true;
-        _snapshotTimer ??= new DispatcherTimer(TimeSpan.FromMilliseconds(600), DispatcherPriority.Background, (_, _) =>
-        {
-            _snapshotTimer!.Stop();
-            if (_explorerSelectionStale) SnapshotExplorerSelection();
-        }, Dispatcher);
-        _snapshotTimer.Stop();
-        _snapshotTimer.Start();
-    }
-
-    private void SnapshotExplorerSelection()
-    {
-        _explorerSelectionStale = false;
-        _explorerSelection = ExplorerService.SelectionIn(SourceWindow);
-        _explorerSelectionCount = ExplorerService.LastSelection.Count;
-        App.Log($"[MainWindow] Explorer selection baseline: '{_explorerSelection}' ({_explorerSelectionCount} items)");
-    }
 
     /// <param name="fromPreviewKey">
     /// The preview key in Explorer: with nothing selected nothing happens (the welcome screen is for opening Lupik
@@ -556,8 +482,7 @@ public partial class MainWindow : Window
         ResetFolderHistory(); // opened from Explorer, not from a folder preview
             App.Log($"[MainWindow] ExplorerService returned: '{selected}'");
             _explorerSelection = selected;
-            _explorerSelectionCount = ExplorerService.LastSelection.Count;
-            _explorerSelectionStale = false;
+            _focusOnShow = true;
             if (!string.IsNullOrEmpty(selected) && PathExists(selected))
             {
                 ShowSelection(selected);

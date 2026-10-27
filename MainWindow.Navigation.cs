@@ -58,7 +58,6 @@ public partial class MainWindow
     {
         _folderHistory.Clear();
         _forwardHistory.Clear();
-        HasFolderHistory = false;
     }
 
     private string? GetNeighbor(string path, int direction)

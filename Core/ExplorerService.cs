@@ -70,17 +70,6 @@ public static class ExplorerService
         return GetSelectedFromShellWindows(fgWnd, rootWnd, isDesktop);
     }
 
-    /// <summary>The selection in one particular Explorer window (or the Desktop), whether or not it's in front.</summary>
-    public static string? SelectionIn(IntPtr window)
-    {
-        LastSelection = Array.Empty<string>();
-        if (window == IntPtr.Zero) return null;
-        var sb = new StringBuilder(256);
-        NativeMethods.GetClassName(window, sb, sb.Capacity);
-        bool isDesktop = sb.ToString() is "Progman" or "WorkerW";
-        return GetSelectedFromShellWindows(window, window, isDesktop);
-    }
-
     private static string? GetSelectedFromShellWindows(IntPtr fgWnd, IntPtr rootWnd, bool isDesktop)
     {
         try

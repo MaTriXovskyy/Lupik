@@ -4,8 +4,8 @@ using System.Windows.Input;
 namespace Lupik.Core;
 
 /// <summary>
-/// Modifier keys read from the system. The preview window never takes the keyboard focus (so WPF's
-/// Keyboard.Modifiers isn't kept up to date for it); this asks Windows directly.
+/// Modifier keys read from the system: the keyboard hook runs on its own thread while another app has the focus,
+/// where WPF's Keyboard.Modifiers isn't kept up to date; this asks Windows directly.
 /// </summary>
 public static class KeyState
 {

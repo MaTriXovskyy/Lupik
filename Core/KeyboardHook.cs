@@ -99,256 +99,51 @@ public class KeyboardHook : IDisposable
         }
     }
 
-    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-    private static readonly uint OwnProcessId = (uint)Environment.ProcessId;
-
-    private static bool IsOwnDialogInForeground()
-    {
-        IntPtr fg = NativeMethods.GetForegroundWindow();
-        if (fg == IntPtr.Zero || (MainWindowRef != null && fg == MainWindowRef.Hwnd)) return false;
-        GetWindowThreadProcessId(fg, out uint pid);
-        return pid == OwnProcessId;
-    }
-
+    /// <summary>
+    /// The only key Lupik takes from other windows: the preview key (Space unless changed in Settings), in Explorer
+    /// or on the Desktop, which has no other way to add a shortcut. Everything else, in every app, passes through
+    /// untouched: once the preview is open it is the active window and gets its keys the normal way.
+    /// </summary>
     private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode >= 0 && (wParam == (IntPtr)NativeMethods.WM_KEYDOWN || wParam == (IntPtr)NativeMethods.WM_SYSKEYDOWN))
         {
             var kb = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
-
-            // A key Lupik handed back to the window it came from (see ReplayToSystem): not ours
-            if (kb.dwExtraInfo == ReplayMarker)
-                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
-
-            // Our own dialogs (e.g. "Save As") get Space/Esc untouched
-            if (IsOwnDialogInForeground())
-                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
-
-            // A focused preview receives keys through WPF (including search text), exactly once.
-            if (MainWindowRef is { } focused && NativeMethods.GetForegroundWindow() == focused.Hwnd)
-                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
-
-            // The search bar is open: every key is typing for it (Space too, so this comes before the preview key)
-            if (RouteToSearch(kb)) return (IntPtr)1;
-
-            // The preview key (Space unless changed in Settings)
             var previewKey = Settings.Current.PreviewKey;
-            if (previewKey != null && previewKey.Matches(kb.vkCode, Core.KeyState.Modifiers))
-            {
-                {
-                    var window = MainWindowRef;
-                    bool previewShown = window != null && window.IsShown;
-
-                    IntPtr fgWnd = NativeMethods.GetForegroundWindow();
-                    IntPtr rootWnd = GetAncestor(fgWnd, GA_ROOT);
-                    if (rootWnd == IntPtr.Zero) rootWnd = fgWnd;
-
-                    // 1. Preview has focus -> Space closes it
-                    if (previewShown && (fgWnd == window!.Hwnd || rootWnd == window.Hwnd))
-                    {
-                        App.Log("[KeyboardHook] Preview focused -> Space pressed, closing window.");
-                        window.Dispatcher.InvokeAsync(() => window.HideWindow());
-                        return (IntPtr)1; // Swallow Space
-                    }
-
-                    var sb = new StringBuilder(256);
-                    NativeMethods.GetClassName(fgWnd, sb, sb.Capacity);
-                    string className = sb.ToString();
-
-                    var sbRoot = new StringBuilder(256);
-                    NativeMethods.GetClassName(rootWnd, sbRoot, sbRoot.Capacity);
-                    string rootClass = sbRoot.ToString();
-
-
-                    bool isExplorerOrDesktop = className == "CabinetWClass" || className == "ExplorerWClass" ||
-                                               rootClass == "CabinetWClass" || rootClass == "ExplorerWClass" ||
-                                               className == "Progman" || className == "WorkerW" ||
-                                               rootClass == "Progman" || rootClass == "WorkerW" ||
-                                               className == "SHELLDLL_DefView" || rootClass == "SHELLDLL_DefView" ||
-                                               className == "SysListView32" || rootClass == "SysListView32" ||
-                                               className == "DirectUIHWND";
-                    // Not "#32770": that's every classic dialog (message boxes, Properties, installers), where Space
-                    // presses the focused button; their selection isn't readable anyway, so Lupik would open
-                    // whatever some other Explorer window has selected
-
-                    if (isExplorerOrDesktop)
-                    {
-                        bool editing = IsUserEditingText(fgWnd);
-                        App.Log($"[KeyboardHook] Target is Explorer/Desktop! isEditing={editing}");
-
-                        if (!editing)
-                        {
-                            if (previewShown)
-                            {
-                                // 2. Preview open, user picked another file -> swap (or close if same file)
-                                App.Log("[KeyboardHook] Preview open -> swapping to current selection.");
-                                window!.Dispatcher.InvokeAsync(() => window.ShowSelectedOrHide());
-                            }
-                            else
-                            {
-                                // 3. Preview closed -> open it
-                                App.Log("[KeyboardHook] Triggering SpacePressed event async...");
-                                Task.Run(() => PreviewKeyPressed?.Invoke());
-                            }
-                            return (IntPtr)1; // Swallow space so Explorer doesn't scroll
-                        }
-                    }
-                    // Space in any other app is left alone: the preview stays open (e.g. parked on the taskbar)
-                }
-            }
-            // The preview's own keys, while it's open over the window it came from
-            if (RouteToPreview(kb.vkCode, keyUp: false)) return (IntPtr)1;
-        }
-        else if (nCode >= 0 && (wParam == (IntPtr)NativeMethods.WM_KEYUP || wParam == (IntPtr)NativeMethods.WM_SYSKEYUP))
-        {
-            var kb = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
-
-            // A key Lupik handed back to the window it came from (see ReplayToSystem): not ours
-            if (kb.dwExtraInfo == ReplayMarker)
-                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
-            if (IsOwnDialogInForeground() || (MainWindowRef is { } focused && NativeMethods.GetForegroundWindow() == focused.Hwnd))
-                return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
-            RouteToPreview(kb.vkCode, keyUp: true); // Shift / Alt released: the crop frame reacts; never swallowed
+            if (previewKey != null && previewKey.Matches(kb.vkCode, Core.KeyState.Modifiers) && OnPreviewKey())
+                return (IntPtr)1; // swallowed, so Explorer doesn't scroll
         }
 
         return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
     }
 
-    private const int VK_SHIFT = 0x10, VK_LSHIFT = 0xA0, VK_RSHIFT = 0xA1, VK_MENU = 0x12, VK_LMENU = 0xA4, VK_RMENU = 0xA5;
-
-    /// <summary>
-    /// The preview never takes the focus (that makes Windows wait on Explorer), so the keys it uses are taken here
-    /// while it's open and its source window (or Lupik) is in front, and handed to it asynchronously.
-    /// Other keys, and every key in other apps, pass through untouched.
-    /// </summary>
-    private static readonly UIntPtr ReplayMarker = (UIntPtr)0x4C55504BU; // "LUPK"
-
-    [DllImport("user32.dll")] private static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extraInfo);
-
-    /// <summary>
-    /// Presses a key again for the foreground window (Explorer), past the hook: for a key Lupik took that turned out
-    /// to be meant for Explorer, like Delete on files picked there after the preview opened.
-    /// </summary>
-    public static void ReplayToSystem(int vk)
+    /// <summary>The preview key was pressed: true if it was for Lupik (Explorer or the Desktop, not typing a name).</summary>
+    private static bool OnPreviewKey()
     {
-        const uint KEYEVENTF_KEYUP = 0x2, KEYEVENTF_EXTENDEDKEY = 0x1;
-        uint ext = vk is 0x2E or 0x2D or 0x24 or 0x23 or 0x21 or 0x22 or 0x25 or 0x26 or 0x27 or 0x28 ? KEYEVENTF_EXTENDEDKEY : 0;
-        keybd_event((byte)vk, 0, ext, ReplayMarker);
-        keybd_event((byte)vk, 0, ext | KEYEVENTF_KEYUP, ReplayMarker);
-    }
+        IntPtr fgWnd = NativeMethods.GetForegroundWindow();
+        IntPtr rootWnd = GetAncestor(fgWnd, GA_ROOT);
+        if (rootWnd == IntPtr.Zero) rootWnd = fgWnd;
 
-    private static bool RouteToPreview(uint vk, bool keyUp)
-    {
+        var sb = new StringBuilder(256);
+        NativeMethods.GetClassName(rootWnd, sb, sb.Capacity);
+        // Not "#32770": that's every classic dialog (message boxes, Properties, installers), where Space presses the
+        // focused button; their selection isn't readable anyway
+        bool isExplorerOrDesktop = sb.ToString() is "CabinetWClass" or "ExplorerWClass" or "Progman" or "WorkerW";
+        if (!isExplorerOrDesktop || IsUserEditingText(fgWnd)) return false;
+
         var window = MainWindowRef;
-        if (window == null || !window.IsShown || IsIconic(window.Hwnd)) return false; // minimized: the keys stay with Explorer
-
-        IntPtr fg = NativeMethods.GetForegroundWindow();
-        IntPtr root = GetAncestor(fg, GA_ROOT);
-        if (root == IntPtr.Zero) root = fg;
-        if (root != window.Hwnd && root != window.SourceWindow) return false;
-
-        var mods = Core.KeyState.Modifiers;
-        bool modifier = vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT or VK_MENU or VK_LMENU or VK_RMENU;
-        if (modifier)
+        if (window != null && window.IsShown)
         {
-            // Only informs the crop frame (Shift = proportions, Alt = from the center); the key itself goes on
-            window.Dispatcher.InvokeAsync(() => window.HandleHookKey((int)vk, mods));
-            return false;
+            // Preview open, user picked another file in Explorer -> swap (or close if it's the same file)
+            App.Log("[KeyboardHook] Preview open -> swapping to current selection.");
+            window.Dispatcher.InvokeAsync(() => window.ShowSelectedOrHide());
         }
-        if (keyUp || (mods & System.Windows.Input.ModifierKeys.Windows) != 0) return false;
-        if (!IsPreviewKey(vk, mods, window) || IsUserEditingText(fg)) return false;
-
-        window.Dispatcher.InvokeAsync(() => window.HandleHookKey((int)vk, mods));
-        return true;
-    }
-
-    /// <summary>
-    /// While the search bar is open, keys typed over the preview (or the window it came from) become its text.
-    /// The character is worked out here, with the foreground app's keyboard layout (Polish AltGr letters included).
-    /// </summary>
-    private static bool RouteToSearch(NativeMethods.KBDLLHOOKSTRUCT kb)
-    {
-        var window = MainWindowRef;
-        if (window == null || !window.SearchActive || !window.IsShown || IsIconic(window.Hwnd)) return false;
-
-        IntPtr fg = NativeMethods.GetForegroundWindow();
-        IntPtr root = GetAncestor(fg, GA_ROOT);
-        if (root == IntPtr.Zero) root = fg;
-        if (root != window.Hwnd && root != window.SourceWindow) return false;
-
-        uint vk = kb.vkCode;
-        if (vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT or VK_MENU or VK_LMENU or VK_RMENU or 0x11 or 0xA2 or 0xA3 or 0x5B or 0x5C or 0x14)
-            return false; // modifiers and Caps Lock themselves: let them through
-        var mods = Core.KeyState.Modifiers;
-        if ((mods & System.Windows.Input.ModifierKeys.Windows) != 0) return false;
-        if (vk == 0x09) return false; // Tab: leave it to Windows (Alt+Tab etc.)
-
-        string? text = CharacterOf(vk, kb.scanCode, fg);
-        window.Dispatcher.InvokeAsync(() => window.HandleSearchKey((int)vk, mods, text));
-        return true;
-    }
-
-    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
-    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
-    [DllImport("user32.dll")] private static extern short GetKeyState(int vKey);
-    [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint threadId);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int ToUnicodeEx(uint vk, uint scanCode, byte[] keyState, StringBuilder buffer, int size, uint flags, IntPtr layout);
-
-    private static string? CharacterOf(uint vk, uint scanCode, IntPtr foreground)
-    {
-        var state = new byte[256];
-        bool Down(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
-        if (Down(VK_SHIFT)) state[VK_SHIFT] = 0x80;
-        if (Down(0x11)) state[0x11] = 0x80;              // Ctrl
-        if (Down(VK_MENU)) state[VK_MENU] = 0x80;         // Alt
-        if (Down(VK_RMENU)) { state[0x11] = 0x80; state[VK_MENU] = 0x80; } // AltGr = Ctrl+Alt (ą, ę, ł...)
-        if ((GetKeyState(0x14) & 1) != 0) state[0x14] = 0x01; // Caps Lock on
-        var layout = GetKeyboardLayout(GetWindowThreadProcessId(foreground, out _));
-        var buffer = new StringBuilder(8);
-        // Flag 4: don't touch the keyboard state (dead keys stay intact for the app underneath)
-        int n = ToUnicodeEx(vk, scanCode, state, buffer, buffer.Capacity, 4, layout);
-        return n > 0 ? buffer.ToString(0, n) : null;
-    }
-
-    private static bool IsPreviewKey(uint vk, System.Windows.Input.ModifierKeys mods, MainWindow window)
-    {
-        const System.Windows.Input.ModifierKeys Ctrl = System.Windows.Input.ModifierKeys.Control;
-        switch (vk)
+        else
         {
-            case 0x46 when (mods & Ctrl) != 0: return window.SearchableInPreview; // Ctrl+F: search
-            case 0x72: return window.SearchableInPreview; // F3: next match
-            case 0x54: return mods == 0 && window.ImageInPreview; // T: text in a picture (OCR)
-            case 0x70: return mods == 0; // F1: shortcuts card
-            case 0x42: return mods == 0 && window.ImageInPreview; // B: background behind pictures
-            case 0x45: return mods == 0 && window.EditableInPreview; // E: edit mode
-            case 0x71: return mods == 0; // F2: rename
-            case 0x25: case 0x26: case 0x27: case 0x28: // arrows (Alt+←/→ = back / forward)
-            case 0x1B: case 0x0D: case 0x2E: // Esc, Enter, Delete
-                return (mods & Ctrl) == 0;
-            case 0x08: return (mods & Ctrl) == 0 && window.HasFolderHistory; // Backspace: back to the folder (else Explorer's "up")
-            case 0x43 when mods == (Ctrl | System.Windows.Input.ModifierKeys.Shift): return true; // Ctrl+Shift+C: copy the path
-            case 0x43: return (mods & Ctrl) == 0 ? window.CompareAvailable : window.CopyInPreview; // C: compare; Ctrl+C where the preview copies something
-            case 0x41: return (mods & Ctrl) != 0 && window.CopyInPreview; // Ctrl+A (table)
-            case 0x53: // Ctrl+S: save a picture as; S: filmstrip / compare mode
-                return (mods & Ctrl) != 0 ? window.ImageInPreview : window.ImageInPreview || window.CompareInPreview;
-            case 0x50: // Ctrl+P: print a picture or PDF; P: pin
-                return (mods & Ctrl) == 0 || window.ImageInPreview || window.PdfInPreview;
-            case 0x21: case 0x22: case 0x23: case 0x24: // PgUp, PgDn, End, Home: paging through a PDF
-                return (mods & Ctrl) == 0 && window.PdfInPreview;
-            case >= 0x31 and <= 0x39: case >= 0x61 and <= 0x69: // 1–9 (0 is zoom, above): typing a page number in a PDF
-                return mods == System.Windows.Input.ModifierKeys.None && window.PdfInPreview;
-            case 0x46: return (mods & Ctrl) == 0; // F: full screen
-            case 0x52: case 0x49: return (mods & Ctrl) == 0 && window.ImageInPreview; // R: rotate, I: info
-            case 0x4B: return (mods & Ctrl) == 0 && (window.ImageInPreview || window.MediaInPreview); // K: crop / play
-            case 0x4A: case 0x4C: return (mods & Ctrl) == 0 && window.MediaInPreview; // J / L: seek
-            case 0x4D: return (mods & Ctrl) == 0 && (window.MediaInPreview || window.MarkdownInPreview); // M: mute / Markdown source
-            case 0x58: return (mods & Ctrl) == 0 && window.CompareInPreview; // X: swap sides
-            case 0x30: case 0x60: case 0xBB: case 0xBD: case 0x6B: case 0x6D: // 0, +, −: zoom
-                return (mods & Ctrl) == 0 && (window.ImageInPreview || window.CompareInPreview);
-            default:
-                return false;
+            App.Log("[KeyboardHook] Preview key in Explorer/Desktop -> opening.");
+            Task.Run(() => PreviewKeyPressed?.Invoke());
         }
+        return true;
     }
 
     private static bool IsUserEditingText(IntPtr fgWnd)
