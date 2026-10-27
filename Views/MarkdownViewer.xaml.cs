@@ -359,12 +359,34 @@ public partial class MarkdownViewer : UserControl, ISearchable
         h.Click += (_, _) =>
         {
             if (string.IsNullOrWhiteSpace(url) || url.StartsWith('#')) return;
-            string target = Uri.TryCreate(url, UriKind.Absolute, out var abs) && !abs.IsFile ? url : Path.GetFullPath(Path.Combine(_folder, Uri.UnescapeDataString(url)));
-            try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
-            catch (Exception ex) { App.Log($"[MarkdownViewer] Link '{target}': {ex.Message}"); }
+            try
+            {
+                if (Uri.TryCreate(url, UriKind.Absolute, out var abs) && !abs.IsFile)
+                {
+                    // Web and mail only: other schemes (ms-settings:, search-ms:, …) can start things the reader didn't ask for
+                    if (abs.Scheme is "http" or "https" or "mailto") Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                    else App.Log($"[MarkdownViewer] Link with scheme '{abs.Scheme}' not opened");
+                    return;
+                }
+                string target = abs?.IsFile == true ? abs.LocalPath : Path.GetFullPath(Path.Combine(_folder, Uri.UnescapeDataString(url)));
+                if (File.Exists(target) && RunsCode(target))
+                    // A program or script: shown in Explorer, never started straight from a document
+                    Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{target}\"") { UseShellExecute = true });
+                else if (File.Exists(target) || Directory.Exists(target))
+                    Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+            }
+            catch (Exception ex) { App.Log($"[MarkdownViewer] Link '{url}': {ex.Message}"); }
         };
         return h;
     }
+
+    private static readonly HashSet<string> CodeExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".exe", ".com", ".scr", ".pif", ".bat", ".cmd", ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh",
+        ".msi", ".msp", ".lnk", ".url", ".hta", ".cpl", ".reg", ".jar", ".appref-ms", ".application", ".msc", ".settingcontent-ms",
+    };
+
+    private static bool RunsCode(string path) => CodeExtensions.Contains(Path.GetExtension(path));
 
     private WpfInline ImageOf(string? url, string? title)
     {

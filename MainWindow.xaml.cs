@@ -365,6 +365,12 @@ public partial class MainWindow : Window
         UpdateFooter();
         CopyInPreview = target == ImageViewerControl || target == CsvViewerControl || target == ArchiveViewerControl;
         PdfInPreview = target == PdfViewerControl;
+        ImageInPreview = target == ImageViewerControl;
+        MediaInPreview = target == MediaViewerControl;
+        CompareInPreview = target == CompareViewerControl;
+        MarkdownInPreview = IsMarkdownShown;
+        CompareAvailable = CanToggleCompare();
+        HasFolderHistory = _folderHistory.Count > 0;
         UpdateSearchable();
         UpdateEditable();
     }
@@ -374,6 +380,12 @@ public partial class MainWindow : Window
 
     /// <summary>A PDF is shown: PgUp/PgDn/Home/End page through it (read by the keyboard hook thread).</summary>
     public volatile bool PdfInPreview;
+
+    /// <summary>
+    /// What's shown, for the keyboard hook thread: a key is taken from Explorer only when it does something in the
+    /// preview now (otherwise Explorer keeps it: Backspace goes up a folder, letters jump to a file).
+    /// </summary>
+    public volatile bool ImageInPreview, MediaInPreview, CompareInPreview, MarkdownInPreview, CompareAvailable, HasFolderHistory;
 
     /// <summary>
     /// For automated tests only: show the window without activating it, so a test never steals
@@ -427,7 +439,7 @@ public partial class MainWindow : Window
         MediaViewerControl.Stop(); // no music playing from a hidden window
         MediaViewerControl.Visibility = Visibility.Collapsed;
         ReleaseResources();
-        CopyInPreview = PdfInPreview = false;
+        CopyInPreview = PdfInPreview = ImageInPreview = MediaInPreview = CompareInPreview = MarkdownInPreview = CompareAvailable = HasFolderHistory = false;
         _currentFilePath = "";
         WelcomeView.Visibility = Visibility.Collapsed;
         ImageViewerControl.Visibility = Visibility.Collapsed;
@@ -457,6 +469,7 @@ public partial class MainWindow : Window
         bool selectionChanged = !string.Equals(selected, _explorerSelection, StringComparison.OrdinalIgnoreCase);
         _explorerSelection = selected;
         _explorerSelectionCount = ExplorerService.LastSelection.Count;
+        _explorerSelectionStale = false;
 
         if (selectionChanged && !string.IsNullOrEmpty(selected) && PathExists(selected) && !samePairShown &&
             (ComparePair() != null || !string.Equals(selected, _currentFilePath, StringComparison.OrdinalIgnoreCase)))
@@ -482,11 +495,47 @@ public partial class MainWindow : Window
         if (_pinned || SourceWindow == IntPtr.Zero) return false;
         IntPtr root = GetAncestor(NativeMethods.GetForegroundWindow(), GA_ROOT);
         if (root != SourceWindow) return false; // Lupik itself in front: the key is for the preview
+        if (_explorerSelectionStale)
+        {
+            // Lupik itself just deleted / renamed a file Explorer had selected: what Explorer shows now is the
+            // result of that, not the user picking something else
+            SnapshotExplorerSelection();
+            return false;
+        }
         string? selected = ExplorerService.GetSelectedFilePath();
         int count = ExplorerService.LastSelection.Count;
         bool moved = !string.Equals(selected, _explorerSelection, StringComparison.OrdinalIgnoreCase) || count != _explorerSelectionCount;
         if (moved) App.Log($"[MainWindow] Explorer selection changed ('{selected}', {count} items): the key goes to Explorer");
         return moved;
+    }
+
+    private bool _explorerSelectionStale;
+    private DispatcherTimer? _snapshotTimer;
+
+    /// <summary>
+    /// After Lupik deletes or renames a file, Explorer's selection changes because of it. Take a new baseline once
+    /// Explorer has caught up (or at the next key, whichever comes first), so the next Delete / F2 isn't mistaken
+    /// for a key meant for Explorer.
+    /// </summary>
+    private void ExplorerSelectionChangedByUs()
+    {
+        if (_pinned || SourceWindow == IntPtr.Zero) return;
+        _explorerSelectionStale = true;
+        _snapshotTimer ??= new DispatcherTimer(TimeSpan.FromMilliseconds(600), DispatcherPriority.Background, (_, _) =>
+        {
+            _snapshotTimer!.Stop();
+            if (_explorerSelectionStale) SnapshotExplorerSelection();
+        }, Dispatcher);
+        _snapshotTimer.Stop();
+        _snapshotTimer.Start();
+    }
+
+    private void SnapshotExplorerSelection()
+    {
+        _explorerSelectionStale = false;
+        _explorerSelection = ExplorerService.SelectionIn(SourceWindow);
+        _explorerSelectionCount = ExplorerService.LastSelection.Count;
+        App.Log($"[MainWindow] Explorer selection baseline: '{_explorerSelection}' ({_explorerSelectionCount} items)");
     }
 
     /// <param name="fromPreviewKey">
@@ -508,6 +557,7 @@ public partial class MainWindow : Window
             App.Log($"[MainWindow] ExplorerService returned: '{selected}'");
             _explorerSelection = selected;
             _explorerSelectionCount = ExplorerService.LastSelection.Count;
+            _explorerSelectionStale = false;
             if (!string.IsNullOrEmpty(selected) && PathExists(selected))
             {
                 ShowSelection(selected);
@@ -556,15 +606,25 @@ public partial class MainWindow : Window
 
     private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed)
-        {
-            DragMove();
-        }
+        if (e.LeftButton != MouseButtonState.Pressed) return;
+        if (e.ClickCount == 2) ToggleFullScreen(); // double-click maximizes / restores, like any window
+        else DragMove();
     }
 
     private void OnCloseClicked(object sender, RoutedEventArgs e)
     {
         HideWindow();
+    }
+
+    private void OnMinimizeClicked(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    /// <summary>Maximize is the full screen (F): the work area, title bar and footer kept.</summary>
+    private void OnMaximizeClicked(object sender, RoutedEventArgs e) => ToggleFullScreen();
+
+    private void UpdateMaximizeButton()
+    {
+        MaximizeIcon.Kind = _isFullScreen ? "copy" : "square";
+        MaximizeButton.ToolTip = Loc.T(_isFullScreen ? "main.restoreTip" : "main.maximizeTip");
     }
 
     /// <summary>Illustrator files saved with "PDF compatible" (the default) are PDFs inside.</summary>

@@ -272,6 +272,7 @@ public partial class MainWindow
 
         _selectionSet = _selectionSet.Select(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase) ? target : p).ToArray();
         if (EditMode) _editingPath = target;
+        ExplorerSelectionChangedByUs();
         _ = ShowFile(target);
     }
 

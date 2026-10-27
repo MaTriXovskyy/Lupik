@@ -117,7 +117,8 @@ public partial class MainWindow
         }
         else if (key == Key.F2 && mods == 0 && PathExists(_currentFilePath) && CompareViewerControl.Visibility != Visibility.Visible && DiffViewerControl.Visibility != Visibility.Visible)
         {
-            RenameCurrent();
+            if (ExplorerSelectionMoved()) KeyboardHook.ReplayToSystem(0x71); // renaming the files picked in Explorer
+            else RenameCurrent();
             handled = true;
         }
         else if ((key == Key.F && mods == ModifierKeys.Control) || (key == Key.F3 && !SearchActive))
@@ -362,10 +363,12 @@ public partial class MainWindow
             _boundsBeforeFullScreen = new Rect(Left, Top, Width, Height);
             SetBounds(new Rect(screen.Left / dpi.DpiScaleX, screen.Top / dpi.DpiScaleY, screen.Width / dpi.DpiScaleX, screen.Height / dpi.DpiScaleY), exact: true);
             _isFullScreen = true; // after SetBounds: while full screen, file switches don't resize the window
+            UpdateMaximizeButton();
             return;
         }
 
         _isFullScreen = false;
+        UpdateMaximizeButton();
         // A pinned window goes back to exactly where it was; the preview to the size the file normally gets
         if (_pinned) SetBounds(_boundsBeforeFullScreen, exact: true);
         else RestoreNormalBounds();

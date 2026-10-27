@@ -22,6 +22,30 @@
     <!-- A normal captioned window drawn without its frame: Windows then animates it opening and closing
          (a WindowStyle="None" window just pops in) -->
     <Window.Resources>
+        <!-- Minimize / maximize, next to the close button -->
+        <Style x:Key="CaptionButton" TargetType="Button">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource cB5AB9D}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="btnBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="btnBorder" Property="Background" Value="{DynamicResource c2F2B27}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource cFBF8F2}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- A row of the "Open with" menu -->
         <Style x:Key="MenuRow" TargetType="Button">
             <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
@@ -102,6 +126,14 @@
                             </Setter>
                         </Style>
                     </Button.Style>
+                </Button>
+                <Button x:Name="MaximizeButton" DockPanel.Dock="Right" Style="{StaticResource CaptionButton}"
+                        ToolTip="{loc:T main.maximizeTip}" Click="OnMaximizeClicked">
+                    <views:LucideIcon x:Name="MaximizeIcon" Kind="square" Size="13"/>
+                </Button>
+                <Button DockPanel.Dock="Right" Style="{StaticResource CaptionButton}"
+                        ToolTip="{loc:T main.minimizeTip}" Click="OnMinimizeClicked">
+                    <views:LucideIcon Kind="minus" Size="16"/>
                 </Button>
 
                 <!-- Edit mode (E): what's being edited, save, done -->

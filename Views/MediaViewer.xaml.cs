@@ -24,6 +24,7 @@ public partial class MediaViewer : UserControl
     private TaskCompletionSource<bool>? _opening;
     private string _currentPath = "";
     private string? _mediaCopyDirectory;
+    private System.Threading.CancellationTokenSource? _copyCts;
     private bool _isPlaying;
     private bool _updatingSeek; // timer moving the slider must not seek
     private static double _volume = 0.8; // kept for the whole session
@@ -50,15 +51,19 @@ public partial class MediaViewer : UserControl
         string directory = Path.Combine(Path.GetTempPath(), "Lupik", Guid.NewGuid().ToString("N") + ".part");
         Directory.CreateDirectory(directory);
         _mediaCopyDirectory = directory;
-        PendingCleanup.Register(directory, new System.Threading.CancellationTokenSource());
+        var copyCts = _copyCts = new System.Threading.CancellationTokenSource();
+        PendingCleanup.Register(directory, copyCts);
         string playbackPath = Path.Combine(directory, Path.GetFileName(filePath));
-        try { File.Copy(filePath, playbackPath); }
+        // Off the UI thread (a big video takes a while), and abandoned as soon as the preview moves on
+        try { await CopyAsync(filePath, playbackPath, copyCts.Token); }
         catch (Exception ex)
         {
+            if (opening != _opening) { _ = DeletePlaybackCopyAsync(directory); return false; } // superseded
             App.Log($"[MediaViewer] Could not copy '{filePath}': {ex.Message}");
             Stop();
             return false;
         }
+        if (opening != _opening) { _ = DeletePlaybackCopyAsync(directory); return false; }
         _currentPath = playbackPath;
         IsVideo = Array.IndexOf(VideoExtensions, Path.GetExtension(filePath).ToLowerInvariant()) >= 0;
         AudioPanel.Visibility = IsVideo ? Visibility.Collapsed : Visibility.Visible;
@@ -89,9 +94,19 @@ public partial class MediaViewer : UserControl
         return ok;
     }
 
+    private static async Task CopyAsync(string source, string target, System.Threading.CancellationToken token)
+    {
+        const int Buffer = 1 << 20;
+        await using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, Buffer, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, Buffer, FileOptions.Asynchronous);
+        await input.CopyToAsync(output, Buffer, token);
+    }
+
     /// <summary>Stops playback and closes the file (so it isn't locked, e.g. before deleting it).</summary>
     public void Stop()
     {
+        _copyCts?.Cancel();
+        _copyCts = null;
         _opening?.TrySetResult(false);
         _opening = null;
         _currentPath = "";

@@ -327,16 +327,19 @@ public partial class ImageViewer : UserControl
         }
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         var frame = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0];
+        int orientation = ExifOrientation(frame);
         BitmapSource? thumbnail = null;
         try
         {
-            if (frame.Thumbnail is BitmapSource t) { thumbnail = new WriteableBitmap(t); thumbnail.Freeze(); }
+            if (frame.Thumbnail is BitmapSource t) thumbnail = Orient(new WriteableBitmap(t), orientation);
         }
         catch
         {
             // no embedded thumbnail
         }
-        return (frame.PixelWidth, frame.PixelHeight, size, thumbnail);
+        return SwapsSides(orientation)
+            ? (frame.PixelHeight, frame.PixelWidth, size, thumbnail)
+            : (frame.PixelWidth, frame.PixelHeight, size, thumbnail);
     }
 
     // --- Decoding: JPEGs at the window's size first, full resolution when zooming in ---
@@ -361,11 +364,12 @@ public partial class ImageViewer : UserControl
     /// any other size means a full decode plus a resize (slower than no resize at all). So: the smallest such step that
     /// still fills the preview window, or null for none. Full resolution: capped at <see cref="MaxDecodeSize"/>.
     /// </summary>
-    private static int? JpegDecodeWidth(int w, int h, bool full)
+    private static int? JpegDecodeWidth(int w, int h, bool full, bool sidesSwapped = false)
     {
         if (!full)
         {
             var (boxW, boxH) = PreviewBox();
+            if (sidesSwapped) (boxW, boxH) = (boxH, boxW); // the box as seen by the stored (unrotated) pixels
             double fit = Math.Min(1, Math.Min((double)boxW / w, (double)boxH / h));
             int shrink = 1;
             while (shrink < 8 && w / (shrink * 2) >= w * fit && h / (shrink * 2) >= h * fit) shrink *= 2;
@@ -524,6 +528,7 @@ public partial class ImageViewer : UserControl
         // Header only: real dimensions without decoding the pixels
         var header = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0];
         int w = header.PixelWidth, h = header.PixelHeight;
+        int orientation = ExifOrientation(header);
         stream.Position = 0;
 
         var bmp = new BitmapImage();
@@ -531,11 +536,43 @@ public partial class ImageViewer : UserControl
         bmp.StreamSource = stream;
         bmp.CacheOption = BitmapCacheOption.OnLoad;
         // Huge images are decoded at a reduced size; JPEGs just big enough for the window (see JpegDecodeWidth)
-        int? width = IsJpeg(Path.GetExtension(filePath).ToLowerInvariant()) ? JpegDecodeWidth(w, h, full) : CappedWidth(w, h);
+        int? width = IsJpeg(Path.GetExtension(filePath).ToLowerInvariant()) ? JpegDecodeWidth(w, h, full, SwapsSides(orientation)) : CappedWidth(w, h);
         if (width is int decodeWidth) bmp.DecodePixelWidth = decodeWidth;
         bmp.EndInit();
         bmp.Freeze();
-        return (bmp, stream.Length, w, h);
+        // Upright, like Explorer shows it (phone photos store the rotation as an EXIF tag)
+        return SwapsSides(orientation) ? (Orient(bmp, orientation), stream.Length, h, w) : (Orient(bmp, orientation), stream.Length, w, h);
+    }
+
+    /// <summary>The EXIF orientation tag (1 = as stored, 2–8 = mirrored and/or turned), 1 when there's none.</summary>
+    private static int ExifOrientation(BitmapFrame frame)
+    {
+        try
+        {
+            if (frame.Metadata is BitmapMetadata metadata && metadata.GetQuery("System.Photo.Orientation") is ushort value && value is >= 1 and <= 8)
+                return value;
+        }
+        catch
+        {
+            // no readable metadata
+        }
+        return 1;
+    }
+
+    /// <summary>Orientations 5–8 are turned by a quarter: width and height trade places.</summary>
+    private static bool SwapsSides(int orientation) => orientation >= 5;
+
+    /// <summary>Turns / mirrors the stored pixels so the picture stands the way the EXIF tag says.</summary>
+    private static BitmapSource Orient(BitmapSource bitmap, int orientation)
+    {
+        if (orientation <= 1) { if (!bitmap.IsFrozen) bitmap.Freeze(); return bitmap; }
+        var transform = new TransformGroup();
+        int angle = orientation switch { 3 or 4 => 180, 5 or 6 => 90, 7 or 8 => 270, _ => 0 };
+        if (angle != 0) transform.Children.Add(new RotateTransform(angle));
+        if (orientation is 2 or 4 or 5 or 7) transform.Children.Add(new ScaleTransform(-1, 1));
+        var turned = new CachedBitmap(new TransformedBitmap(bitmap, transform), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        turned.Freeze();
+        return turned;
     }
 
     internal static bool IsPostScript(string ext) => ext is ".eps" or ".epsf" or ".epsi" or ".ps";

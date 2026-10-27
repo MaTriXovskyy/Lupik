@@ -261,8 +261,20 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
     /// </summary>
     private async Task RenderVisibleAsync(TaskCompletionSource? visibleDone = null)
     {
-        if (_rendering || _pdfDoc == null || _slots.Count == 0) { visibleDone?.TrySetResult(); return; }
+        if (_rendering)
+        {
+            // A pass is still running (maybe for the previous file): it runs this one again when it ends
+            _renderAgain = true;
+            if (visibleDone != null)
+            {
+                _pendingVisibleDone?.TrySetResult();
+                _pendingVisibleDone = visibleDone;
+            }
+            return;
+        }
+        if (_pdfDoc == null || _slots.Count == 0) { visibleDone?.TrySetResult(); return; }
         _rendering = true;
+        _renderAgain = false;
         int token = _loadToken;
         try
         {
@@ -319,8 +331,18 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
         {
             _rendering = false;
             visibleDone?.TrySetResult();
+            if (_renderAgain)
+            {
+                _renderAgain = false;
+                var pending = _pendingVisibleDone;
+                _pendingVisibleDone = null;
+                _ = RenderVisibleAsync(pending);
+            }
         }
     }
+
+    private bool _renderAgain;
+    private TaskCompletionSource? _pendingVisibleDone;
 
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {

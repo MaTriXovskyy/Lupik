@@ -343,9 +343,9 @@ public partial class ImageViewer : IEditable
 
     private static void SaveEdited(string source, string target, List<Mark> marks, int rotation, int? resizeTo, double shownWidth)
     {
-        // The pixels as Lupik shows them (no EXIF auto-rotation: an orientation tag stays in the file and turns
-        // the picture and the marks together in other apps)
+        // The pixels as Lupik shows them: upright by the EXIF tag (which is then reset), plus the rotation from edit mode
         using var image = new ImageMagick.MagickImage(source);
+        image.AutoOrient();
         if (rotation != 0) image.Rotate(rotation);
         int w = (int)image.Width, h = (int)image.Height;
         double scale = w / Math.Max(1, shownWidth); // picture pixels per on-screen pixel

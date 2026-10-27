@@ -166,8 +166,10 @@ public class KeyboardHook : IDisposable
                                                rootClass == "Progman" || rootClass == "WorkerW" ||
                                                className == "SHELLDLL_DefView" || rootClass == "SHELLDLL_DefView" ||
                                                className == "SysListView32" || rootClass == "SysListView32" ||
-                                               className == "DirectUIHWND" ||
-                                               className == "#32770" || rootClass == "#32770";
+                                               className == "DirectUIHWND";
+                    // Not "#32770": that's every classic dialog (message boxes, Properties, installers), where Space
+                    // presses the focused button; their selection isn't readable anyway, so Lupik would open
+                    // whatever some other Explorer window has selected
 
                     if (isExplorerOrDesktop)
                     {
@@ -238,7 +240,7 @@ public class KeyboardHook : IDisposable
     private static bool RouteToPreview(uint vk, bool keyUp)
     {
         var window = MainWindowRef;
-        if (window == null || !window.IsShown) return false;
+        if (window == null || !window.IsShown || IsIconic(window.Hwnd)) return false; // minimized: the keys stay with Explorer
 
         IntPtr fg = NativeMethods.GetForegroundWindow();
         IntPtr root = GetAncestor(fg, GA_ROOT);
@@ -267,7 +269,7 @@ public class KeyboardHook : IDisposable
     private static bool RouteToSearch(NativeMethods.KBDLLHOOKSTRUCT kb)
     {
         var window = MainWindowRef;
-        if (window == null || !window.SearchActive || !window.IsShown) return false;
+        if (window == null || !window.SearchActive || !window.IsShown || IsIconic(window.Hwnd)) return false;
 
         IntPtr fg = NativeMethods.GetForegroundWindow();
         IntPtr root = GetAncestor(fg, GA_ROOT);
@@ -286,6 +288,7 @@ public class KeyboardHook : IDisposable
         return true;
     }
 
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
     [DllImport("user32.dll")] private static extern short GetKeyState(int vKey);
     [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint threadId);
@@ -315,25 +318,34 @@ public class KeyboardHook : IDisposable
         {
             case 0x46 when (mods & Ctrl) != 0: return window.SearchableInPreview; // Ctrl+F: search
             case 0x72: return window.SearchableInPreview; // F3: next match
-            case 0x54: return mods == 0; // T: text in a picture (OCR)
+            case 0x54: return mods == 0 && window.ImageInPreview; // T: text in a picture (OCR)
             case 0x70: return mods == 0; // F1: shortcuts card
-            case 0x42: return mods == 0; // B: background behind pictures
+            case 0x42: return mods == 0 && window.ImageInPreview; // B: background behind pictures
             case 0x45: return mods == 0 && window.EditableInPreview; // E: edit mode
             case 0x71: return mods == 0; // F2: rename
             case 0x25: case 0x26: case 0x27: case 0x28: // arrows (Alt+←/→ = back / forward)
-            case 0x1B: case 0x0D: case 0x2E: case 0x08: // Esc, Enter, Delete, Backspace
+            case 0x1B: case 0x0D: case 0x2E: // Esc, Enter, Delete
                 return (mods & Ctrl) == 0;
+            case 0x08: return (mods & Ctrl) == 0 && window.HasFolderHistory; // Backspace: back to the folder (else Explorer's "up")
             case 0x43 when mods == (Ctrl | System.Windows.Input.ModifierKeys.Shift): return true; // Ctrl+Shift+C: copy the path
-            case 0x43: return (mods & Ctrl) == 0 || window.CopyInPreview; // C: compare; Ctrl+C only where the preview copies something
+            case 0x43: return (mods & Ctrl) == 0 ? window.CompareAvailable : window.CopyInPreview; // C: compare; Ctrl+C where the preview copies something
             case 0x41: return (mods & Ctrl) != 0 && window.CopyInPreview; // Ctrl+A (table)
-            case 0x53: case 0x50: return true; // Ctrl+S / Ctrl+P, S (filmstrip, compare mode)
+            case 0x53: // Ctrl+S: save a picture as; S: filmstrip / compare mode
+                return (mods & Ctrl) != 0 ? window.ImageInPreview : window.ImageInPreview || window.CompareInPreview;
+            case 0x50: // Ctrl+P: print a picture or PDF; P: pin
+                return (mods & Ctrl) == 0 || window.ImageInPreview || window.PdfInPreview;
             case 0x21: case 0x22: case 0x23: case 0x24: // PgUp, PgDn, End, Home: paging through a PDF
                 return (mods & Ctrl) == 0 && window.PdfInPreview;
             case >= 0x31 and <= 0x39: case >= 0x61 and <= 0x69: // 1–9 (0 is zoom, above): typing a page number in a PDF
                 return mods == System.Windows.Input.ModifierKeys.None && window.PdfInPreview;
-            case 0x46: case 0x52: case 0x49: case 0x4B: case 0x4A: case 0x4C: case 0x4D: case 0x58: // F R I K J L M X
-            case 0x30: case 0x60: case 0xBB: case 0xBD: case 0x6B: case 0x6D: // 0, +, −
-                return (mods & Ctrl) == 0;
+            case 0x46: return (mods & Ctrl) == 0; // F: full screen
+            case 0x52: case 0x49: return (mods & Ctrl) == 0 && window.ImageInPreview; // R: rotate, I: info
+            case 0x4B: return (mods & Ctrl) == 0 && (window.ImageInPreview || window.MediaInPreview); // K: crop / play
+            case 0x4A: case 0x4C: return (mods & Ctrl) == 0 && window.MediaInPreview; // J / L: seek
+            case 0x4D: return (mods & Ctrl) == 0 && (window.MediaInPreview || window.MarkdownInPreview); // M: mute / Markdown source
+            case 0x58: return (mods & Ctrl) == 0 && window.CompareInPreview; // X: swap sides
+            case 0x30: case 0x60: case 0xBB: case 0xBD: case 0x6B: case 0x6D: // 0, +, −: zoom
+                return (mods & Ctrl) == 0 && (window.ImageInPreview || window.CompareInPreview);
             default:
                 return false;
         }

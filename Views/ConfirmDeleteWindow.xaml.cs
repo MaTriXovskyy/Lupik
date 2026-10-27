@@ -13,7 +13,7 @@ public partial class ConfirmDeleteWindow : Window
 {
     private readonly string _path;
 
-    private ConfirmDeleteWindow(string path)
+    private ConfirmDeleteWindow(string path, bool activate)
     {
         InitializeComponent();
         _path = path;
@@ -28,14 +28,16 @@ public partial class ConfirmDeleteWindow : Window
         ShellThumbnails.Request(path, 144, ShellThumbnails.CurrentGeneration,
             bmp => Dispatcher.BeginInvoke(() => Thumb.Source = bmp));
 
-        // Like the preview, the card never takes the focus from Explorer (that can stall for seconds);
-        // Enter / Esc reach it through the keyboard hook (MainWindow.HandleHookKey)
-        ShowActivated = false;
+        // Over Explorer, like the preview, the card never takes the focus from it (that can stall for seconds);
+        // Enter / Esc reach it through the keyboard hook (MainWindow.HandleHookKey). When Lupik's own window has
+        // the focus, the card takes it instead: the window behind is disabled while the card is open, and its keys
+        // don't go through the hook.
+        ShowActivated = activate;
         SourceInitialized += (_, _) =>
         {
             var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
             const int GWL_EXSTYLE = -20, WS_EX_NOACTIVATE = 0x08000000;
-            SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+            if (!activate) SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
             // Same 5 s UI Automation stall as the preview (see NativeMethods.RefuseAutomation)
             System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook((IntPtr _, int msg, IntPtr _, IntPtr _, ref bool handled) =>
             {
@@ -43,14 +45,16 @@ public partial class ConfirmDeleteWindow : Window
                 return IntPtr.Zero;
             });
         };
-        Loaded += (_, _) => Animate();
+        Loaded += (_, _) => { Animate(); if (activate) { Activate(); Focus(); } };
         Closed += (_, _) => { if (Current == this) Current = null; };
     }
 
     /// <summary>Shows the dialog over <paramref name="owner"/>; true if the user confirmed.</summary>
     public static bool Confirm(Window owner, string path)
     {
-        var dialog = new ConfirmDeleteWindow(path) { Owner = owner };
+        var ownerHwnd = new System.Windows.Interop.WindowInteropHelper(owner).Handle;
+        bool ownerFocused = ownerHwnd != IntPtr.Zero && NativeMethods.GetForegroundWindow() == ownerHwnd;
+        var dialog = new ConfirmDeleteWindow(path, ownerFocused) { Owner = owner };
         Current = dialog;
         return dialog.ShowDialog() == true;
     }

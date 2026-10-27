@@ -25,18 +25,34 @@ public static class TextEncoding
         if (read >= 2 && buffer[0] == 0xFF && buffer[1] == 0xFE) return (new UnicodeEncoding(false, true), true);
         if (read >= 2 && buffer[0] == 0xFE && buffer[1] == 0xFF) return (new UnicodeEncoding(true, true), true);
 
-        // Don't judge a multi-byte character cut off at the end of the sample
-        int end = read;
-        while (end > 0 && end > read - 4 && (buffer[end - 1] & 0xC0) == 0x80) end--;
-        if (end > 0 && buffer[end - 1] >= 0xC0) end--;
+        // The whole file (up to a limit), not just its start: a long file can be plain ASCII for pages and only
+        // then have its first "ą" in the ANSI code page. Read as UTF-8, that letter would become "�" and a save
+        // would write the "�" back.
+        bool utf8 = IsValidUtf8(stream, buffer);
+        stream.Position = 0;
+        return utf8 ? (new UTF8Encoding(false), false) : (Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.ANSICodePage), false);
+    }
+
+    private const long MaxScan = 64L * 1024 * 1024;
+
+    private static bool IsValidUtf8(Stream stream, byte[] buffer)
+    {
+        var decoder = new UTF8Encoding(false, throwOnInvalidBytes: true).GetDecoder();
+        var chars = new char[buffer.Length + 1];
+        long scanned = 0;
         try
         {
-            new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(buffer, 0, end);
-            return (new UTF8Encoding(false), false);
+            int read;
+            while (scanned < MaxScan && (read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                scanned += read;
+                decoder.GetChars(buffer, 0, read, chars, 0, flush: false); // a character split between reads waits for the next one
+            }
+            return true;
         }
         catch (DecoderFallbackException)
         {
-            return (Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.ANSICodePage), false);
+            return false;
         }
     }
 

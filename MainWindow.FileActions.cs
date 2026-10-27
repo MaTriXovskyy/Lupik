@@ -373,6 +373,7 @@ public partial class MainWindow
         }
 
         _selectionSet = _selectionSet.Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase)).ToArray();
+        ExplorerSelectionChangedByUs();
         if (next != null && PathExists(next)) _ = ShowFile(next);
         else HideWindow();
     }

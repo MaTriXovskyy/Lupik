@@ -407,8 +407,8 @@ public partial class CsvViewer : UserControl, ISearchable, IEditable
         {
             if (rows.Count >= MaxRows + 1) return new CsvFile(rows, delimiter, true, encoding, bom, newLine);
 
-            // A quoted value may span several lines: keep reading until quotes are balanced
-            while (line.Count(c => c == '"') % 2 != 0 && reader.ReadLine() is { } next)
+            // A quoted value may span several lines: keep reading while one is still open
+            while (EndsInsideQuotes(line, delimiter) && reader.ReadLine() is { } next)
                 line += "\n" + next;
 
             rows.Add(SplitLine(line, delimiter));
@@ -434,11 +434,15 @@ public partial class CsvViewer : UserControl, ISearchable, IEditable
         return new[] { ';', ',', '\t', '|' }.OrderByDescending(d => headerLine.Count(c => c == d)).First();
     }
 
+    /// <summary>
+    /// Splits a record. A quote only opens a quoted value at the very start of a field (RFC 4180); anywhere else it's
+    /// an ordinary character, like the inch mark in <c>pipe 12" steel</c>.
+    /// </summary>
     private static string[] SplitLine(string line, char delimiter)
     {
         var fields = new List<string>();
         var current = new StringBuilder();
-        bool inQuotes = false;
+        bool inQuotes = false, fieldStart = true;
 
         for (int i = 0; i < line.Length; i++)
         {
@@ -449,11 +453,29 @@ public partial class CsvViewer : UserControl, ISearchable, IEditable
                 else if (c == '"') inQuotes = false;
                 else current.Append(c);
             }
-            else if (c == '"') inQuotes = true;
-            else if (c == delimiter) { fields.Add(current.ToString()); current.Clear(); }
-            else current.Append(c);
+            else if (c == '"' && fieldStart) { inQuotes = true; fieldStart = false; }
+            else if (c == delimiter) { fields.Add(current.ToString()); current.Clear(); fieldStart = true; }
+            else { current.Append(c); fieldStart = false; }
         }
         fields.Add(current.ToString());
         return fields.ToArray();
+    }
+
+    /// <summary>Whether a quoted value is still open at the end of <paramref name="line"/> (it goes on in the next line).</summary>
+    private static bool EndsInsideQuotes(string line, char delimiter)
+    {
+        bool inQuotes = false, fieldStart = true;
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (inQuotes)
+            {
+                if (c == '"' && i + 1 < line.Length && line[i + 1] == '"') i++;
+                else if (c == '"') inQuotes = false;
+            }
+            else if (c == '"' && fieldStart) { inQuotes = true; fieldStart = false; }
+            else fieldStart = c == delimiter;
+        }
+        return inQuotes;
     }
 }
