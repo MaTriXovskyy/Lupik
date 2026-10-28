@@ -21,10 +21,13 @@ public class KeyboardHook : IDisposable
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
     private const uint GA_ROOT = 2;
+    private static uint _heldPreviewKey;
+    private static bool _previewPressConsumed;
 
     public void Start()
     {
         if (_hookThread != null) return;
+        FileDialogService.Start();
 
         var readyEvent = new ManualResetEventSlim(false);
 
@@ -89,6 +92,7 @@ public class KeyboardHook : IDisposable
 
     public void Stop()
     {
+        FileDialogService.Stop();
         if (_hookThreadId != 0)
         {
             NativeMethods.PostThreadMessage(_hookThreadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
@@ -101,20 +105,40 @@ public class KeyboardHook : IDisposable
 
     /// <summary>
     /// The only key Lupik takes from other windows: the preview key (Space unless changed in Settings), in Explorer
-    /// or on the Desktop, which has no other way to add a shortcut. Everything else, in every app, passes through
+    /// on the Desktop or in a standard Windows file picker's file list. Everything else, in every app, passes through
     /// untouched: once the preview is open it is the active window and gets its keys the normal way.
     /// </summary>
     private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && (wParam == (IntPtr)NativeMethods.WM_KEYDOWN || wParam == (IntPtr)NativeMethods.WM_SYSKEYDOWN))
+        if (nCode >= 0)
         {
             var kb = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+            if (wParam == (IntPtr)NativeMethods.WM_KEYUP || wParam == (IntPtr)NativeMethods.WM_SYSKEYUP)
+                HandlePreviewPress(kb.vkCode, false, OnPreviewKey);
             var previewKey = Settings.Current.PreviewKey;
-            if (previewKey != null && previewKey.Matches(kb.vkCode, Core.KeyState.Modifiers) && OnPreviewKey())
-                return (IntPtr)1; // swallowed, so Explorer doesn't scroll
+            if ((wParam == (IntPtr)NativeMethods.WM_KEYDOWN || wParam == (IntPtr)NativeMethods.WM_SYSKEYDOWN) &&
+                previewKey != null && previewKey.Matches(kb.vkCode, Core.KeyState.Modifiers))
+            {
+                if (HandlePreviewPress(kb.vkCode, true, OnPreviewKey)) return (IntPtr)1;
+            }
         }
 
         return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+    }
+
+    private static bool HandlePreviewPress(uint key, bool down, Func<bool> onPress)
+    {
+        if (!down)
+        {
+            if (_heldPreviewKey == key) { _heldPreviewKey = 0; _previewPressConsumed = false; }
+            return false;
+        }
+        if (_heldPreviewKey != key)
+        {
+            _heldPreviewKey = key;
+            _previewPressConsumed = onPress();
+        }
+        return _previewPressConsumed;
     }
 
     /// <summary>The preview key was pressed: true if it was for Lupik (Explorer or the Desktop, not typing a name).</summary>
@@ -124,10 +148,32 @@ public class KeyboardHook : IDisposable
         IntPtr rootWnd = GetAncestor(fgWnd, GA_ROOT);
         if (rootWnd == IntPtr.Zero) rootWnd = fgWnd;
 
+        var preview = MainWindowRef;
+        if (preview != null && preview.IsShown && rootWnd == preview.Hwnd && !preview.EditMode && !preview.SearchActive)
+        {
+            // A physical press/release, rather than WPF's stale repeat state after a cross-process focus change.
+            preview.Dispatcher.InvokeAsync(() => preview.HideWindow(), System.Windows.Threading.DispatcherPriority.Input);
+            return true;
+        }
+
         var sb = new StringBuilder(256);
         NativeMethods.GetClassName(rootWnd, sb, sb.Capacity);
-        // Not "#32770": that's every classic dialog (message boxes, Properties, installers), where Space presses the
-        // focused button; their selection isn't readable anyway
+        if (sb.ToString() == "#32770")
+        {
+            // A shell file list, rather than every classic dialog. Text fields and buttons keep their keys.
+            bool canPreview = FileDialogService.CanPreview(rootWnd);
+            App.Log($"[FileDialog] Preview key in dialog 0x{rootWnd:X}, file-list focus={canPreview}");
+            if (!canPreview) return false;
+            FileDialogService.Request(rootWnd, selection =>
+            {
+                var target = MainWindowRef;
+                target?.Dispatcher.InvokeAsync(() =>
+                {
+                    if (FileDialogService.IsCurrent(selection.Window)) target.ShowDialogSelection(selection);
+                });
+            });
+            return true;
+        }
         bool isExplorerOrDesktop = sb.ToString() is "CabinetWClass" or "ExplorerWClass" or "Progman" or "WorkerW";
         if (!isExplorerOrDesktop || IsUserEditingText(fgWnd)) return false;
 

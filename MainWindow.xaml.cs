@@ -117,6 +117,7 @@ public partial class MainWindow : Window
 
     public async Task ShowFile(string filePath)
     {
+        var loadWatch = System.Diagnostics.Stopwatch.StartNew();
         if (_saving) return;
         App.Log($"[MainWindow] ShowFile: '{filePath}'");
         if (string.IsNullOrEmpty(filePath) || !PathExists(filePath))
@@ -150,6 +151,7 @@ public partial class MainWindow : Window
             {
                 // Decode in the background; the previous image stays on screen until the new one is ready
                 bool loaded = await ImageViewerControl.LoadImageAsync(filePath);
+                App.Log($"[Perf] Image load awaited in {loadWatch.ElapsedMilliseconds} ms");
                 if (!loaded || token != _showToken) return; // superseded by a newer request
 
                 ApplyFileHeader(filePath);
@@ -273,6 +275,7 @@ public partial class MainWindow : Window
             }
 
             BringToFront();
+            App.Log($"[Perf] ShowFile UI prepared in {loadWatch.ElapsedMilliseconds} ms, foreground=0x{NativeMethods.GetForegroundWindow():X}, preview=0x{Hwnd:X}");
             App.Log($"[MainWindow] Window shown and activated successfully for: '{filePath}'");
         }
         finally
@@ -515,6 +518,12 @@ public partial class MainWindow : Window
 
     private void UpdateTitleIcon(string filePath)
     {
+        string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext is not (".exe" or ".ico" or ".lnk"))
+        {
+            TitleIconImage.Source = ShellIcons.For(filePath, Directory.Exists(filePath));
+            return;
+        }
         try
         {
             using var sysIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath);

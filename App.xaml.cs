@@ -118,6 +118,7 @@ public partial class App : Application
             _keyboardHook = new KeyboardHook();
             KeyboardHook.PreviewKeyPressed += OnPreviewKeyPressed;
             _keyboardHook.Start();
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, () => ExplorerService.Warm());
 
             // 5. Setup System Tray Icon
             _trayService = new TrayService();

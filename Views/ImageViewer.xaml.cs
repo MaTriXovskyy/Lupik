@@ -224,6 +224,7 @@ public partial class ImageViewer : UserControl
     /// </summary>
     public async Task<bool> LoadImageAsync(string filePath)
     {
+        var loadWatch = System.Diagnostics.Stopwatch.StartNew();
         int token = ++_loadToken;
         if (IsReadingText) EndTextMode(); // another picture: its own text
         try
@@ -231,13 +232,16 @@ public partial class ImageViewer : UserControl
             // The shown image stays cached too: reopening it (Space, Space) is instant instead of a fresh decode
             var entry = GetDecode(filePath);
             var decoding = entry.Decoding;
+            _ = decoding.ContinueWith(_ => App.Log($"[Perf] Image decode ready in {loadWatch.ElapsedMilliseconds} ms (load {token})"),
+                TaskScheduler.Default);
             Remember(filePath, entry);
             TrackDecode(entry);
 
             // A slow decode (big PNG, PSD, AVIF...): show a quick stand-in first, the real picture replaces it
             if (await Task.WhenAny(decoding, Task.Delay(QuickPreviewAfterMs)) != decoding)
             {
-                var quick = await QuickPreviewAsync(filePath);
+                var quick = await QuickPreviewAsync(filePath, decoding);
+                App.Log($"[Perf] Quick preview returned in {loadWatch.ElapsedMilliseconds} ms; full decode ready={decoding.IsCompleted} (load {token})");
                 if (token != _loadToken) return false;
                 if (quick is var (preview, size0, w0, h0) && !decoding.IsCompleted)
                 {
@@ -309,13 +313,18 @@ public partial class ImageViewer : UserControl
     /// Something to show right away, with the real pixel size: Explorer's cached thumbnail if it has one
     /// (only from its cache: generating one would be as slow as decoding), else the JPEG's own EXIF thumbnail.
     /// </summary>
-    private static async Task<(BitmapSource, long, int, int)?> QuickPreviewAsync(string filePath)
+    private static async Task<(BitmapSource, long, int, int)?> QuickPreviewAsync(string filePath, Task decoding)
     {
         try
         {
             var header = await Task.Run(() => ReadHeader(filePath));
             if (header is not var (w, h, size, embedded)) return null;
-            var cached = await Lupik.Core.ShellThumbnails.FromCacheAsync(filePath, 1024);
+            if (decoding.IsCompleted) return null;
+            if (embedded != null) return (embedded, size, w, h);
+            var cacheLookup = Lupik.Core.ShellThumbnails.FromCacheAsync(filePath, 1024);
+            // A quick thumbnail must never hold up an image that has already finished decoding.
+            if (await Task.WhenAny(decoding, cacheLookup) == decoding) return null;
+            var cached = await cacheLookup;
             var preview = cached ?? embedded;
             return preview == null ? null : (preview, size, w, h);
         }

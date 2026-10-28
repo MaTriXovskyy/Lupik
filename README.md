@@ -1,6 +1,7 @@
 # Lupik
 
-Quick Look for Windows. Select a file in Explorer or on the desktop, press Space, and you get a preview.
+Quick Look for Windows. Select a file in Explorer, on the desktop or in a standard Windows Open/Save dialog,
+press Space, and you get a preview.
 Press Space again and it's gone. That's the whole idea, and the rest of the app is there to keep it fast.
 
 It's written in C# / WPF on .NET 10, so it talks to Windows directly: Explorer's selection, shell thumbnails,
@@ -32,6 +33,8 @@ Lupik checks GitHub for new versions and asks before installing one. You can tur
 - **Folders**: a grid of what's inside
 
 Pictures have a filmstrip of the folder's images underneath (S).
+In Windows file pickers, click an item in the file list and press the preview key. Closing the preview returns
+focus to the picker without accepting it. Filename/search fields and dialog buttons keep their normal keys.
 While a large image loads, the accent line under the title bar shows its progress, including while a quick
 thumbnail is visible. It fades out once decoding finishes. Decoders without measurable progress show a moving line.
 
@@ -84,9 +87,9 @@ embedded Type 1 fonts included.
 
 Space can be swapped for any other key or shortcut in Settings.
 
-The preview never steals the focus from Explorer. Explorer stays the active window, and Lupik picks up its
-keys through a keyboard hook while it's open. Taking the focus made Windows wait on Explorer, sometimes
-for five seconds, and that's not what a preview should feel like.
+Opening a preview activates Lupik so its shortcuts work like in a normal window. Closing it returns focus
+to the Explorer window or file picker it came from. The global keyboard hook handles only the preview key;
+other keys stay with the active application.
 
 ## Building
 

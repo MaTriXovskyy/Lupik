@@ -9,6 +9,21 @@ namespace Lupik.Core;
 
 public static class ExplorerService
 {
+    [ThreadStatic] private static object? _shellApplication;
+
+    private static dynamic? ShellApplication()
+    {
+        if (_shellApplication != null) return _shellApplication;
+        var type = Type.GetTypeFromProgID("Shell.Application");
+        return type == null ? null : _shellApplication = Activator.CreateInstance(type);
+    }
+
+    /// <summary>Prepare the COM connection before the first preview, on the same STA as later lookups.</summary>
+    public static void Warm()
+    {
+        try { dynamic? shell = ShellApplication(); if (shell != null) _ = shell.Windows().Count; }
+        catch { _shellApplication = null; }
+    }
     [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
     private static extern int StrCmpLogicalW(string psz1, string psz2);
 
@@ -55,6 +70,10 @@ public static class ExplorerService
             NativeMethods.GetClassName(rootWnd, sbRoot, sbRoot.Capacity);
             rootClass = sbRoot.ToString();
 
+            // Dialog selections are read asynchronously by FileDialogService. Never fall back to a desktop
+            // or background Explorer selection when the foreground window is a different application.
+            if (rootClass == "#32770") return null;
+
             App.Log($"[ExplorerService] fgWnd: 0x{fgWnd:X} ('{className}'), rootWnd: 0x{rootWnd:X} ('{rootClass}')");
 
             isDesktop = className == "Progman" || className == "WorkerW" ||
@@ -74,14 +93,7 @@ public static class ExplorerService
     {
         try
         {
-            Type? shellType = Type.GetTypeFromProgID("Shell.Application");
-            if (shellType == null)
-            {
-                App.Log("[ExplorerService] Shell.Application ProgID not found");
-                return null;
-            }
-
-            dynamic? shell = Activator.CreateInstance(shellType);
+            dynamic? shell = ShellApplication();
             if (shell == null) return null;
 
             dynamic windows = shell.Windows();
@@ -115,7 +127,7 @@ public static class ExplorerService
                     if (item == null) continue;
 
                     long itemHwnd = (long)item.HWND & 0xFFFFFFFFL;
-                    App.Log($"[ExplorerService] Window {i}: HWND=0x{itemHwnd:X}, Location='{item.LocationName}'");
+                    App.Log($"[ExplorerService] Window {i}: HWND=0x{itemHwnd:X}");
 
                     bool sameWindow = fgWnd != IntPtr.Zero && (itemHwnd == fgHwnd32 || itemHwnd == rootHwnd32);
                     if (sameWindow && activeTab != IntPtr.Zero && TabOf((object)item) is IntPtr tab && tab != IntPtr.Zero && tab != activeTab)
@@ -181,6 +193,7 @@ public static class ExplorerService
         }
         catch (Exception ex)
         {
+            _shellApplication = null; // Explorer restarted or disconnected: reconnect on the next request
             App.Log($"[ExplorerService] Fatal COM error: {ex}");
         }
 

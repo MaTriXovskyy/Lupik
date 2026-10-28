@@ -17,6 +17,10 @@ class Check {
   int result=0; var samples = System.IO.Path.Combine(args[0], "test_samples");
   app.Dispatcher.InvokeAsync(async () => {
    try {
+    if (args.Length > 1 && args[1] == "--performance") {
+     await PerformanceChecks.Run(args.Skip(2).ToArray());
+     return;
+    }
     var w = new MainWindow();
     var source = new Window { ShowActivated=false, Width=100, Height=100 };
     source.Show();
@@ -64,6 +68,7 @@ class Check {
     Console.WriteLine("PASS pinned close releases PDF");
     await EditAndWindowChecks.Run(samples);
     await LoadingAndScrollingChecks.Run(samples);
+    await FileDialogChecks.Run(samples);
     w.Close();
    } catch(Exception ex) { Console.WriteLine(ex); result=1; }
    finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }
