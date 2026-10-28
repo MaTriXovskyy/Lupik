@@ -80,6 +80,7 @@ public partial class SettingsWindow : Window
         PageTitle.Text = Loc.T(NavAppearance.IsChecked == true ? "settings.navAppearance"
             : NavKeys.IsChecked == true ? "settings.navKeys"
             : NavUpdates.IsChecked == true ? "settings.navUpdates"
+            : NavNews.IsChecked == true ? "settings.navNews"
             : NavAbout.IsChecked == true ? "settings.navAbout" : "settings.navGeneral");
 
         string version = Loc.T("settings.version", Updater.CurrentVersion);
@@ -92,6 +93,7 @@ public partial class SettingsWindow : Window
         AutoLanguageHint.Text = Loc.T("settings.languageAutoHint", SystemLanguageName());
 
         if (_recording != PreviewKeyField) PreviewKeyField.Content = Settings.Current.PreviewKey?.Display() ?? Loc.T("settings.off");
+        if (NavNews.IsChecked == true) BuildNews();
     }
 
     private void OnNav(object sender, RoutedEventArgs e)
@@ -102,7 +104,9 @@ public partial class SettingsWindow : Window
         PageAppearance.Visibility = NavAppearance.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PageKeys.Visibility = NavKeys.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PageUpdates.Visibility = NavUpdates.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PageNews.Visibility = NavNews.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = NavAbout.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PageScroller.ScrollToTop();
         RefreshTexts();
     }
 

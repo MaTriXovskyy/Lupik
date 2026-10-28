@@ -218,6 +218,18 @@ public partial class MainWindow
             ArchiveViewerControl.ClearSelection(); // first Esc clears the selection, the next one closes
             handled = true;
         }
+        else if (PdfViewerControl.Visibility == Visibility.Visible && key == Key.C && mods == ModifierKeys.Control)
+        {
+            PdfViewerControl.CopySelection(); handled = true;
+        }
+        else if (PdfViewerControl.Visibility == Visibility.Visible && key == Key.A && mods == ModifierKeys.Control)
+        {
+            _ = PdfViewerControl.SelectAllAsync(); handled = true;
+        }
+        else if (PdfViewerControl.Visibility == Visibility.Visible && key == Key.Escape && PdfViewerControl.HasSelection)
+        {
+            PdfViewerControl.ClearSelection(); handled = true;
+        }
         else if (csvShown && key == Key.C && mods == ModifierKeys.Control)
         {
             CsvViewerControl.CopySelection();

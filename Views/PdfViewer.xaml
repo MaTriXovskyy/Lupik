@@ -98,10 +98,16 @@
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
                       ScrollChanged="OnScrollChanged"
+                      PreviewMouseDown="OnPointerDown" PreviewMouseUp="OnPointerUp" PreviewMouseMove="OnPointerMove"
+                      LostMouseCapture="OnPointerCaptureLost"
                       SizeChanged="OnViewportSizeChanged"
                       PreviewMouseWheel="OnPreviewMouseWheel">
             <!-- Layout rounding keeps every page on whole device pixels: a page starting at x.5 would be blurred -->
             <StackPanel x:Name="PagesPanel" HorizontalAlignment="Center" Margin="16,16,16,0" UseLayoutRounding="True" />
         </ScrollViewer>
+        <Border x:Name="TextReading" Grid.Row="2" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12"
+                Background="{DynamicResource c1B1917}" CornerRadius="6" Padding="9,5" Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock Text="{loc:T ocr.reading}" Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
+        </Border>
     </Grid>
 </UserControl>

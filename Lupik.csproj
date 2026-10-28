@@ -18,7 +18,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>1.7.8</Version>
+    <Version>1.7.9</Version>
     <Product>Lupik</Product>
   </PropertyGroup>
 

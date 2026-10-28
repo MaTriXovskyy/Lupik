@@ -36,6 +36,8 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
         public int PixelWidth, PixelHeight; // the image's size on screen, in device pixels
         public double PointsWidth, PointsHeight;
         public int RenderedPixelWidth;   // 0 = not rendered
+        public PdfTextPage? Text;
+        public Task<PdfTextPage>? TextTask;
     }
 
     private string _currentFilePath = "";
@@ -53,6 +55,8 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
         InitializeComponent();
         _resizeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
         _resizeTimer.Tick += (_, _) => { _resizeTimer.Stop(); Relayout(keepPage: true); };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) StopPointerGesture(); };
+        Unloaded += (_, _) => StopPointerGesture();
     }
 
     public int PageCount => _slots.Count;
@@ -113,6 +117,8 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
 
     private void ClosePages()
     {
+        CancelTextReads();
+        ClearSelection();
         _searchMatches.Clear();
         PagesPanel.Children.Clear();
         _slots.Clear();
@@ -290,6 +296,7 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
                     {
                         _slots[i].Image.Source = null;
                         _slots[i].RenderedPixelWidth = 0;
+                        if (!_selectAllPending && !IsSelectedPage(i)) { _slots[i].Text = null; _slots[i].TextTask = null; }
                     }
 
                 // Exactly the pixels the image covers on screen (inside the outline): any mismatch means WPF
@@ -321,6 +328,7 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
                 if (token != _loadToken) return;
                 slot.Image.Source = bitmap;
                 slot.RenderedPixelWidth = pixels;
+                _ = EnsureTextAsync(slot, next);
             }
         }
         catch (Exception ex)
@@ -427,6 +435,8 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
 
     public bool HandleEditKey(Key key, ModifierKeys mods)
     {
+        if (mods == ModifierKeys.Control && key == Key.C) { CopySelection(); return true; }
+        if (mods == ModifierKeys.Control && key == Key.A) { _ = SelectAllAsync(); return true; }
         // Paging works as always; up/down scroll
         switch (key)
         {
@@ -532,6 +542,7 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
     {
         var doc = _pdfDoc;
         if (doc == null || !_editing) return;
+        CancelTextReads();
         try
         {
             await Task.Run(() => change(doc));
@@ -548,6 +559,7 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
 
     private async Task RebuildPagesAsync(int showPage)
     {
+        ClearSelection();
         var doc = _pdfDoc;
         if (doc == null) return;
         ClearSearch();
@@ -651,16 +663,21 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
         private static readonly Brush CurrentBrush = Frozen(Color.FromArgb(0x88, 0xFF, 0x8C, 0x1A));
         private List<List<Rect>>? _matches;
         private List<Rect>? _current;
+        private List<Rect>? _selection;
+        private static readonly Brush SelectionBrush = Frozen(Color.FromArgb(0x66, 0x33, 0x90, 0xFF));
 
         public SearchLayer() => IsHitTestVisible = false;
 
         public void SetMatches(List<List<Rect>>? matches) { _matches = matches; _current = null; InvalidateVisual(); }
         public void SetCurrent(List<Rect>? rects) { _current = rects; InvalidateVisual(); }
+        public void SetSelection(List<Rect>? rects) { _selection = rects; InvalidateVisual(); }
 
         protected override void OnRender(DrawingContext dc)
         {
-            if (_matches == null) return;
             double w = ActualWidth, h = ActualHeight;
+            if (_selection != null)
+                foreach (var r in _selection) dc.DrawRectangle(SelectionBrush, null, new Rect(r.X * w, r.Y * h, r.Width * w, r.Height * h));
+            if (_matches == null) return;
             foreach (var match in _matches)
                 foreach (var r in match)
                     dc.DrawRectangle(ReferenceEquals(match, _current) ? CurrentBrush : MatchBrush, null,
@@ -745,6 +762,7 @@ public partial class PdfViewer : UserControl, ISearchable, IEditable
 
     private void SetZoom(double zoom)
     {
+        StopPointerGesture();
         zoom = Math.Clamp(zoom, 0.5, 4.0);
         if (Math.Abs(zoom - _zoomScale) < 0.001) return;
         _zoomScale = zoom;

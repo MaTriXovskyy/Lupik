@@ -21,6 +21,25 @@ class Check {
      await PerformanceChecks.Run(args.Skip(2).ToArray());
      return;
     }
+    if (args.Length > 1 && args[1] == "--pdf-news") { await PdfAndNewsChecks.Run(); return; }
+    if (args.Length > 2 && args[1] == "--inspect-pdf") {
+     using var document = Lupik.Core.PdfDocument.Open(args[2]);
+     for(int page=0;page<Math.Min(10,document.PageCount);page++) {
+      var text=document.ReadTextPage(page);
+      Console.WriteLine($"Page {page+1}: characters={text.Count}, visible glyphs={text.Bounds.Count(r=>!r.IsEmpty)}");
+     }
+     return;
+    }
+    if (args.Length > 2 && args[1] == "--inspect-ocr") {
+     using var document=Lupik.Core.PdfDocument.Open(args[2]);
+     Console.WriteLine($"Local OCR available={Lupik.Core.TextRecognition.IsAvailable}");
+     var watch=System.Diagnostics.Stopwatch.StartNew();
+     var text=await Lupik.Core.PdfTextOcr.ReadAsync(document,0);
+     Console.WriteLine($"OCR units={text.Count}, elapsed={watch.ElapsedMilliseconds} ms");
+     for(int i=0;i<text.Count;i++) if(text.GetText(i,i) is "5" or "270") Console.WriteLine($"Target {text.GetText(i,i)}: {text.Bounds[i]}");
+     return;
+    }
+    if (args.Length > 3 && args[1] == "--ocr-diag") { await PdfAndNewsChecks.OcrDiagnostic(args[2], args[3]); return; }
     var w = new MainWindow();
     var source = new Window { ShowActivated=false, Width=100, Height=100 };
     source.Show();
@@ -69,6 +88,7 @@ class Check {
     await EditAndWindowChecks.Run(samples);
     await LoadingAndScrollingChecks.Run(samples);
     await FileDialogChecks.Run(samples);
+    await PdfAndNewsChecks.Run();
     w.Close();
    } catch(Exception ex) { Console.WriteLine(ex); result=1; }
    finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }

@@ -538,6 +538,10 @@ T = {
 "help.folderBack": ["Wróć do folderu / dalej", "Back to the folder / forward", "Zurück zum Ordner / vor", "Volver a la carpeta / adelante", "Retour au dossier / suivant", "Torna alla cartella / avanti", "Назад к папке / вперёд", "Назад до теки / вперед"],
 }
 
+# Curated release-history texts use the same language columns, kept in a separate source for easy updates.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "news.json"), encoding="utf-8") as news_source:
+    T.update(json.load(news_source))
+
 if __name__ == "__main__":
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Strings")
     os.makedirs(out, exist_ok=True)

@@ -9,7 +9,7 @@ namespace Lupik.Core;
 /// bblanchon.PDFium.Win32 package). PDFium isn't thread-safe, so every call goes through one lock;
 /// rendering from background threads is fine, just one page at a time.
 /// </summary>
-public sealed class PdfDocument : IDisposable
+public sealed partial class PdfDocument : IDisposable
 {
     private static readonly object Lock = new();
     private IntPtr _doc;
@@ -415,6 +415,10 @@ public sealed class PdfDocument : IDisposable
         // Text (search)
         [DllImport(Dll)] public static extern IntPtr FPDFText_LoadPage(IntPtr page);
         [DllImport(Dll)] public static extern void FPDFText_ClosePage(IntPtr textPage);
+        [DllImport(Dll)] public static extern int FPDFText_CountChars(IntPtr textPage);
+        [DllImport(Dll)] public static extern uint FPDFText_GetUnicode(IntPtr textPage, int index);
+        [DllImport(Dll)] public static extern int FPDFText_GetCharBox(IntPtr textPage, int index, out double left, out double right, out double bottom, out double top);
+        [DllImport(Dll)] public static extern int FPDF_PageToDevice(IntPtr page, int startX, int startY, int width, int height, int rotate, double x, double y, out int deviceX, out int deviceY);
         [DllImport(Dll)] public static extern IntPtr FPDFText_FindStart(IntPtr textPage, [MarshalAs(UnmanagedType.LPWStr)] string findWhat, uint flags, int startIndex);
         [DllImport(Dll)] public static extern int FPDFText_FindNext(IntPtr handle);
         [DllImport(Dll)] public static extern int FPDFText_GetSchResultIndex(IntPtr handle);

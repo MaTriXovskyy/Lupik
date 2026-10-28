@@ -19,3 +19,9 @@ Run the release notes checks with:
 ```sh
 node --test tools/release-notes.test.cjs
 ```
+
+The offline **What's new** page in Settings uses `Core/ReleaseHistory.cs` and
+`Localization/news.json` (language order: pl, en, de, es, fr, it, ru, uk).
+Run `python Localization/translations.py` after editing its texts. Keep entries
+brief and describe changes between published versions; omit internal work and
+bugs introduced and fixed during the same feature's development.

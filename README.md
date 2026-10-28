@@ -49,6 +49,11 @@ unsaved changes). In edit mode Lupik takes the keyboard focus, which the preview
 Ctrl+F searches in code and text, tables, Word documents, PDFs and diffs (Enter / Shift+Enter: next / previous).
 
 PDF and `.ai` files are rendered by [PDFium](https://pdfium.googlesource.com/pdfium/), the PDF engine inside Chrome.
+Drag with the left mouse button to select PDF text, and use Ctrl+C to copy it. Double-click selects a word,
+triple-click a line, and Ctrl+A selects the document. Hold the right mouse button to pan the PDF view.
+Image-only PDF pages use Windows' local OCR in the background to make their text selectable.
+
+Settings includes an offline **What's new** page with the history of published versions.
 
 EPS files are drawn by a small PostScript interpreter that lives in this repo (`Core/PostScript`).
 No Ghostscript to install. It handles what Illustrator, CorelDRAW and Photoshop put in their EPS files,

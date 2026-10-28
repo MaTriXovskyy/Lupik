@@ -91,6 +91,9 @@ public partial class MainWindow
         if (PdfViewerControl.Visibility == Visibility.Visible)
             return (Loc.T("help.pdf"), new()
             {
+                new(new[] { Loc.T("key.leftMouse") }, Loc.T("help.pdfSelect")),
+                new(new[] { Loc.T("key.rightMouse") }, Loc.T("help.pdfPan")),
+                new(new[] { "Ctrl+C" }, Loc.T("help.copySelection")),
                 new(new[] { "↑", "↓" }, Loc.T("help.scroll")),
                 new(new[] { "PgUp", "PgDn" }, Loc.T("help.page")),
                 new(new[] { "Home", "End" }, Loc.T("help.firstLast")),
