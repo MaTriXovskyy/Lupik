@@ -13,18 +13,22 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- This is a WPF app; WinForms is used for shell helpers, not its DPI startup API. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <StartupObject>Lupik.Program</StartupObject>
     <!-- Windows x64 only: without it every build also copies Magick.NET and PDFium for Linux, macOS, ARM and x86 (~125 MB) -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>1.7.9</Version>
+    <Version>1.8.0</Version>
     <Product>Lupik</Product>
   </PropertyGroup>
 
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
+    <InternalsVisibleTo Include="PreviewReleaseTests" />
   </ItemGroup>
 
   <ItemGroup>

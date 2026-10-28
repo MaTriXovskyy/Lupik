@@ -541,6 +541,8 @@ T = {
 # Curated release-history texts use the same language columns, kept in a separate source for easy updates.
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "news.json"), encoding="utf-8") as news_source:
     T.update(json.load(news_source))
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "capture.json"), encoding="utf-8") as capture_source:
+    T.update(json.load(capture_source))
 
 if __name__ == "__main__":
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Strings")

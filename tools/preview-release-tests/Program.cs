@@ -22,6 +22,7 @@ class Check {
      return;
     }
     if (args.Length > 1 && args[1] == "--pdf-news") { await PdfAndNewsChecks.Run(); return; }
+    if (args.Length > 1 && args[1] == "--screenshots") { await ScreenshotChecks.Run(samples); return; }
     if (args.Length > 2 && args[1] == "--inspect-pdf") {
      using var document = Lupik.Core.PdfDocument.Open(args[2]);
      for(int page=0;page<Math.Min(10,document.PageCount);page++) {
@@ -89,6 +90,7 @@ class Check {
     await LoadingAndScrollingChecks.Run(samples);
     await FileDialogChecks.Run(samples);
     await PdfAndNewsChecks.Run();
+    await ScreenshotChecks.Run(samples);
     w.Close();
    } catch(Exception ex) { Console.WriteLine(ex); result=1; }
    finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }

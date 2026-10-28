@@ -12,6 +12,7 @@ public class KeyboardHook : IDisposable
     private static IntPtr _hookId = IntPtr.Zero;
     private static readonly NativeMethods.LowLevelKeyboardProc _staticProc = HookCallback;
     public static event Action? PreviewKeyPressed;
+    public static event Action? ScreenshotRequested;
     public static MainWindow? MainWindowRef { get; set; }
 
     private uint _hookThreadId;
@@ -34,6 +35,7 @@ public class KeyboardHook : IDisposable
         _hookThread = new Thread(() =>
         {
             _hookThreadId = NativeMethods.GetCurrentThreadId();
+            ScreenshotShortcut.Reset();
 
             IntPtr hMod = IntPtr.Zero;
             try
@@ -79,6 +81,7 @@ public class KeyboardHook : IDisposable
                 _hookId = IntPtr.Zero;
             }
             App.Log("[KeyboardHook] Hook thread message pump terminated.");
+            ScreenshotShortcut.Reset();
         })
         {
             IsBackground = true,
@@ -104,15 +107,22 @@ public class KeyboardHook : IDisposable
     }
 
     /// <summary>
-    /// The only key Lupik takes from other windows: the preview key (Space unless changed in Settings), in Explorer
-    /// on the Desktop or in a standard Windows file picker's file list. Everything else, in every app, passes through
-    /// untouched: once the preview is open it is the active window and gets its keys the normal way.
+    /// Takes Win+Shift+S for screenshots and the preview key only in preview contexts.
+    /// Everything else passes through untouched; a focused preview handles its own keys.
     /// </summary>
     private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode >= 0)
         {
             var kb = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+            bool down = wParam == (IntPtr)NativeMethods.WM_KEYDOWN || wParam == (IntPtr)NativeMethods.WM_SYSKEYDOWN;
+            bool up = wParam == (IntPtr)NativeMethods.WM_KEYUP || wParam == (IntPtr)NativeMethods.WM_SYSKEYUP;
+            if ((down || up) && ScreenshotShortcut.Process(kb.vkCode, down, Core.KeyState.Modifiers,
+                Settings.Current.ScreenCaptureEnabled, () =>
+                {
+                    ScreenshotShortcut.MaskWindowsMenu();
+                    ScreenshotRequested?.Invoke();
+                })) return (IntPtr)1;
             if (wParam == (IntPtr)NativeMethods.WM_KEYUP || wParam == (IntPtr)NativeMethods.WM_SYSKEYUP)
                 HandlePreviewPress(kb.vkCode, false, OnPreviewKey);
             var previewKey = Settings.Current.PreviewKey;

@@ -162,14 +162,14 @@ static class PdfAndNewsChecks
             foreach (var (language, _) in Loc.Languages)
             {
                 Loc.Instance.SetLanguage(language);
-                Assert(entries.Children.Count == 17, "Missing release-history versions");
+                Assert(entries.Children.Count == 18, "Missing release-history versions");
                 foreach (var block in Descendants<TextBlock>(entries))
                     Assert(!block.Text.StartsWith("news.") && !block.Text.Contains("AutoHotkey", StringComparison.OrdinalIgnoreCase), "Missing/forbidden release-history text");
             }
             Loc.Instance.SetLanguage("pl");
             string text = string.Join("\n", Descendants<TextBlock>(entries).Select(t => t.Text));
             Assert(text.Contains("Podgląd plików w systemowych oknach „Otwórz” i „Zapisz”."), "Approved 1.7.8 wording changed");
-            var v178 = (Border)entries.Children[1];
+            var v178 = (Border)entries.Children[2];
             Assert(Descendants<TextBlock>(v178).Count(t => t.Text.StartsWith("Podgląd")) == 1, "1.7.8 contains implementation-stage fixes");
             foreach (bool light in new[] { false, true })
             {

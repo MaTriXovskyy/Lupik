@@ -19,6 +19,7 @@ public partial class App : Application
     private KeyboardHook? _keyboardHook;
     private MainWindow? _mainWindow;
     private TrayService? _trayService;
+    private ScreenshotService? _screenshots;
 
     public App()
     {
@@ -113,10 +114,13 @@ public partial class App : Application
             // 3. Create MainWindow
             _mainWindow = new MainWindow();
             KeyboardHook.MainWindowRef = _mainWindow;
+            _screenshots = new ScreenshotService(_mainWindow);
+            Task.Run(ScreenshotStore.CleanOldSessions);
 
             // 4. Initialize Keyboard Hook
             _keyboardHook = new KeyboardHook();
             KeyboardHook.PreviewKeyPressed += OnPreviewKeyPressed;
+            KeyboardHook.ScreenshotRequested += OnScreenshotRequested;
             _keyboardHook.Start();
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, () => ExplorerService.Warm());
 
@@ -154,6 +158,12 @@ public partial class App : Application
             _mainWindow?.ToggleWindow(fromPreviewKey: true);
         });
     }
+
+    private void OnScreenshotRequested() => Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input,
+        () => { if (_screenshots != null) _ = _screenshots.CaptureAsync(); });
+
+    internal bool HasLastScreenshot => _screenshots?.HasLast == true;
+    internal void OpenLastScreenshot() { if (_screenshots != null) _ = _screenshots.OpenLastAsync(); }
 
     /// <summary>
     /// %LocalAppData%\Lupik\logs\Lupik.log: outside the program folder, which an update replaces
@@ -195,6 +205,10 @@ public partial class App : Application
         _wakeEvent?.Dispose();
 
         _keyboardHook?.Dispose();
+        KeyboardHook.PreviewKeyPressed -= OnPreviewKeyPressed;
+        KeyboardHook.ScreenshotRequested -= OnScreenshotRequested;
+        _screenshots?.Dispose();
+        ScreenshotStore.CleanCurrentSession();
         _trayService?.Dispose();
 
         if (_mutex != null)

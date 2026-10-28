@@ -42,6 +42,7 @@ public partial class SettingsWindow : Window
         BuildLanguageList();
         StartupSwitch.IsChecked = Autostart.IsEnabled;
         FocusLossSwitch.IsChecked = Settings.Current.CloseOnFocusLoss;
+        ScreenshotSwitch.IsChecked = Settings.Current.ScreenCaptureEnabled;
         AutoplaySwitch.IsChecked = Settings.Current.AutoplayMedia;
         ScaleSlider.Value = Math.Round(Settings.Current.WindowScale * 100);
         UpdatesSwitch.IsChecked = Settings.Current.CheckForUpdates;
@@ -171,6 +172,9 @@ public partial class SettingsWindow : Window
 
     private void OnFocusLossClick(object sender, RoutedEventArgs e) =>
         Settings.Update(s => s.CloseOnFocusLoss = FocusLossSwitch.IsChecked == true);
+
+    private void OnScreenshotClick(object sender, RoutedEventArgs e) =>
+        Settings.Update(s => s.ScreenCaptureEnabled = ScreenshotSwitch.IsChecked == true);
 
     private void OnAutoplayClick(object sender, RoutedEventArgs e) =>
         Settings.Update(s => s.AutoplayMedia = AutoplaySwitch.IsChecked == true);
@@ -334,7 +338,8 @@ public partial class SettingsWindow : Window
     private void OnRestoreKeys(object sender, RoutedEventArgs e)
     {
         StopRecording();
-        Settings.Update(s => s.PreviewKey = KeyCombo.DefaultPreview);
+        Settings.Update(s => { s.PreviewKey = KeyCombo.DefaultPreview; s.ScreenCaptureEnabled = true; });
+        ScreenshotSwitch.IsChecked = true;
         ShowKeyMessage(Loc.T("settings.recordHint"), error: false);
     }
 

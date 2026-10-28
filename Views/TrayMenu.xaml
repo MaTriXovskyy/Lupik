@@ -67,6 +67,12 @@
                     <TextBlock Text="{loc:T tray.open}" VerticalAlignment="Center"/>
                 </DockPanel>
             </Button>
+            <Button x:Name="LastScreenshotItem" Style="{StaticResource MenuItem}" Click="OnLastScreenshot" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <views:LucideIcon Kind="image" Size="16" Margin="0,0,10,0"/>
+                    <TextBlock Text="{loc:T capture.last}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
             <Button Style="{StaticResource MenuItem}" Click="OnSettings">
                 <DockPanel>
                     <views:LucideIcon Kind="settings" Size="16" Margin="0,0,10,0"/>

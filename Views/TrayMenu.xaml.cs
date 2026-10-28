@@ -20,6 +20,7 @@ public partial class TrayMenu : Window
         InitializeComponent();
         _openPreview = openPreview;
         VersionText.Text = Loc.T("settings.version", Updater.CurrentVersion);
+        LastScreenshotItem.Visibility = Application.Current is App { HasLastScreenshot: true } ? Visibility.Visible : Visibility.Collapsed;
         if (Updater.AvailableVersion is { } version)
         {
             UpdateItem.Visibility = Visibility.Visible;
@@ -94,6 +95,12 @@ public partial class TrayMenu : Window
     {
         CloseMenu();
         SettingsWindow.ShowOrActivate();
+    }
+
+    private void OnLastScreenshot(object sender,RoutedEventArgs e)
+    {
+        CloseMenu();
+        (Application.Current as App)?.OpenLastScreenshot();
     }
 
     private void OnUpdate(object sender, RoutedEventArgs e)

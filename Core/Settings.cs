@@ -12,6 +12,10 @@ public class Settings
     /// <summary>Opens the preview of the file selected in Explorer/Desktop (and closes it). Null = off.</summary>
     public KeyCombo? PreviewKey { get; set; } = KeyCombo.DefaultPreview;
 
+    /// <summary>Win+Shift+S opens Lupik's own region capture instead of Windows Snipping Tool.</summary>
+    public bool ScreenCaptureEnabled { get; set; } = true;
+    public string ScreenCaptureMode { get; set; } = "Region";
+
     /// <summary>Close the preview when another app comes to the front.</summary>
     public bool CloseOnFocusLoss { get; set; }
 

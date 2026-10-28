@@ -647,6 +647,16 @@
                             <TextBlock x:Name="KeyMessage" Text="{loc:T settings.recordHint}" FontSize="12.5" Foreground="{DynamicResource TextMuted}"
                                        TextWrapping="Wrap" Margin="2,4,0,16"/>
 
+                            <Border Style="{StaticResource Row}">
+                                <DockPanel>
+                                    <CheckBox x:Name="ScreenshotSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}" Click="OnScreenshotClick"/>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="{loc:T capture.setting}" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="{loc:T capture.settingHint}" Style="{StaticResource RowHint}"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
                             <Button Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" Click="OnRestoreKeys">
                                 <StackPanel Orientation="Horizontal">
                                     <views:LucideIcon Kind="rotate-ccw" Size="14" Margin="0,0,8,0"/>

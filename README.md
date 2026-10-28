@@ -49,6 +49,12 @@ unsaved changes). In edit mode Lupik takes the keyboard focus, which the preview
 Ctrl+F searches in code and text, tables, Word documents, PDFs and diffs (Enter / Shift+Enter: next / previous).
 
 PDF and `.ai` files are rendered by [PDFium](https://pdfium.googlesource.com/pdfium/), the PDF engine inside Chrome.
+Win+Shift+S opens Lupik's own screenshot overlay: choose a region, a window, one monitor or all monitors.
+Captures go to the clipboard, with a thumbnail notification in the bottom-right corner. Click it to open Lupik;
+the tray menu also offers the last capture. Esc or right-click cancels. Captures use a private temporary cache;
+use Save as to keep one permanently. Pin a capture to keep it next to another preview. To restore Windows
+snipping while Lupik is running, turn off Screenshots in Settings → Keys.
+
 Drag with the left mouse button to select PDF text, and use Ctrl+C to copy it. Double-click selects a word,
 triple-click a line, and Ctrl+A selects the document. Hold the right mouse button to pan the PDF view.
 Image-only PDF pages use Windows' local OCR in the background to make their text selectable.
