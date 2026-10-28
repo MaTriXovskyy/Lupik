@@ -214,6 +214,10 @@
                     <Button x:Name="PinButton" Style="{StaticResource IconButton}" DockPanel.Dock="Left" Margin="-6,0,4,0" Click="OnPinClicked">
                         <views:LucideIcon x:Name="PinIcon" Kind="pin" Size="15"/>
                     </Button>
+                    <Button x:Name="AlwaysOnTopButton" Style="{StaticResource IconButton}" DockPanel.Dock="Left" Margin="0,0,4,0"
+                            Visibility="Collapsed" Click="OnAlwaysOnTopClicked">
+                        <views:LucideIcon x:Name="AlwaysOnTopIcon" Kind="layers" Size="15"/>
+                    </Button>
                     <Image x:Name="TitleIconImage" DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,8,0"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock x:Name="TitleFileNameText" Text="Lupik"
@@ -229,6 +233,21 @@
             </Border>
             </Grid>
         </Border>
+
+        <!-- The title hairline becomes a loading bar; its soft edge keeps the accent's fade. -->
+        <Grid x:Name="TitleProgress" Grid.Row="0" VerticalAlignment="Bottom" Height="2" Panel.ZIndex="2"
+              ClipToBounds="True" IsHitTestVisible="False" Opacity="0">
+            <Border x:Name="TitleProgressFill" HorizontalAlignment="Left" Width="0" Background="{DynamicResource Gold}">
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#00FFFFFF" Offset="0"/>
+                        <GradientStop Color="#FFFFFFFF" Offset="0.06"/>
+                        <GradientStop Color="#FFFFFFFF" Offset="0.75"/>
+                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+        </Grid>
 
         <!-- Content Area Hosting Viewers -->
         <Grid Grid.Row="1" x:Name="ContentContainer">

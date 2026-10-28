@@ -8,10 +8,10 @@ using Lupik.Localization;
 namespace Lupik;
 
 /// <summary>
-/// Pinning (P or the pin button): the file moves to a window of its own that stays where it is, above other windows,
+/// Pinning (P or the pin button): the file moves to a window of its own that stays where it is,
 /// and no longer follows Explorer. The preview itself closes and keeps working as before, so another file can be
 /// opened next to the pinned one. A pinned window is a normal window: click it to use its keys, P toggles
-/// "always on top", Esc or Space closes it.
+/// "always on top" (also a separate title button, remembered for new pins), Esc or Space closes it.
 /// </summary>
 public partial class MainWindow
 {
@@ -26,9 +26,7 @@ public partial class MainWindow
     {
         if (Pinned)
         {
-            Topmost = !Topmost;
-            UpdatePinButton();
-            ShowNotice(Loc.T(Topmost ? "pin.onTop" : "pin.notOnTop"));
+            ToggleAlwaysOnTop();
             return;
         }
         if (!PathExists(_currentFilePath) || CompareViewerControl.Visibility == Visibility.Visible || DiffViewerControl.Visibility == Visibility.Visible) return;
@@ -39,7 +37,7 @@ public partial class MainWindow
         var pinned = CreatePinned();
         pinned.Left = bounds.Left; pinned.Top = bounds.Top; pinned.Width = bounds.Width; pinned.Height = bounds.Height;
         HideWindow();
-        pinned.Topmost = true;
+        pinned.Topmost = Settings.Current.PinnedOnTop;
         pinned.Show();
         pinned.UpdatePinButton();
         _ = pinned.ShowFile(path);
@@ -56,11 +54,27 @@ public partial class MainWindow
     private void UpdatePinButton()
     {
         bool pinned = _pinned;
-        PinIcon.Kind = pinned && !Topmost ? "pin-off" : "pin";
-        if (pinned && Topmost) PinButton.SetResourceReference(ForegroundProperty, "Gold");
+        PinIcon.Kind = "pin";
+        if (pinned) PinButton.SetResourceReference(ForegroundProperty, "Gold");
         else PinButton.ClearValue(ForegroundProperty);
-        PinButton.ToolTip = Loc.T(!pinned ? "pin.tip" : Topmost ? "pin.onTopTip" : "pin.notOnTopTip");
+        PinButton.ToolTip = Loc.T(!pinned ? "pin.tip" : "pin.pinnedTip");
+        AlwaysOnTopButton.Visibility = pinned ? Visibility.Visible : Visibility.Collapsed;
+        AlwaysOnTopIcon.Kind = Topmost ? "layers" : "square";
+        if (Topmost) AlwaysOnTopButton.SetResourceReference(ForegroundProperty, "Gold");
+        else AlwaysOnTopButton.ClearValue(ForegroundProperty);
+        AlwaysOnTopButton.ToolTip = Loc.T(Topmost ? "pin.disableOnTopTip" : "pin.enableOnTopTip");
     }
+
+    private void ToggleAlwaysOnTop()
+    {
+        if (!Pinned) return;
+        Topmost = !Topmost;
+        Settings.Update(s => s.PinnedOnTop = Topmost);
+        UpdatePinButton();
+        ShowNotice(Loc.T(Topmost ? "pin.onTop" : "pin.notOnTop"));
+    }
+
+    private void OnAlwaysOnTopClicked(object sender, RoutedEventArgs e) => ToggleAlwaysOnTop();
 
     private void OnPinClicked(object sender, RoutedEventArgs e) => TogglePin();
 

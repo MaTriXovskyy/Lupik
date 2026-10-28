@@ -54,6 +54,12 @@ public partial class MainWindow : Window
         CodeViewerControl.RenderedRequested += () => SetMarkdownRendered(true);
         WatchAppearance();
         PreviewTextInput += OnWindowTextInput;
+        PreviewMouseWheel += OnHorizontalWheel;
+        ImageViewerControl.DecodeStarted += () =>
+        {
+            if (!_fileLoadPending && ImageViewerControl.Visibility == Visibility.Visible && IsVisible)
+                BeginTitleProgress(image: true);
+        };
         UpdatePinButton();
         Closing += OnWindowClosing;
         if (_pinned) Closed += (_, _) => ReleasePinned();
@@ -77,6 +83,7 @@ public partial class MainWindow : Window
         CloseSearch();
         _showToken++;
         EndLoading();
+        CancelTitleProgress();
         ReleaseResources();
     }
 
@@ -99,6 +106,9 @@ public partial class MainWindow : Window
         FileActions.Visibility = SaveAsButton.Visibility = CropButton.Visibility = Visibility.Collapsed; // nothing to act on
 
         _showToken++; // cancel any image still loading
+        EndLoading();
+        CancelTitleProgress();
+        ImageViewerControl.Release();
         ShowOnlyViewer(WelcomeView);
         SetBounds(ComputeDefaultBounds(""));
 
@@ -281,6 +291,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void BeginLoading(string filePath, string ext, int token)
     {
+        _fileLoadPending = true;
+        BeginTitleProgress(!Directory.Exists(filePath) && Array.IndexOf(ImageExtensions, ext) >= 0);
         _loadingDelayTimer?.Stop();
         _loadingDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _loadingDelayTimer.Tick += (_, _) =>
@@ -308,9 +320,11 @@ public partial class MainWindow : Window
 
     private void EndLoading()
     {
+        _fileLoadPending = false;
         _loadingDelayTimer?.Stop();
         _spinner?.Stop(this);
         LoadingOverlay.Visibility = Visibility.Collapsed;
+        if (!_titleTracksImage || ImageViewerControl.LoadingProgress == null) FinishTitleProgress();
     }
 
     private System.Windows.Media.Animation.Storyboard CreateSpinner()
@@ -413,6 +427,7 @@ public partial class MainWindow : Window
         CloseSearch();
         _showToken++; // cancel any image still loading
         EndLoading();
+        CancelTitleProgress();
         if (_isFullScreen) ToggleFullScreen(); // next preview opens as a normal window
         ResetFolderHistory();
         SystemPreviewControl.Close();

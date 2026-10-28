@@ -15,6 +15,9 @@ public class Settings
     /// <summary>Close the preview when another app comes to the front.</summary>
     public bool CloseOnFocusLoss { get; set; }
 
+    /// <summary>New pinned previews use the last chosen always-on-top mode.</summary>
+    public bool PinnedOnTop { get; set; } = true;
+
     /// <summary>Size of the preview window, 0.6–1 of the default.</summary>
     public double WindowScale { get; set; } = 1.0;
 

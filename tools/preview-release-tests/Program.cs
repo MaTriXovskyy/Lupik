@@ -63,6 +63,7 @@ class Check {
     if(Field(Field(pinned,"PdfViewerControl"),"_pdfDoc") != null) throw new Exception("Pinned PDF retained");
     Console.WriteLine("PASS pinned close releases PDF");
     await EditAndWindowChecks.Run(samples);
+    await LoadingAndScrollingChecks.Run(samples);
     w.Close();
    } catch(Exception ex) { Console.WriteLine(ex); result=1; }
    finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }

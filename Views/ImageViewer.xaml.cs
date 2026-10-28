@@ -28,6 +28,16 @@ public partial class ImageViewer : UserControl
     public double NaturalWidth => _naturalWidth;
     public double NaturalHeight => _naturalHeight;
 
+    private CacheEntry? _activeDecode;
+    public double? LoadingProgress => _activeDecode is { Decoding.IsCompleted: false } entry ? entry.Progress.Value : null;
+    public event Action? DecodeStarted;
+
+    private void TrackDecode(CacheEntry entry)
+    {
+        _activeDecode = entry;
+        if (!entry.Decoding.IsCompleted) DecodeStarted?.Invoke();
+    }
+
     public ImageViewer()
     {
         InitializeComponent();
@@ -219,8 +229,10 @@ public partial class ImageViewer : UserControl
         try
         {
             // The shown image stays cached too: reopening it (Space, Space) is instant instead of a fresh decode
-            var decoding = GetDecodeTask(filePath);
-            Remember(filePath, decoding);
+            var entry = GetDecode(filePath);
+            var decoding = entry.Decoding;
+            Remember(filePath, entry);
+            TrackDecode(entry);
 
             // A slow decode (big PNG, PSD, AVIF...): show a quick stand-in first, the real picture replaces it
             if (await Task.WhenAny(decoding, Task.Delay(QuickPreviewAfterMs)) != decoding)
@@ -386,21 +398,21 @@ public partial class ImageViewer : UserControl
 
     private static (BitmapSource, long, int, int) Decode(string filePath) => Decode(filePath, full: false);
 
-    private static (BitmapSource, long, int, int) Decode(string filePath, bool full)
+    private static (BitmapSource, long, int, int) Decode(string filePath, bool full, Core.DecodeProgress? progress = null)
     {
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
         if (ext == ".svg") return DecodeSvg(filePath);
         if (IsPostScript(ext)) return DecodeEps(filePath);
-        if (MagickOnlyFormats.Contains(ext)) return DecodeWithMagick(filePath);
+        if (MagickOnlyFormats.Contains(ext)) return DecodeWithMagick(filePath, progress);
         try
         {
-            return DecodeWithWic(filePath, full);
+            return DecodeWithWic(filePath, full, progress);
         }
         catch (Exception ex)
         {
             // Damaged file or missing Windows codec: Magick.NET is more forgiving
             App.Log($"[ImageViewer] Windows decoder failed ({ex.Message}), falling back to Magick.NET");
-            return DecodeWithMagick(filePath);
+            return DecodeWithMagick(filePath, progress);
         }
     }
 
@@ -416,7 +428,18 @@ public partial class ImageViewer : UserControl
         string path = _currentPath;
         try
         {
-            var (bitmap, _, _, _) = await Task.Run(() => Decode(path, full: true));
+            // A placeholder's original decode is already working toward the same resolution.
+            var entry = _showingPlaceholder && _activeDecode is { Decoding.IsCompleted: false } running
+                ? running : StartDecode(path, full: true);
+            TrackDecode(entry);
+            var (bitmap, _, _, _) = await entry.Decoding;
+            if (token != _loadToken) return;
+            if (IsReduced(bitmap))
+            {
+                entry = StartDecode(path, full: true);
+                TrackDecode(entry);
+                (bitmap, _, _, _) = await entry.Decoding;
+            }
             if (token != _loadToken) return;
             PreviewImage.Source = bitmap;
             _showingPlaceholder = false;
@@ -443,7 +466,13 @@ public partial class ImageViewer : UserControl
 
     // --- Preload cache: neighbors of the current image are decoded ahead of time ---
 
-    private sealed record CacheEntry(DateTime LastWrite, Task<(BitmapSource, long, int, int)> Decoding);
+    private sealed record CacheEntry(DateTime LastWrite, Task<(BitmapSource, long, int, int)> Decoding, Core.DecodeProgress Progress);
+
+    private static CacheEntry StartDecode(string path, bool full = false)
+    {
+        var progress = new Core.DecodeProgress();
+        return new CacheEntry(File.GetLastWriteTimeUtc(path), Task.Run(() => Decode(path, full, progress)), progress);
+    }
 
     private const int MaxCachedImages = 4; // decoded images are capped at 4096 px, so ≤ ~64 MB each
     private readonly Dictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
@@ -454,6 +483,7 @@ public partial class ImageViewer : UserControl
     {
         EndTextMode();
         _loadToken++;
+        _activeDecode = null;
         PreviewImage.Source = null;
         _cache.Clear();
         _cacheOrder.Clear();
@@ -468,10 +498,10 @@ public partial class ImageViewer : UserControl
             var lastWrite = File.GetLastWriteTimeUtc(filePath);
             if (_cache.TryGetValue(filePath, out var existing) && existing.LastWrite == lastWrite) return;
 
-            var decoding = Task.Run(() => Decode(filePath));
-            decoding.ContinueWith(t => App.Log($"[ImageViewer] Preload failed: {t.Exception?.InnerException?.Message}"),
+            var entry = StartDecode(filePath);
+            entry.Decoding.ContinueWith(t => App.Log($"[ImageViewer] Preload failed: {t.Exception?.InnerException?.Message}"),
                 TaskContinuationOptions.OnlyOnFaulted);
-            Remember(filePath, decoding, lastWrite);
+            Remember(filePath, entry);
         }
         catch (Exception ex)
         {
@@ -480,13 +510,11 @@ public partial class ImageViewer : UserControl
     }
 
     /// <summary>Puts a decode (finished or running) into the small most-recently-used cache.</summary>
-    private void Remember(string filePath, Task<(BitmapSource, long, int, int)> decoding, DateTime? lastWrite = null)
+    private void Remember(string filePath, CacheEntry entry)
     {
         try
         {
-            var stamp = lastWrite ?? File.GetLastWriteTimeUtc(filePath);
-            if (!_cache.TryGetValue(filePath, out var existing) || existing.Decoding != decoding)
-                _cache[filePath] = new CacheEntry(stamp, decoding);
+            _cache[filePath] = entry;
             _cacheOrder.Remove(filePath);
             _cacheOrder.AddFirst(filePath);
             while (_cacheOrder.Count > MaxCachedImages)
@@ -504,26 +532,28 @@ public partial class ImageViewer : UserControl
     /// <summary>
     /// Reuses a preload (finished or still running) if the file hasn't changed since; otherwise decodes now.
     /// </summary>
-    internal Task<(BitmapSource, long, int, int)> GetDecodeTask(string filePath)
+    internal Task<(BitmapSource, long, int, int)> GetDecodeTask(string filePath) => GetDecode(filePath).Decoding;
+
+    private CacheEntry GetDecode(string filePath)
     {
         try
         {
             if (_cache.TryGetValue(filePath, out var entry) && !entry.Decoding.IsFaulted &&
                 entry.LastWrite == File.GetLastWriteTimeUtc(filePath))
-                return entry.Decoding;
+                return entry;
         }
         catch
         {
             // fall through to a fresh decode
         }
-        return Task.Run(() => Decode(filePath));
+        return StartDecode(filePath);
     }
 
     /// <summary>Fast path: Windows' built-in (WIC) decoders.</summary>
-    private static (BitmapSource, long, int, int) DecodeWithWic(string filePath, bool full)
+    private static (BitmapSource, long, int, int) DecodeWithWic(string filePath, bool full, Core.DecodeProgress? progress)
     {
         // Decode from a stream, so the file isn't locked and no stale URI cache is used
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var stream = new Core.DecodeReadStream(filePath, progress);
 
         // Header only: real dimensions without decoding the pixels
         var header = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0];
@@ -539,6 +569,7 @@ public partial class ImageViewer : UserControl
         int? width = IsJpeg(Path.GetExtension(filePath).ToLowerInvariant()) ? JpegDecodeWidth(w, h, full, SwapsSides(orientation)) : CappedWidth(w, h);
         if (width is int decodeWidth) bmp.DecodePixelWidth = decodeWidth;
         bmp.EndInit();
+        progress?.Report(0.9);
         bmp.Freeze();
         // Upright, like Explorer shows it (phone photos store the rotation as an EXIF tag)
         return SwapsSides(orientation) ? (Orient(bmp, orientation), stream.Length, h, w) : (Orient(bmp, orientation), stream.Length, w, h);
@@ -628,11 +659,15 @@ public partial class ImageViewer : UserControl
     /// HEIC/HEIF (e.g. iPhone photos) are HEVC-compressed; Windows can only decode them with a paid Store codec,
     /// so they go through the bundled Magick.NET decoder instead.
     /// </summary>
-    private static (BitmapSource, long, int, int) DecodeWithMagick(string filePath)
+    private static (BitmapSource, long, int, int) DecodeWithMagick(string filePath, Core.DecodeProgress? progress = null)
     {
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var image = new ImageMagick.MagickImage(stream, FirstImageOnly);
+        using var stream = new Core.DecodeReadStream(filePath, progress);
+        using var image = new ImageMagick.MagickImage();
+        if (progress != null) image.Progress += (_, e) => progress.Report(0.8 * e.Progress / 100.0);
+        image.Read(stream, FirstImageOnly);
+        progress?.Report(0.85);
         image.AutoOrient(); // phone photos store rotation as metadata
+        progress?.Report(0.9);
         return (ToBitmapSource(image, MaxDecodeSize), stream.Length, (int)image.Width, (int)image.Height);
     }
 
@@ -675,6 +710,13 @@ public partial class ImageViewer : UserControl
 
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (Core.KeyState.Modifiers == ModifierKeys.Shift)
+        {
+            double limit = Math.Max(0, (PreviewImage.ActualWidth * ImageScale.ScaleX - ViewportBorder.ActualWidth) / 2);
+            ImageTranslate.X = Math.Clamp(ImageTranslate.X + e.Delta, -limit, limit);
+            e.Handled = true;
+            return;
+        }
         Point mousePos = e.GetPosition(PreviewImage);
         double zoomFactor = e.Delta > 0 ? 1.15 : (1.0 / 1.15);
 

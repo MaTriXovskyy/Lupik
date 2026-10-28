@@ -156,6 +156,12 @@ public partial class CompareViewer : UserControl
 
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (Core.KeyState.Modifiers == ModifierKeys.Shift)
+        {
+            _translate.X += e.Delta;
+            e.Handled = true;
+            return;
+        }
         // Zoom around the cursor: position in the (untransformed) image under the mouse
         Image target = _sliderMode ? SliderImageA : e.GetPosition(PaneB).X >= 0 ? SideImageB : SideImageA;
         ZoomAt(e.GetPosition(target), e.Delta > 0 ? 1.15 : 1 / 1.15);

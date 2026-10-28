@@ -32,6 +32,8 @@ Lupik checks GitHub for new versions and asks before installing one. You can tur
 - **Folders**: a grid of what's inside
 
 Pictures have a filmstrip of the folder's images underneath (S).
+While a large image loads, the accent line under the title bar shows its progress, including while a quick
+thumbnail is visible. It fades out once decoding finishes. Decoders without measurable progress show a moving line.
 
 **Edit mode (E)** is for quick fixes, not for replacing real editors:
 - text, code and config files: edit in place (the file keeps its encoding and line endings)
@@ -71,7 +73,8 @@ embedded Type 1 fonts included.
 | T | text in a picture (and QR codes / barcodes: copy or open them): drag over some to copy it, click one to copy it, Enter copies all |
 | Ctrl (held over a picture) | pipette: a loupe with the colour under the cursor; Ctrl+click copies it (HEX; with Shift rgb(), with Alt hsl()) |
 | M | Markdown as a document or as its source |
-| P | pin: the file moves to a window of its own that stays on top and no longer follows Explorer (in that window P toggles "always on top") |
+| P | pin: the file moves to a window of its own and no longer follows Explorer; P or the layers button toggles "always on top" (remembered for new pinned windows) |
+| Shift + mouse wheel | scroll horizontally; pan zoomed images sideways |
 | C | compare the two selected images / text files, or back to one |
 | Ctrl+F, F3 | search (Enter / Shift+Enter: next / previous, Esc closes) |
 | E | edit mode (Ctrl+S saves, Esc leaves) |

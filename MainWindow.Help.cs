@@ -136,7 +136,8 @@ public partial class MainWindow
             new(new[] { Loc.T("key.preview"), "Esc" }, Loc.T("hint.close")),
             new(new[] { "Enter" }, Loc.T("help.openWith")),
             new(new[] { "F" }, Loc.T("help.fullScreen")),
-            new(new[] { "P" }, Loc.T("help.pin")),
+            new(new[] { "P" }, Loc.T(Pinned ? "pin.onTop" : "help.pin")),
+            new(new[] { "Shift+↕" }, Loc.T("help.scrollHorizontal")),
         };
         if (CurrentEditable() != null || IsMarkdownShown) rows.Add(new(new[] { "E" }, Loc.T("help.edit")));
         if (CanToggleCompare()) rows.Add(new(new[] { "C" }, Loc.T("help.compareToggle")));
