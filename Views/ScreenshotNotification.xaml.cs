@@ -20,6 +20,23 @@ public partial class ScreenshotNotification : Window
         Thumbnail.Source = MakeThumbnail(image);
         StatusText.Text = Loc.T(copied ? "capture.copied" : "capture.copyFailedShort");
         DimensionsText.Text = $"{image.PixelWidth} × {image.PixelHeight} px";
+        InitializeLifetime();
+    }
+
+    internal ScreenshotNotification(string text,bool copied,Func<Task> copy)
+    {
+        InitializeComponent(); _open=copy;
+        Thumbnail.Visibility=Visibility.Collapsed; TextPreview.Visibility=Visibility.Visible;
+        TextPreview.Text=text.Length>450 ? text[..450]+"…" : text;
+        StatusText.Text=Loc.T(text.Length==0 ? "capture.noText" : copied ? "capture.textCopied" : "capture.copyTextAgain");
+        ActionText.Text=Loc.T(text.Length==0 ? "capture.noText" : "capture.copyTextAgain");
+        DimensionsText.Text=Loc.T("capture.characterCount",text.Length);
+        if(text.Length==0) {OpenButton.IsEnabled=false;TextPreview.Text=Loc.T("capture.noTextHint");}
+        InitializeLifetime();
+    }
+
+    private void InitializeLifetime()
+    {
         SourceInitialized += (_, _) =>
         {
             IntPtr handle = new WindowInteropHelper(this).Handle;

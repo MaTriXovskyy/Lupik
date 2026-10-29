@@ -3,13 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:Lupik.Views" xmlns:loc="clr-namespace:Lupik.Localization">
     <UserControl.Resources>
-        <Style x:Key="CaptureMode" TargetType="RadioButton">
+        <Style x:Key="CaptureMode" TargetType="ToggleButton">
             <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
             <Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Margin" Value="3,0"/><Setter Property="Padding" Value="10,8"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
+                    <ControlTemplate TargetType="ToggleButton">
                         <Border x:Name="Tile" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="7" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"/>
                         </Border>
@@ -30,18 +30,23 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        <Border x:Name="BrandHost" Grid.Column="0" HorizontalAlignment="Right" Background="{DynamicResource c1B1917}"
-                BorderBrush="{DynamicResource c35302A}" BorderThickness="1,1,0,1" CornerRadius="13,0,0,13" Padding="12,8">
+        <Canvas Grid.Column="0">
+        <Border x:Name="BrandHost" Canvas.Right="0" Canvas.Top="0" Height="{Binding ActualHeight, ElementName=ModeHost}" Cursor="Arrow"
+                Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1,1,0,1" CornerRadius="13,0,0,13" Padding="12,8">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Image Source="{DynamicResource AppLogo}" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Text="Lupik" FontFamily="{StaticResource DisplayFont}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" Margin="9,0,0,0"/>
                 </StackPanel>
         </Border>
-        <Border x:Name="ModeHost" Grid.Column="1" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}"
-                BorderThickness="1" CornerRadius="0,13,13,0" Padding="8">
-                <UniformGrid x:Name="Modes" Columns="4">
+        </Canvas>
+        <Border x:Name="ModeHost" Grid.Column="1" Cursor="Arrow" Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}"
+                BorderThickness="1" CornerRadius="0,13,13,0" Padding="8" MinHeight="66">
+                <UniformGrid x:Name="Modes" Columns="6">
                 <RadioButton x:Name="RegionMode" GroupName="Capture" Style="{StaticResource CaptureMode}" Tag="Region" Click="OnModePicked" ToolTip="1">
-                    <StackPanel><views:LucideIcon Kind="scan" Size="19" HorizontalAlignment="Center"/><TextBlock Text="{loc:T capture.modeRegion}" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
+                    <StackPanel><views:LucideIcon Kind="scan" Size="19" HorizontalAlignment="Center"/><TextBlock x:Name="RegionLabel" Text="{loc:T capture.modeRegion}" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="FreeformMode" GroupName="Capture" Style="{StaticResource CaptureMode}" Tag="Freeform" Click="OnModePicked" ToolTip="5">
+                    <StackPanel><views:LucideIcon Kind="lasso" Size="19" HorizontalAlignment="Center"/><TextBlock Text="{loc:T capture.modeFreeform}" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="WindowMode" GroupName="Capture" Style="{StaticResource CaptureMode}" Tag="Window" Click="OnModePicked" ToolTip="2">
                     <StackPanel><views:LucideIcon Kind="app-window" Size="19" HorizontalAlignment="Center"/><TextBlock Text="{loc:T capture.modeWindow}" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
@@ -49,10 +54,21 @@
                 <RadioButton x:Name="MonitorMode" GroupName="Capture" Style="{StaticResource CaptureMode}" Tag="Monitor" Click="OnModePicked" ToolTip="3">
                     <StackPanel><views:LucideIcon Kind="monitor" Size="19" HorizontalAlignment="Center"/><TextBlock Text="{loc:T capture.modeMonitor}" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
                 </RadioButton>
+                <RadioButton x:Name="ScrollMode" GroupName="Capture" Style="{StaticResource CaptureMode}" Tag="Scroll" Click="OnModePicked" ToolTip="6">
+                    <StackPanel><views:LucideIcon Kind="arrow-down" Size="19" HorizontalAlignment="Center"/><TextBlock Text="{loc:T capture.modeScroll}" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
+                </RadioButton>
                 <RadioButton x:Name="DesktopMode" GroupName="Capture" Style="{StaticResource CaptureMode}" Tag="Desktop" Click="OnModePicked" ToolTip="4">
                     <StackPanel><views:LucideIcon Kind="layers" Size="19" HorizontalAlignment="Center"/><TextBlock Text="{loc:T capture.modeDesktop}" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
                 </RadioButton>
                 </UniformGrid>
         </Border>
+        <Canvas Grid.Column="2">
+            <Border x:Name="TextHost" Canvas.Left="7" Canvas.Top="0" Height="{Binding ActualHeight,ElementName=ModeHost}"
+                    Background="{DynamicResource c1B1917}" BorderBrush="{DynamicResource c35302A}" BorderThickness="1" CornerRadius="10" Padding="3">
+                <ToggleButton x:Name="TextToggle" Style="{StaticResource CaptureMode}" Click="OnTextToggle" ToolTip="{loc:T capture.textToggle}">
+                    <StackPanel><views:LucideIcon Kind="scan-text" Size="19" HorizontalAlignment="Center"/><TextBlock Text="T" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/></StackPanel>
+                </ToggleButton>
+            </Border>
+        </Canvas>
     </Grid>
 </UserControl>

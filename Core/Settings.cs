@@ -14,6 +14,7 @@ public class Settings
 
     /// <summary>Win+Shift+S opens Lupik's own region capture instead of Windows Snipping Tool.</summary>
     public bool ScreenCaptureEnabled { get; set; } = true;
+    /// <summary>Last window/rectangle mode; fullscreen, lasso and scrolling captures are one-shot choices.</summary>
     public string ScreenCaptureMode { get; set; } = "Region";
 
     /// <summary>Close the preview when another app comes to the front.</summary>
@@ -95,6 +96,7 @@ public class Settings
 
     private static Settings Migrate(Settings s)
     {
+        s.ScreenCaptureMode=ScreenshotModes.Restore(s.ScreenCaptureMode).ToString();
         if (s.SpaceInExplorer == false) s.PreviewKey = null;
         s.SpaceInExplorer = null;
         s.WindowScale = Math.Clamp(s.WindowScale, 0.6, 1.0);

@@ -49,7 +49,13 @@ unsaved changes). In edit mode Lupik takes the keyboard focus, which the preview
 Ctrl+F searches in code and text, tables, Word documents, PDFs and diffs (Enter / Shift+Enter: next / previous).
 
 PDF and `.ai` files are rendered by [PDFium](https://pdfium.googlesource.com/pdfium/), the PDF engine inside Chrome.
-Win+Shift+S opens Lupik's own screenshot overlay: choose a region, a window, one monitor or all monitors.
+Win+Shift+S opens Lupik's own screenshot overlay: choose a rectangle, a freeform lasso, a window, one monitor or all monitors.
+Lasso captures close automatically when you release the mouse and keep the area outside the shape transparent in PNG.
+Window and rectangle selections are remembered; fullscreen, lasso and scrolling are one-shot choices. The next
+capture returns to the last window/rectangle mode. The mode toolbar disappears as soon as selection starts.
+Press T in the overlay to switch between image and text capture; text is recognized locally and copied to the clipboard.
+For scrolling screenshots, select the scrolling content area, scroll down in overlapping steps, then click Finish or press
+Win+Shift+S again. Keep the target window in place and select the content without fixed toolbars or footers.
 Captures go to the clipboard, with a thumbnail notification in the bottom-right corner. Click it to open Lupik;
 the tray menu also offers the last capture. Esc or right-click cancels. Captures use a private temporary cache;
 use Save as to keep one permanently. Pin a capture to keep it next to another preview. To restore Windows

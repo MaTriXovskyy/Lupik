@@ -1,0 +1,22 @@
+<Window x:Class="Lupik.Views.ScrollCaptureControl"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Lupik.Localization"
+        Title="Lupik" Width="430" Height="94" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False"
+        Topmost="True" Background="{DynamicResource c1B1917}">
+    <Border BorderBrush="{DynamicResource LineStrong}" BorderThickness="1" Padding="12,9">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="FinishButton" Style="{StaticResource PrimaryButton}" Padding="12,6" Click="OnFinish" ToolTip="Win+Shift+S"><TextBlock Text="{loc:T capture.scrollFinish}"/></Button>
+                    <Button Style="{StaticResource SecondaryButton}" Padding="10,6" Margin="6,0,0,0" Click="OnCancel"><TextBlock Text="{loc:T capture.scrollCancel}"/></Button>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="{DynamicResource AppLogo}" Width="26" Height="26" Margin="0,0,9,0"/>
+                    <StackPanel><TextBlock Text="{loc:T capture.modeScroll}" Foreground="{DynamicResource TextPrimary}" FontSize="13" FontWeight="SemiBold"/><TextBlock x:Name="SizeText" Foreground="{DynamicResource TextMuted}" FontSize="11"/></StackPanel>
+                </StackPanel>
+            </DockPanel>
+            <TextBlock x:Name="StatusText" Grid.Row="1" Text="{loc:T capture.scrollDown}" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" TextWrapping="Wrap" Margin="0,6,0,0"/>
+        </Grid>
+    </Border>
+</Window>

@@ -4,8 +4,14 @@ using System.Text;
 
 namespace Lupik.Core;
 
-internal enum ScreenshotMode { Region, Window, Monitor, Desktop }
-internal sealed record ScreenshotSelection(ScreenshotMode Mode, Rectangle Area, ScreenshotWindow? Window = null);
+internal enum ScreenshotMode { Region, Window, Monitor, Desktop, Freeform, Scroll }
+internal static class ScreenshotModes
+{
+    internal static bool Remembered(ScreenshotMode mode) => mode is ScreenshotMode.Region or ScreenshotMode.Window;
+    internal static ScreenshotMode Restore(string? saved) =>
+        Enum.TryParse<ScreenshotMode>(saved,ignoreCase:true,out var mode) && Remembered(mode) ? mode : ScreenshotMode.Region;
+}
+internal sealed record ScreenshotSelection(ScreenshotMode Mode, Rectangle Area, ScreenshotWindow? Window = null, IReadOnlyList<Point>? Outline = null, bool TextOnly = false);
 internal sealed record ScreenshotWindow(IntPtr Handle, uint Process, Rectangle Bounds, Rectangle NativeBounds);
 
 /// <summary>A frozen top-to-bottom window list, taken before the selection overlays exist.</summary>
@@ -36,6 +42,8 @@ internal static class ScreenshotWindows
     internal static ScreenshotWindow? At(IEnumerable<ScreenshotWindow> windows, Point point) => windows.FirstOrDefault(w => w.Bounds.Contains(point));
     internal static bool StillExists(ScreenshotWindow window) =>
         GetWindowThreadProcessId(window.Handle, out uint process) != 0 && process == window.Process;
+    internal static bool InSamePosition(ScreenshotWindow window) =>
+        GetWindowRect(window.Handle,out var bounds) && bounds.Rectangle==window.NativeBounds;
 
     [StructLayout(LayoutKind.Sequential)] private struct NativeRect
     {

@@ -6,6 +6,7 @@ internal static class ReleaseHistory
     internal sealed record Entry(string Version, params string[] Items);
     internal static readonly Entry[] Entries =
     {
+        new("1.8.1", "news.freeform", "news.contrastCursor", "news.textScreenshot", "news.scrollScreenshot"),
         new("1.8.0", "news.screenshots"),
         new("1.7.9", "news.settings", "news.pdfText", "news.pdfPan"),
         new("1.7.8", "news.dialogs"),

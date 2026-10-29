@@ -50,6 +50,15 @@ static class ScreenshotChecks
             (new PixelPoint(50,-50), new PixelPoint(-450,150))
         }) Assert(ScreenshotSession.SelectionBetween(a,b,desktop) == expected, "Reverse/cross-monitor selection coordinates are incorrect");
         Assert(ScreenshotSession.SelectionBetween(new(-1000,-1000), new(2000,2000), desktop) == desktop, "Selection escaped virtual desktop bounds");
+        foreach(double scale in new[]{1.0,1.5,2.0})
+        {
+            using var cursor=new ScreenshotCursor(scale);
+            var cursorBitmap=ScreenshotCursor.Draw(scale);
+            var cursorPixels=new byte[cursorBitmap.PixelWidth*cursorBitmap.PixelHeight*4]; cursorBitmap.CopyPixels(cursorPixels,cursorBitmap.PixelWidth*4,0);
+            Assert(Enumerable.Range(0,cursorPixels.Length/4).Any(i=>cursorPixels[i*4+3]==255 && cursorPixels[i*4]==0),"Crosshair lacks an opaque black outline");
+            Assert(Enumerable.Range(0,cursorPixels.Length/4).Any(i=>cursorPixels[i*4+3]==255 && cursorPixels[i*4]==255),"Crosshair lacks an opaque white core");
+        }
+        Console.WriteLine("PASS opaque black/white native crosshair at 100%, 150% and 200% DPI");
 
         var pixels = new byte[800 * 400 * 4];
         for (int y = 0; y < 400; y++) for (int x = 0; x < 800; x++)
@@ -58,6 +67,57 @@ static class ScreenshotChecks
             pixels[p] = 77; pixels[p+1] = (byte)y; pixels[p+2] = (byte)x; pixels[p+3] = 255;
         }
         var image = BitmapSource.Create(800,400,96,96,PixelFormats.Bgra32,null,pixels,800*4); image.Freeze();
+        string previousMode=Settings.Current.ScreenCaptureMode;
+        try
+        {
+            foreach(var remembered in new[]{ScreenshotMode.Region,ScreenshotMode.Window})
+            {
+                Settings.Update(s=>s.ScreenCaptureMode=remembered.ToString());
+                foreach(var temporary in new[]{ScreenshotMode.Monitor,ScreenshotMode.Desktop,ScreenshotMode.Freeform,ScreenshotMode.Scroll})
+                {
+                    var once=new ScreenshotSession(image,desktop,new[]{desktop},initialMode:remembered);
+                    once.InvokeMode(temporary,desktop);
+                    Assert(Settings.Current.ScreenCaptureMode==remembered.ToString(),"One-shot capture overwrote the last window/rectangle mode");
+                    Assert(ScreenshotModes.Restore(Settings.Current.ScreenCaptureMode)==remembered,"Next capture would reopen a one-shot mode");
+                    once.Cancel();
+                }
+            }
+            var persistent=new ScreenshotSession(image,desktop,new[]{desktop},initialMode:ScreenshotMode.Window);
+            persistent.SetMode(ScreenshotMode.Region);
+            Assert(Settings.Current.ScreenCaptureMode=="Region","Rectangle capture was not remembered");
+            persistent.SetMode(ScreenshotMode.Window);
+            Assert(Settings.Current.ScreenCaptureMode=="Window","Window capture was not remembered");
+            persistent.ToggleTextMode();
+            Assert(Settings.Current.ScreenCaptureMode=="Window","Temporary text selection replaced the remembered window mode");
+            persistent.Cancel();
+            foreach(string legacy in new[]{"Monitor","Desktop","Freeform","Scroll","invalid"})
+                Assert(ScreenshotModes.Restore(legacy)==ScreenshotMode.Region,"Legacy temporary setting was restored as the default");
+        }
+        finally {Settings.Update(s=>s.ScreenCaptureMode=previousMode);}
+        Console.WriteLine("PASS one-shot fullscreen/lasso/scroll modes, remembered rectangle/window modes and temporary OCR selection");
+        var triangle=new[]{new PixelPoint(-450,-50),new PixelPoint(-250,-50),new PixelPoint(-450,150)};
+        var mask=ScreenshotFreeform.Crop(image,desktop,new PixelRect(-450,-50,200,200),triangle);
+        byte[] Pixel(BitmapSource source,int x,int y)
+        {
+            var rgba=new FormatConvertedBitmap(source,PixelFormats.Bgra32,null,0);
+            var value=new byte[4]; rgba.CopyPixels(new Int32Rect(x,y,1,1),value,4,0); return value;
+        }
+        Assert(Pixel(mask,20,20).SequenceEqual(new byte[]{77,70,70,255}),"Lasso shifted the image inside a negative-origin desktop");
+        Assert(Pixel(mask,180,180)[3]==0,"Lasso kept pixels outside its contour");
+        var pngBytes=await Task.Run(()=>ScreenshotFreeform.Png(mask));
+        string freeformFile=await ScreenshotStore.SaveAsync(mask);
+        using(var stored=File.OpenRead(freeformFile))
+            Assert(Pixel(BitmapDecoder.Create(stored,BitmapCreateOptions.None,BitmapCacheOption.OnLoad).Frames[0],180,180)[3]==0,"Background PNG save lost lasso transparency");
+        var clipboardData=ScreenshotFreeform.ClipboardData(mask,pngBytes);
+        Assert(clipboardData.GetDataPresent(DataFormats.Bitmap) && clipboardData.GetDataPresent("PNG"),"Freeform clipboard payload lacks bitmap or lossless PNG data");
+        using(var payload=(Stream?)clipboardData.GetData("PNG") ?? throw new Exception("Missing PNG stream"))
+        {
+            var frame=BitmapDecoder.Create(payload,BitmapCreateOptions.None,BitmapCacheOption.OnLoad).Frames[0];
+            Assert(Pixel(frame,180,180)[3]==0 && Pixel(frame,20,20)[3]==255,"PNG clipboard payload lost lasso transparency");
+        }
+        var bow=new[]{new PixelPoint(-450,-50),new PixelPoint(-250,150),new PixelPoint(-450,150),new PixelPoint(-250,-50)};
+        Assert(ScreenshotFreeform.Geometry(bow).GetArea()>100,"A self-intersecting lasso was incorrectly treated as empty");
+        Console.WriteLine("PASS freeform mask, negative desktop origin, transparent exterior and PNG clipboard round-trip");
         var topWindow = new ScreenshotWindow(new IntPtr(1),1,new(-300,-50,300,200),new(-300,-50,300,200));
         var behind = new ScreenshotWindow(new IntPtr(2),1,new(-500,-100,700,300),new(-500,-100,700,300));
         var choosing = new ScreenshotSession(image,desktop,new[]{new PixelRect(-500,-100,400,400),new PixelRect(-100,-100,400,400)},new[]{topWindow,behind});
@@ -95,13 +155,18 @@ static class ScreenshotChecks
             GetWindowRect(overlay.Handle,out var actual);
             Assert(actual.Left == region.Left && actual.Top == region.Top && actual.Right == region.Right && actual.Bottom == region.Bottom,
                 "Overlay's native bounds do not match physical monitor pixels");
-            session.Begin(new(250,200)); session.Move(new(650,400));
             overlay.UpdateLayout();
             var surface = (FrameworkElement)overlay.Content;
             var captureToolbar=((System.Windows.Controls.Grid)surface).Children.OfType<ScreenshotToolbar>().Single();
             var modeButtons=(FrameworkElement)captureToolbar.FindName("Modes");
             var modeCenter=modeButtons.TranslatePoint(new Point(modeButtons.ActualWidth/2,modeButtons.ActualHeight/2),surface);
             Assert(Math.Abs(modeCenter.X-surface.ActualWidth/2)<0.6,"Capture modes are not centered on the monitor independently of the logo");
+            session.Begin(new(250,200));
+            Assert(!captureToolbar.IsVisible,"Capture toolbar did not hide as soon as selection started");
+            session.Complete(new(250,200));
+            Assert(captureToolbar.IsVisible,"Empty selection did not restore capture controls for retry");
+            session.Begin(new(250,200)); session.Move(new(650,400));overlay.UpdateLayout();
+            Assert(!captureToolbar.IsVisible,"Capture toolbar reappeared during a drag");
             var preview = new RenderTargetBitmap((int)Math.Ceiling(surface.ActualWidth),(int)Math.Ceiling(surface.ActualHeight),96,96,PixelFormats.Pbgra32);
             preview.Render(surface);
             var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(preview));
@@ -117,6 +182,44 @@ static class ScreenshotChecks
         cancelled.Cancel(); cancelled.Cancel();
         Assert(await cancelTask == null && !Application.Current.Windows.OfType<ScreenshotOverlay>().Any(), "Cancel retained a capture or overlay");
         Console.WriteLine("PASS native overlay placement, selection completion, cancellation and immediate overlay cleanup");
+
+        var freehand=new ScreenshotSession(image,region,new[]{region},initialMode:ScreenshotMode.Freeform);
+        var freehandResult=freehand.SelectAsync(activate:false);
+        try
+        {
+            freehand.Begin(new(220,290)); freehand.Move(new(260,290)); freehand.Complete(new(280,290));
+            Assert(!freehandResult.IsCompleted && !freehand.Dragging,"An empty lasso produced a screenshot");
+            freehand.Begin(new(250,280)); freehand.Move(new(640,300)); freehand.Move(new(700,430)); freehand.Move(new(300,450));
+            await Task.Delay(80);
+            var overlay=Application.Current.Windows.OfType<ScreenshotOverlay>().Single(); overlay.UpdateLayout();
+            Assert(!((System.Windows.Controls.Grid)overlay.Content).Children.OfType<ScreenshotToolbar>().Single().IsVisible,"Toolbar obscured the lasso contour");
+            var surface=(FrameworkElement)overlay.Content;
+            var preview=new RenderTargetBitmap((int)Math.Ceiling(surface.ActualWidth),(int)Math.Ceiling(surface.ActualHeight),96,96,PixelFormats.Pbgra32); preview.Render(surface);
+            var png=new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(preview));
+            string visual=Path.Combine(folder,"lasso.png"); using(var output=File.Create(visual)) png.Save(output);
+            Console.WriteLine("Visual check: "+visual);
+            freehand.Complete(new(300,450));
+            var shot=await freehandResult ?? throw new Exception("Valid lasso returned no capture");
+            Assert(shot is { Mode:ScreenshotMode.Freeform,Outline.Count:>=3 } && shot.Area==new PixelRect(250,280,450,170),"Lasso completion lost its contour or bounding box");
+            var extracted=ScreenshotFreeform.Crop(image,region,shot.Area,shot.Outline!);
+            Assert(Pixel(extracted,440,5)[3]==0 && Pixel(extracted,200,80)[3]==255,"Closed lasso did not match its preview shape");
+        }
+        finally { freehand.Cancel(); }
+        var cursorVisual=new DrawingVisual();
+        using(var drawing=cursorVisual.RenderOpen())
+        {
+            for(int i=0;i<5;i++)
+            {
+                byte shade=(byte)(i*255/4);
+                drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(shade,shade,shade)),null,new Rect(i*80,0,80,80));
+                drawing.DrawImage(ScreenshotCursor.Draw(1.5),new Rect(i*80+16,16,48,48));
+            }
+        }
+        var cursorPreview=new RenderTargetBitmap(400,80,96,96,PixelFormats.Pbgra32); cursorPreview.Render(cursorVisual);
+        var cursorPng=new PngBitmapEncoder(); cursorPng.Frames.Add(BitmapFrame.Create(cursorPreview));
+        string cursorFile=Path.Combine(folder,"crosshair.png"); using(var output=File.Create(cursorFile)) cursorPng.Save(output);
+        Console.WriteLine("Visual check: "+cursorFile);
+        Console.WriteLine("PASS automatic lasso closure, empty-gesture rejection and preview/output shape agreement");
 
         foreach(var mode in new[]{ScreenshotMode.Monitor,ScreenshotMode.Desktop})
         {
