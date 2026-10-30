@@ -18,7 +18,20 @@ public partial class ScreenshotToolbar : UserControl
         DesktopMode.Visibility = multipleMonitors ? Visibility.Visible : Visibility.Collapsed;
         Modes.Columns = multipleMonitors ? 6 : 5;
         foreach(RadioButton button in Modes.Children)
-            button.ToolTip=Loc.T("capture.mode"+button.Tag)+" ("+button.ToolTip+")";
+        {
+            string key=(string)button.ToolTip; // the number key that picks this mode
+            button.ToolTip=Loc.T("capture.mode"+button.Tag)+" ("+key+")";
+            if(button.Content is StackPanel panel) panel.Children.Add(KeyBadge(key));
+        }
+        // The logo and the text toggle are their own pills, centred on the mode bar
+        void Centre()
+        {
+            System.Windows.Controls.Canvas.SetTop(BrandHost,Math.Max(0,(ModeHost.ActualHeight-BrandHost.ActualHeight)/2));
+            System.Windows.Controls.Canvas.SetTop(TextHost,Math.Max(0,(ModeHost.ActualHeight-TextHost.ActualHeight)/2));
+        }
+        ModeHost.SizeChanged+=(_,_)=>Centre();
+        BrandHost.SizeChanged+=(_,_)=>Centre();
+        TextHost.SizeChanged+=(_,_)=>Centre();
         SizeChanged+=(_,_)=>
         {
             // Keep branding, centered controls and T usable on narrow/high-DPI displays.
@@ -28,6 +41,16 @@ public partial class ScreenshotToolbar : UserControl
                         label.Visibility=ActualWidth<720 ? Visibility.Collapsed : Visibility.Visible;
         };
     }
+    /// <summary>The key on the button itself, so the number shortcuts can be seen (they stay when labels hide).</summary>
+    private static Border KeyBadge(string key)
+    {
+        var text=new TextBlock{Text=key,FontSize=10,HorizontalAlignment=HorizontalAlignment.Center};
+        text.SetResourceReference(TextBlock.ForegroundProperty,"TextMuted");
+        var badge=new Border{Child=text,CornerRadius=new CornerRadius(4),Padding=new Thickness(5,0,5,1),Margin=new Thickness(0,4,0,0),HorizontalAlignment=HorizontalAlignment.Center};
+        badge.SetResourceReference(Border.BackgroundProperty,"c2F2B27");
+        return badge;
+    }
+
     internal void SetMode(ScreenshotMode mode,bool textMode=false)
     {
         _updating = true;

@@ -82,7 +82,7 @@ public partial class MainWindow
                 new(new[] { "R", "Shift+R" }, Loc.T("help.rotate")),
                 new(new[] { "T" }, Loc.T("help.ocr")),
                 new(new[] { "S" }, Loc.T("help.filmstrip")),
-                new(new[] { "K" }, Loc.T("help.crop")),
+                new(new[] { "C" }, Loc.T("help.crop")),
                 new(new[] { "I" }, Loc.T("help.info")),
                 new(new[] { "B" }, Loc.T("help.background")),
                 new(new[] { "Ctrl" }, Loc.T("help.pipette")),
@@ -143,7 +143,7 @@ public partial class MainWindow
             new(new[] { "Shift+↕" }, Loc.T("help.scrollHorizontal")),
         };
         if (CurrentEditable() != null || IsMarkdownShown) rows.Add(new(new[] { "E" }, Loc.T("help.edit")));
-        if (CanToggleCompare()) rows.Add(new(new[] { "C" }, Loc.T("help.compareToggle")));
+        if (CanToggleCompare()) rows.Add(new(new[] { "V" }, Loc.T("help.compareToggle")));
         if (SearchableInPreview) rows.Add(new(new[] { "Ctrl+F" }, Loc.T("help.search")));
         rows.Add(new(new[] { "Ctrl+Shift+C" }, Loc.T("help.copyPath")));
         rows.Add(new(new[] { "F2" }, Loc.T("help.rename")));

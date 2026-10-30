@@ -51,6 +51,8 @@ public partial class MainWindow
         // The shortcuts card: F1 toggles it, any other key closes it first (Esc does nothing else)
         if (key == Key.F1 && mods == 0) { ToggleHelp(); return true; }
         if (HelpOpen) { CloseHelp(); if (key == Key.Escape) return true; }
+        // A screenshot just cropped / edited: Ctrl+Z once takes the change back (an edit returns to edit mode)
+        if (key == Key.Z && mods == ModifierKeys.Control && CanUndoScreenshot(_currentFilePath)) { _ = UndoScreenshotAsync(); return true; }
         bool imageShown = ImageViewerControl.Visibility == Visibility.Visible;
         bool csvShown = CsvViewerControl.Visibility == Visibility.Visible;
         bool mediaShown = MediaViewerControl.Visibility == Visibility.Visible;
@@ -105,7 +107,7 @@ public partial class MainWindow
             OpenSearch(); // Ctrl+F / F3 in code, tables, Word, PDF and diffs
             handled = true;
         }
-        else if (imageShown && key == Key.K && mods == 0)
+        else if (imageShown && key == Key.C && mods == 0) // C: crop, like Photoshop
         {
             ImageViewerControl.BeginCrop();
             handled = true;
@@ -189,7 +191,7 @@ public partial class MainWindow
             ImageViewerControl.ToggleInfo();
             handled = true;
         }
-        else if (mods == 0 && key == Key.C && CanToggleCompare())
+        else if (mods == 0 && key == Key.V && CanToggleCompare())
         {
             ToggleCompare(); // 2 images or 2 text files selected: side by side ⇄ single
             handled = true;

@@ -101,6 +101,25 @@ public partial class ImageViewer : IEditable
 
     private void OnUndoClicked(object sender, RoutedEventArgs e) => Undo();
 
+    /// <summary>Everything edit mode holds (marks, their undo history, size, rotation), to bring it back later.</summary>
+    private sealed record EditState(List<Mark> Marks, List<object> History, int? ResizeTo, int Rotation, int RotationAtStart);
+
+    public object SnapshotEdit() => new EditState(_marks.ToList(), _history.ToList(), _resizeTo, Rotation, _rotationAtStart);
+
+    /// <summary>Back to a <see cref="SnapshotEdit"/> on the same picture as it was then: every mark editable, undo included.</summary>
+    public void RestoreEdit(object snapshot)
+    {
+        if (snapshot is not EditState state || !_editing) return;
+        _marks.Clear();
+        _marks.AddRange(state.Marks);
+        _history.Clear();
+        _history.AddRange(state.History);
+        _resizeTo = state.ResizeTo;
+        if (Rotation != state.Rotation) Rotate(state.Rotation - Rotation);
+        _rotationAtStart = state.RotationAtStart;
+        Changed();
+    }
+
     private void Undo()
     {
         if (_history.Count == 0) return;

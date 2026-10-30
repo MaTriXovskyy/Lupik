@@ -85,3 +85,6 @@ $RECYCLE.BIN/
 
 # --- Velopack packaging output ---
 Releases/
+
+# FFmpeg fetched by tools/get-ffmpeg.ps1 at build time (~130 MB)
+tools/ffmpeg/

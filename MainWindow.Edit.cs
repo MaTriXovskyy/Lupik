@@ -24,7 +24,7 @@ public partial class MainWindow
 
     private Views.IEditable? CurrentEditable()
     {
-        foreach (UIElement viewer in new UIElement[] { CodeViewerControl, CsvViewerControl, PdfViewerControl, ImageViewerControl })
+        foreach (UIElement viewer in new UIElement[] { CodeViewerControl, CsvViewerControl, PdfViewerControl, ImageViewerControl, MediaViewerControl })
             if (viewer.Visibility == Visibility.Visible && viewer is Views.IEditable e) return e;
         return null;
     }
@@ -62,6 +62,11 @@ public partial class MainWindow
             ShowNotice(reason);
             return;
         }
+        if (editable == MediaViewerControl && !Ffmpeg.IsInstalled)
+        {
+            _ = InstallFfmpegThenEditAsync(); // asks first; edit mode starts once it's there
+            return;
+        }
         CloseSearch();
 
         _editing = editable;
@@ -78,6 +83,40 @@ public partial class MainWindow
         App.Log($"[MainWindow] Edit mode: '{_editingPath}'");
     }
 
+    private bool _installingFfmpeg;
+
+    /// <summary>Audio / video edits need FFmpeg: asked for once, downloaded with the progress in the title bar.</summary>
+    private async Task InstallFfmpegThenEditAsync()
+    {
+        if (_installingFfmpeg) return;
+        if (!Views.MessageCard.Confirm(this, Loc.T("ffmpeg.ask"), Loc.T("ffmpeg.download"))) return;
+        _installingFfmpeg = true;
+        string path = _currentFilePath;
+        try
+        {
+            int shown = -1;
+            var progress = new Progress<double>(p =>
+            {
+                int percent = (int)(p * 100);
+                if (percent == shown) return; // one notice per percent, not per downloaded block
+                shown = percent;
+                ShowNotice(Loc.T("ffmpeg.downloading", p.ToString("P0", Loc.Instance.Culture)));
+            });
+            await Ffmpeg.InstallAsync(progress, CancellationToken.None);
+            NoticeText.Visibility = Visibility.Collapsed;
+            if (string.Equals(path, _currentFilePath, StringComparison.OrdinalIgnoreCase) && IsVisible) EnterEdit();
+        }
+        catch (Exception ex)
+        {
+            App.Log($"[MainWindow] FFmpeg download failed: {ex}");
+            Views.MessageCard.Show(this, Loc.T("ffmpeg.failed", ex.Message));
+        }
+        finally
+        {
+            _installingFfmpeg = false;
+        }
+    }
+
     private bool _askingToExit;
 
     /// <summary>
@@ -88,6 +127,12 @@ public partial class MainWindow
     {
         if (_saving || _askingToExit) return false;
         if (!EditMode || _editing == null) return true;
+        if (_editing.IsDirty && Core.ScreenshotStore.Owns(_editingPath))
+        {
+            // A screenshot is a temporary file: leaving edit mode applies the changes (Ctrl+Z brings them back)
+            _ = SaveEditAsync(exitAfter: true, afterSave: afterSave);
+            return false;
+        }
         if (_editing.IsDirty)
         {
             Views.UnsavedChoice answer;
@@ -150,11 +195,14 @@ public partial class MainWindow
         EditBar.IsEnabled = false;
         string path = _editingPath;
         bool saved = false;
+        bool screenshot = Core.ScreenshotStore.Owns(path);
         try
         {
-            await SafeReplace.ReplaceAsync(path, editable.SaveToAsync, editable.ReleaseFile);
+            if (screenshot) await ApplyToScreenshotAsync(path, editable);
+            else await SafeReplace.ReplaceAsync(path, editable.SaveToAsync, editable.ReleaseFile);
             await editable.ReloadAsync(path);
-            ShowNotice(Loc.T("edit.saved", Path.GetFileName(path)), success: true);
+            if (screenshot) await CopyScreenshotAsync(path);
+            ShowNotice(screenshot ? Loc.T("capture.applied") : Loc.T("edit.saved", Path.GetFileName(path)), success: true);
             saved = true;
         }
         catch (Exception ex)
@@ -193,6 +241,12 @@ public partial class MainWindow
         if (_editing == null) return false;
         // Full screen works while editing too, just not while typing (then F is a letter)
         if (key == Key.F && mods == 0 && !IsTypingInEditor()) { ToggleFullScreen(); return true; }
+        // Nothing new since the screenshot edits were applied (Ctrl+S): Ctrl+Z brings them back
+        if (key == Key.Z && mods == ModifierKeys.Control && !_editing.IsDirty && CanUndoScreenshot(_editingPath))
+        {
+            _ = UndoScreenshotAsync();
+            return true;
+        }
         if (_editing.HandleEditKey(key, mods)) return true;
         if (key == Key.S && mods == ModifierKeys.Control) { _ = SaveEditAsync(); return true; }
         if (key == Key.Escape && mods == 0) { ExitEdit(); return true; }

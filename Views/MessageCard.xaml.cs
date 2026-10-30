@@ -39,6 +39,21 @@ public partial class MessageCard : Window
         };
     }
 
+    private bool _confirmed;
+
+    /// <summary>A question with two answers: true if <paramref name="okText"/> was chosen (Enter), false for Cancel (Esc).</summary>
+    public static bool Confirm(Window? owner, string message, string okText)
+    {
+        var card = new MessageCard(message, error: false);
+        card.OkText.Text = okText;
+        card.CancelText.Text = Lupik.Localization.Loc.T("common.cancel");
+        card.CancelButton.Visibility = Visibility.Visible;
+        if (owner != null && owner.IsVisible) card.Owner = owner;
+        else card.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        card.ShowDialog();
+        return card._confirmed;
+    }
+
     /// <summary>Shows the message over <paramref name="owner"/>, then gives the keyboard back to where it was.</summary>
     public static void Show(Window? owner, string message, bool error = true)
     {
@@ -62,10 +77,12 @@ public partial class MessageCard : Window
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key is Key.Enter or Key.Return or Key.Escape) { Close(); e.Handled = true; }
+        if (e.Key is Key.Enter or Key.Return) { _confirmed = true; Close(); e.Handled = true; }
+        else if (e.Key == Key.Escape) { Close(); e.Handled = true; }
     }
 
-    private void OnOk(object sender, RoutedEventArgs e) => Close();
+    private void OnOk(object sender, RoutedEventArgs e) { _confirmed = true; Close(); }
+    private void OnCancel(object sender, RoutedEventArgs e) => Close();
 
     private void OnDrag(object sender, MouseButtonEventArgs e)
     {

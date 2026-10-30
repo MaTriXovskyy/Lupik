@@ -37,7 +37,7 @@ public partial class MediaViewer : UserControl
     {
         InitializeComponent();
         _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _progressTimer.Tick += (_, _) => UpdateProgress();
+        _progressTimer.Tick += (_, _) => { UpdateProgress(); FollowEdit(); };
         VolumeSlider.Value = _volume;
     }
 
@@ -45,6 +45,7 @@ public partial class MediaViewer : UserControl
     public async Task<bool> LoadAsync(string filePath)
     {
         Stop(); // also completes an older load still waiting
+        _sourcePath = filePath;
         var opening = _opening = new TaskCompletionSource<bool>();
         // MediaElement closes asynchronously. Give it a disposable copy so its native
         // decoder can never retain the user's original after this preview closes.
@@ -183,6 +184,7 @@ public partial class MediaViewer : UserControl
         SeekSlider.Value = Player.Position.TotalSeconds;
         _updatingSeek = false;
         TimeText.Text = $"{Format(Player.Position)} / {Format(length)}";
+        if (_editing) MovePlayhead();
     }
 
     private static string Format(TimeSpan t) =>

@@ -162,7 +162,7 @@ static class PdfAndNewsChecks
             foreach (var (language, _) in Loc.Languages)
             {
                 Loc.Instance.SetLanguage(language);
-                Assert(entries.Children.Count == 19, "Missing release-history versions");
+                Assert(entries.Children.Count == Lupik.Core.ReleaseHistory.Entries.Length, "Missing release-history versions");
                 foreach (var block in Descendants<TextBlock>(entries))
                     Assert(!block.Text.StartsWith("news.") && !block.Text.Contains("AutoHotkey", StringComparison.OrdinalIgnoreCase), "Missing/forbidden release-history text");
             }

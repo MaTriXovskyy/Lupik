@@ -16,3 +16,8 @@ including in closed or paid software, as long as the notices below travel with t
 | [ZXing.Net](https://github.com/micjahn/ZXing.Net) | reading QR codes and barcodes | Apache-2.0 |
 | [Velopack](https://github.com/velopack/velopack) | the installer and updates | MIT |
 | [Lucide](https://lucide.dev) | icons | ISC |
+
+[FFmpeg](https://ffmpeg.org) (`ffmpeg\ffmpeg.exe`, trimming and cutting audio and video) is the LGPL build from
+[BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds), fetched at build time by `tools/get-ffmpeg.ps1` and checked
+against the release's SHA-256 list. It is licensed under the LGPL-2.1-or-later (see `licenses/ffmpeg/LICENSE.txt`);
+Lupik runs it as a separate program.

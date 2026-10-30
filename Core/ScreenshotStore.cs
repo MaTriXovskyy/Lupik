@@ -25,6 +25,13 @@ internal static class ScreenshotStore
         catch { try { File.Delete(path); } catch { } throw; }
     });
 
+    /// <summary>A capture of this session (a temporary file: edits apply to it directly, no "save as" questions).</summary>
+    internal static bool Owns(string path)
+    {
+        try { return Path.GetFullPath(path).StartsWith(Session + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase); }
+        catch { return false; }
+    }
+
     internal static void CleanOldSessions()
     {
         try

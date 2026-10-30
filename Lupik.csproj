@@ -21,7 +21,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>1.8.1</Version>
+    <Version>1.9.0</Version>
     <Product>Lupik</Product>
   </PropertyGroup>
 
@@ -42,7 +42,14 @@
     <None Include="test_samples\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="licenses\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- FFmpeg (audio / video edits) ships next to Lupik; tools/get-ffmpeg.ps1 fetches it, it isn't kept in git -->
+    <None Include="tools\ffmpeg\ffmpeg.exe" Link="ffmpeg\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="tools\ffmpeg\LICENSE.txt" Link="licenses\ffmpeg\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="FetchFfmpeg" BeforeTargets="BeforeBuild" Condition="!Exists('$(MSBuildProjectDirectory)\tools\ffmpeg\ffmpeg.exe')">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\get-ffmpeg.ps1&quot; -Destination &quot;$(MSBuildProjectDirectory)\tools\ffmpeg&quot;" />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />

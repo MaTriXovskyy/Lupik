@@ -194,7 +194,7 @@ internal sealed class ScreenshotOverlay : Window
         image.Freeze();
         _surface = new Surface(session, image, monitor);
         _toolbar = new ScreenshotToolbar(multipleMonitors) { HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12,24,12,0) };
+            VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12,0,12,0) };
         _toolbar.ModePicked += mode => _session.InvokeMode(mode,Monitor);
         _toolbar.TextToggleRequested += _session.ToggleTextMode;
         _toolbar.SetMode(session.Mode,session.TextMode);
@@ -212,10 +212,17 @@ internal sealed class ScreenshotOverlay : Window
         {
             if ((e.Key == Key.System ? e.SystemKey : e.Key) == Key.Escape) { _session.Cancel(); e.Handled = true; }
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
-            int number = key >= Key.D1 && key <= Key.D4 ? key - Key.D1 : key >= Key.NumPad1 && key <= Key.NumPad4 ? key - Key.NumPad1 : -1;
-            if (number >= 0 && (number < 3 || multipleMonitors)) { _session.InvokeMode((ScreenshotMode)number,Monitor); e.Handled = true; }
-            if(key is Key.D5 or Key.NumPad5) { _session.SetMode(ScreenshotMode.Freeform); e.Handled=true; }
-            if(key is Key.D6 or Key.NumPad6) { _session.SetMode(ScreenshotMode.Scroll); e.Handled=true; }
+            // 1–6 in the toolbar's order: area, lasso, window, screen, scrolling, all screens
+            int number = key >= Key.D1 && key <= Key.D6 ? key - Key.D1 + 1 : key >= Key.NumPad1 && key <= Key.NumPad6 ? key - Key.NumPad1 + 1 : 0;
+            switch (number)
+            {
+                case 1: _session.InvokeMode(ScreenshotMode.Region,Monitor); e.Handled = true; break;
+                case 2: _session.SetMode(ScreenshotMode.Freeform); e.Handled = true; break;
+                case 3: _session.InvokeMode(ScreenshotMode.Window,Monitor); e.Handled = true; break;
+                case 4: _session.InvokeMode(ScreenshotMode.Monitor,Monitor); e.Handled = true; break;
+                case 5: _session.SetMode(ScreenshotMode.Scroll); e.Handled = true; break;
+                case 6 when multipleMonitors: _session.InvokeMode(ScreenshotMode.Desktop,Monitor); e.Handled = true; break;
+            }
             if(key==Key.T && KeyState.Modifiers==ModifierKeys.None)
             { if(!e.IsRepeat) _session.ToggleTextMode(); e.Handled=true; }
         };

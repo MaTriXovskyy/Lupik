@@ -887,13 +887,22 @@ public partial class ImageViewer : UserControl
         if (IsReadingText) EndTextMode();
         ResetZoom();
         CropLayer.Visibility = Visibility.Visible;
+        // Room around the picture: corners at the very edge of the window are easy to grab, and the hint above it
+        // doesn't cover the frame
+        PreviewImage.Margin = CropMargin;
         UpdateLayout();
         _imageBounds = DisplayedImageBounds();
         _crop = _imageBounds;
         RedrawCrop();
     }
 
-    public void CancelCrop() => CropLayer.Visibility = Visibility.Collapsed;
+    public void CancelCrop()
+    {
+        CropLayer.Visibility = Visibility.Collapsed;
+        PreviewImage.Margin = new Thickness(0);
+    }
+
+    private static readonly Thickness CropMargin = new(40, 56, 40, 40);
 
     /// <summary>The selection as fractions (0..1) of the image as shown, i.e. after rotation.</summary>
     public Rect CropFraction =>
@@ -914,11 +923,14 @@ public partial class ImageViewer : UserControl
         RedrawCrop();
     }
 
-    /// <summary>What the mouse is over: a corner, an edge (anywhere along it), the inside, or nothing.</summary>
+    /// <summary>
+    /// What the mouse is over: a corner, an edge (anywhere along it), the inside, or nothing. The grab zones are much
+    /// bigger than what's drawn, reach outside the frame too, and shrink on a small frame so it can still be moved.
+    /// </summary>
     private CropDrag HitCrop(Point p)
     {
-        const double corner = 18, edge = 10;
         var r = _crop;
+        double corner = Math.Min(24, Math.Max(10, Math.Min(r.Width, r.Height) / 3)), edge = Math.Min(14, corner);
         bool Near(Point c) => Math.Abs(p.X - c.X) <= corner && Math.Abs(p.Y - c.Y) <= corner;
         if (Near(r.TopLeft)) return CropDrag.TopLeft;
         if (Near(r.TopRight)) return CropDrag.TopRight;
@@ -941,6 +953,7 @@ public partial class ImageViewer : UserControl
         _cropAtDragStart = _crop;
         _lastCropPoint = p;
         CropLayer.CaptureMouse();
+        CropGrid.Visibility = Visibility.Visible;
         e.Handled = true;
     }
 
@@ -976,8 +989,10 @@ public partial class ImageViewer : UserControl
         var s = _cropAtDragStart;
         if (_cropDrag == CropDrag.Move)
         {
-            double x = Math.Clamp(s.X + p.X - _cropAnchor.X, _imageBounds.Left, _imageBounds.Right - s.Width);
-            double y = Math.Clamp(s.Y + p.Y - _cropAnchor.Y, _imageBounds.Top, _imageBounds.Bottom - s.Height);
+            // A frame as big as the picture (rounding can make it a hair bigger) has nowhere to move: Math.Clamp
+            // would throw on a range whose end is before its start
+            double x = Math.Clamp(s.X + p.X - _cropAnchor.X, _imageBounds.Left, Math.Max(_imageBounds.Left, _imageBounds.Right - s.Width));
+            double y = Math.Clamp(s.Y + p.Y - _cropAnchor.Y, _imageBounds.Top, Math.Max(_imageBounds.Top, _imageBounds.Bottom - s.Height));
             _crop = new Rect(x, y, s.Width, s.Height);
         }
         else
@@ -1047,6 +1062,7 @@ public partial class ImageViewer : UserControl
     {
         CropLayer.ReleaseMouseCapture();
         _cropDrag = CropDrag.None;
+        CropGrid.Visibility = Visibility.Collapsed;
         if (_crop.Width < 4 || _crop.Height < 4) _crop = _imageBounds; // a click, not a drag: back to everything
         RedrawCrop();
     }
@@ -1065,15 +1081,10 @@ public partial class ImageViewer : UserControl
         CropFrame.Width = _crop.Width;
         CropFrame.Height = _crop.Height;
 
-        void Place(FrameworkElement h, Point c) { Canvas.SetLeft(h, c.X - h.Width / 2); Canvas.SetTop(h, c.Y - h.Height / 2); }
-        Place(HandleTL, _crop.TopLeft);
-        Place(HandleTR, _crop.TopRight);
-        Place(HandleBL, _crop.BottomLeft);
-        Place(HandleBR, _crop.BottomRight);
-        Place(HandleT, new Point(_crop.X + _crop.Width / 2, _crop.Top));
-        Place(HandleB, new Point(_crop.X + _crop.Width / 2, _crop.Bottom));
-        Place(HandleL, new Point(_crop.Left, _crop.Y + _crop.Height / 2));
-        Place(HandleR, new Point(_crop.Right, _crop.Y + _crop.Height / 2));
+        var handles = CropHandleGeometry(_crop);
+        CropHandles.Data = handles;
+        CropHandlesOutline.Data = handles;
+        CropGrid.Data = ThirdsGeometry(_crop);
 
         // Pixel size of the selection, next to the key hints
         var f = CropFraction;
@@ -1084,6 +1095,49 @@ public partial class ImageViewer : UserControl
         CropHint.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         Canvas.SetLeft(CropHint, Math.Max(8, (CropLayer.ActualWidth - CropHint.DesiredSize.Width) / 2));
         Canvas.SetTop(CropHint, 12);
+    }
+
+    /// <summary>L-shaped corners and short bars in the middle of each edge, drawn just inside the frame.</summary>
+    private static Geometry CropHandleGeometry(Rect r)
+    {
+        const double inset = 2; // half the stroke: the gold sits inside the frame line
+        double arm = Math.Min(22, Math.Min(r.Width, r.Height) / 3), bar = Math.Min(14, Math.Min(r.Width, r.Height) / 6);
+        double l = r.Left + inset, t = r.Top + inset, ri = r.Right - inset, b = r.Bottom - inset;
+        double cx = r.X + r.Width / 2, cy = r.Y + r.Height / 2;
+        var g = new StreamGeometry();
+        using (var c = g.Open())
+        {
+            void Line(params Point[] points)
+            {
+                c.BeginFigure(points[0], false, false);
+                for (int i = 1; i < points.Length; i++) c.LineTo(points[i], true, true);
+            }
+            Line(new(l, t + arm), new(l, t), new(l + arm, t));
+            Line(new(ri - arm, t), new(ri, t), new(ri, t + arm));
+            Line(new(l, b - arm), new(l, b), new(l + arm, b));
+            Line(new(ri - arm, b), new(ri, b), new(ri, b - arm));
+            if (r.Width > 4 * arm) { Line(new(cx - bar, t), new(cx + bar, t)); Line(new(cx - bar, b), new(cx + bar, b)); }
+            if (r.Height > 4 * arm) { Line(new(l, cy - bar), new(l, cy + bar)); Line(new(ri, cy - bar), new(ri, cy + bar)); }
+        }
+        g.Freeze();
+        return g;
+    }
+
+    /// <summary>Rule-of-thirds lines, shown while the frame is dragged.</summary>
+    private static Geometry ThirdsGeometry(Rect r)
+    {
+        var g = new StreamGeometry();
+        using (var c = g.Open())
+        {
+            for (int i = 1; i <= 2; i++)
+            {
+                double x = r.X + r.Width * i / 3, y = r.Y + r.Height * i / 3;
+                c.BeginFigure(new Point(x, r.Top), false, false); c.LineTo(new Point(x, r.Bottom), true, false);
+                c.BeginFigure(new Point(r.Left, y), false, false); c.LineTo(new Point(r.Right, y), true, false);
+            }
+        }
+        g.Freeze();
+        return g;
     }
 
     private void OnInfoClicked(object sender, RoutedEventArgs e) => ToggleInfo();

@@ -92,20 +92,16 @@
             </Border>
         </Canvas>
 
-        <!-- Crop mode: dimmed surroundings, gold frame with corner handles -->
+        <!-- Crop mode: dimmed surroundings, gold frame, L-shaped corners and edge bars drawn inside it (they never fall
+             off the picture), a rule-of-thirds grid while dragging. The picture gets a margin, so every corner is reachable. -->
         <Canvas x:Name="CropLayer" Grid.Row="0" Background="Transparent" Visibility="Collapsed" ClipToBounds="True" Cursor="Cross"
                 MouseLeftButtonDown="OnCropMouseDown" MouseMove="OnCropMouseMove" MouseLeftButtonUp="OnCropMouseUp" SizeChanged="OnCropLayerSizeChanged">
             <Path x:Name="CropShade" Fill="#A6000000" IsHitTestVisible="False"/>
             <Rectangle x:Name="CropFrame" Stroke="{DynamicResource Gold}" StrokeThickness="1.5" IsHitTestVisible="False"/>
-            <!-- Handles: big corners, bars in the middle of each edge (the whole edge can be dragged) -->
-            <Rectangle x:Name="HandleTL" Width="20" Height="20" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
-            <Rectangle x:Name="HandleTR" Width="20" Height="20" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
-            <Rectangle x:Name="HandleBL" Width="20" Height="20" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
-            <Rectangle x:Name="HandleBR" Width="20" Height="20" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
-            <Rectangle x:Name="HandleT" Width="34" Height="10" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
-            <Rectangle x:Name="HandleB" Width="34" Height="10" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
-            <Rectangle x:Name="HandleL" Width="10" Height="34" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
-            <Rectangle x:Name="HandleR" Width="10" Height="34" Fill="{DynamicResource Gold}" Stroke="{DynamicResource OnGold}" StrokeThickness="2" RadiusX="4" RadiusY="4" IsHitTestVisible="False"/>
+            <Path x:Name="CropGrid" Stroke="#59FFFFFF" StrokeThickness="1" IsHitTestVisible="False" Visibility="Collapsed"/>
+            <!-- A dark outline under the gold keeps the handles visible on light and dark pictures alike -->
+            <Path x:Name="CropHandlesOutline" Stroke="#99000000" StrokeThickness="6.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" IsHitTestVisible="False"/>
+            <Path x:Name="CropHandles" Stroke="{DynamicResource Gold}" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" IsHitTestVisible="False"/>
             <Border x:Name="CropHint" Background="{DynamicResource cE61B1917}" BorderBrush="{DynamicResource c3B3631}" BorderThickness="1" CornerRadius="8" Padding="12,6" IsHitTestVisible="False">
                 <TextBlock x:Name="CropHintText" Foreground="{DynamicResource cECE6DC}" FontSize="12">
                     <Run x:Name="CropSizeRun" Text="" Foreground="{DynamicResource GoldHover}" FontWeight="SemiBold"/><Run Text="   "/><Run Text="{loc:T crop.modifiers}" Foreground="{DynamicResource cB5AB9D}"/>

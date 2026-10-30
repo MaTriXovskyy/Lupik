@@ -32,12 +32,20 @@
                 </StackPanel>
             </DockPanel>
 
-            <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Margin="0,20,0,0" Click="OnOk">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="OK" VerticalAlignment="Center"/>
-                    <Border Style="{StaticResource KeyHint}"><TextBlock Text="Enter" FontSize="10.5" Foreground="{DynamicResource OnGoldHint}"/></Border>
-                </StackPanel>
-            </Button>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button x:Name="CancelButton" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="OnCancel" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="CancelText" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource KeyHint}"><TextBlock Text="Esc" FontSize="10.5" Foreground="{DynamicResource cB5AB9D}"/></Border>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource PrimaryButton}" Click="OnOk">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="OkText" Text="OK" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource KeyHint}"><TextBlock Text="Enter" FontSize="10.5" Foreground="{DynamicResource OnGoldHint}"/></Border>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </StackPanel>
     </Border>
 </Window>

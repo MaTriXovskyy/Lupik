@@ -96,6 +96,7 @@ public partial class MainWindow : Window
     {
         if (_saving) return;
         if (EditMode && !ExitEdit(afterSave: ShowWelcome, reloadDiscarded: false)) return;
+        ForgetScreenshotUndo();
         App.Log("[MainWindow] ShowWelcome called.");
         UpdateWelcomeText();
         _currentFilePath = "";
@@ -127,6 +128,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        ForgetScreenshotUndo(keepFor: filePath); // the undo copy belongs to the capture shown
         // Another file while editing: finish editing first (asks about unsaved changes)
         if (EditMode && !string.Equals(filePath, _editingPath, StringComparison.OrdinalIgnoreCase) &&
             !ExitEdit(afterSave: () => _ = ShowFile(filePath), reloadDiscarded: false)) return;
@@ -395,6 +397,7 @@ public partial class MainWindow : Window
     // Release synchronously on close, including cached previews.
     private void ReleaseResources()
     {
+        ForgetScreenshotUndo();
         SystemPreviewControl.Close();
         FontViewerControl.Release();
         ImageViewerControl.Release();

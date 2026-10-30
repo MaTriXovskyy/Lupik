@@ -36,6 +36,43 @@ public partial class MainWindow
         int rotation = ImageViewerControl.Rotation;
         ImageViewerControl.CancelCrop();
 
+        void WriteCrop(string target)
+        {
+            using var image = Views.ImageViewer.OpenForExport(source);
+            image.AutoOrient();
+            if (rotation != 0) image.Rotate(rotation);
+            // The selection is relative to the image as shown (rotated), in the full-resolution pixels
+            int x = (int)Math.Round(f.X * image.Width), y = (int)Math.Round(f.Y * image.Height);
+            int w = (int)Math.Round(f.Width * image.Width), h = (int)Math.Round(f.Height * image.Height);
+            w = Math.Clamp(w, 1, (int)image.Width - x);
+            h = Math.Clamp(h, 1, (int)image.Height - y);
+            image.Crop(new ImageMagick.MagickGeometry(x, y, (uint)w, (uint)h));
+            image.ResetPage();
+            if (Path.GetExtension(target).ToLowerInvariant() is ".jpg" or ".jpeg") image.Quality = 95;
+            image.Write(target);
+        }
+
+        if (ScreenshotStore.Owns(source))
+        {
+            // A screenshot is a temporary file: cropped in place, Ctrl+Z takes it back
+            try
+            {
+                byte[] before = await File.ReadAllBytesAsync(source);
+                await ReplaceScreenshotAsync(source, temp => Task.Run(() => WriteCrop(temp)));
+                _screenshotUndo = new ScreenshotUndo(source, before, null);
+                await ShowFile(source);
+                await CopyScreenshotAsync(source);
+                ShowNotice(Loc.T("capture.applied"), success: true);
+                App.Log($"[MainWindow] Cropped screenshot '{source}'");
+            }
+            catch (Exception ex)
+            {
+                App.Log($"[MainWindow] Crop failed: {ex}");
+                Views.MessageCard.Show(this, Loc.T("crop.saveError", ex.Message));
+            }
+            return;
+        }
+
         string ext = Path.GetExtension(source).ToLowerInvariant();
         // Vector and exotic formats are saved as PNG; common raster formats keep their own
         string targetExt = ext is ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" or ".tif" or ".tiff" ? ext : ".png";
@@ -58,21 +95,7 @@ public partial class MainWindow
 
         try
         {
-            await Task.Run(() =>
-            {
-                using var image = Views.ImageViewer.OpenForExport(source);
-                image.AutoOrient();
-                if (rotation != 0) image.Rotate(rotation);
-                // The selection is relative to the image as shown (rotated), in the full-resolution pixels
-                int x = (int)Math.Round(f.X * image.Width), y = (int)Math.Round(f.Y * image.Height);
-                int w = (int)Math.Round(f.Width * image.Width), h = (int)Math.Round(f.Height * image.Height);
-                w = Math.Clamp(w, 1, (int)image.Width - x);
-                h = Math.Clamp(h, 1, (int)image.Height - y);
-                image.Crop(new ImageMagick.MagickGeometry(x, y, (uint)w, (uint)h));
-                image.ResetPage();
-                if (Path.GetExtension(target).ToLowerInvariant() is ".jpg" or ".jpeg") image.Quality = 95;
-                image.Write(target);
-            });
+            await Task.Run(() => WriteCrop(target));
             App.Log($"[MainWindow] Cropped '{source}' to '{target}'");
             ShowToast(Loc.T("crop.saved", Path.GetFileName(target)));
         }
