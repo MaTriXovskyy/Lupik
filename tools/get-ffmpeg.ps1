@@ -20,7 +20,11 @@ New-Item -ItemType Directory -Force $Destination | Out-Null
 $zip = Join-Path $Destination 'download.zip.part'
 try {
     Invoke-WebRequest -UseBasicParsing ($release + $name) -OutFile $zip
-    $actual = (Get-FileHash $zip -Algorithm SHA256).Hash
+    # Plain .NET, not Get-FileHash: under dotnet build on the GitHub runner, Windows PowerShell gets PowerShell 7's
+    # module path and can't load that cmdlet
+    $stream = [IO.File]::OpenRead($zip)
+    try { $actual = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($stream)).Replace('-', '') }
+    finally { $stream.Dispose() }
     if ($actual -ne $hash) { throw "Checksum mismatch for $name" }
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem

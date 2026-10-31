@@ -48,7 +48,9 @@
   </ItemGroup>
 
   <Target Name="FetchFfmpeg" BeforeTargets="BeforeBuild" Condition="!Exists('$(MSBuildProjectDirectory)\tools\ffmpeg\ffmpeg.exe')">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\get-ffmpeg.ps1&quot; -Destination &quot;$(MSBuildProjectDirectory)\tools\ffmpeg&quot;" />
+    <!-- Windows PowerShell's own module path: dotnet passes PowerShell 7's on, where its cmdlets aren't found -->
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\get-ffmpeg.ps1&quot; -Destination &quot;$(MSBuildProjectDirectory)\tools\ffmpeg&quot;"
+          EnvironmentVariables="PSModulePath=$(SystemRoot)\System32\WindowsPowerShell\v1.0\Modules" />
   </Target>
 
   <ItemGroup>
