@@ -357,6 +357,7 @@
   "news.keyboard": "Poprawki obsługi klawiatury.",
   "news.loading": "Pasek postępu ładowania obrazów w kolorze motywu.",
   "news.markdown": "Podgląd plików Markdown.",
+  "news.imageMemory": "Zwalnianie pamięci i przerywanie ładowania dużych obrazów po zamknięciu podglądu.",
   "news.mediaEdit": "Przycinanie audio i wideo oraz wycinanie fragmentów ze środka (E).",
   "news.ocr": "Odczyt i kopiowanie tekstu ze zdjęć.",
   "news.office": "Wbudowany podgląd dokumentów Word i arkuszy Excel.",

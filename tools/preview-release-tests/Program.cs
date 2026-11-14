@@ -17,6 +17,7 @@ class Check {
   int result=0; var samples = System.IO.Path.Combine(args[0], "test_samples");
   app.Dispatcher.InvokeAsync(async () => {
    try {
+    if (args.Length > 1 && args[1] == "--image-release") { await ImageReleaseChecks.Run(samples); return; }
     if (args.Length > 1 && args[1] == "--performance") {
      await PerformanceChecks.Run(args.Skip(2).ToArray());
      return;

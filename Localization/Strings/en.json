@@ -346,6 +346,7 @@
   "news.keyboard": "Keyboard handling fixes.",
   "news.loading": "Image loading progress bar in the accent colour.",
   "news.markdown": "Markdown file previews.",
+  "news.imageMemory": "Free up memory and cancel loading large images when the preview closes.",
   "news.mediaEdit": "Trim audio and video, and cut parts out of the middle (E).",
   "news.ocr": "Read and copy text from pictures.",
   "news.office": "Built-in Word document and Excel workbook previews.",

@@ -346,6 +346,7 @@
   "news.keyboard": "Corrections de la gestion du clavier.",
   "news.loading": "Barre de chargement des images dans la couleur du thème.",
   "news.markdown": "Aperçu des fichiers Markdown.",
+  "news.imageMemory": "Libération de la mémoire et arrêt du chargement des grandes images à la fermeture de l’aperçu.",
   "news.mediaEdit": "Raccourcir l'audio et la vidéo et couper des passages au milieu (E).",
   "news.ocr": "Reconnaissance et copie du texte des images.",
   "news.office": "Aperçu intégré des documents Word et classeurs Excel.",

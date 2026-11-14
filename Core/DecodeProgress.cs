@@ -5,6 +5,8 @@ namespace Lupik.Core;
 /// <summary>Shared by a cached decode and its viewer, including decodes started by neighbor preloading.</summary>
 internal sealed class DecodeProgress
 {
+    public CancellationToken Cancellation { get; init; }
+
     private double _value = double.NaN;
     public double Value => Volatile.Read(ref _value);
 
@@ -49,6 +51,7 @@ internal sealed class DecodeReadStream(string path, DecodeProgress? progress) : 
 
     public override int Read(byte[] buffer, int offset, int count)
     {
+        progress?.Cancellation.ThrowIfCancellationRequested();
         long start = Position;
         int read = _source.Read(buffer, offset, count);
         ReadRange(start, read);
@@ -56,6 +59,7 @@ internal sealed class DecodeReadStream(string path, DecodeProgress? progress) : 
     }
     public override int Read(Span<byte> buffer)
     {
+        progress?.Cancellation.ThrowIfCancellationRequested();
         long start = Position;
         int read = _source.Read(buffer);
         ReadRange(start, read);

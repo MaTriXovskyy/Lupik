@@ -346,6 +346,7 @@
   "news.keyboard": "Correzioni nella gestione della tastiera.",
   "news.loading": "Barra di caricamento immagini nel colore del tema.",
   "news.markdown": "Anteprima dei file Markdown.",
+  "news.imageMemory": "Liberazione della memoria e interruzione del caricamento delle immagini grandi alla chiusura dell’anteprima.",
   "news.mediaEdit": "Accorciare audio e video e tagliare parti nel mezzo (E).",
   "news.ocr": "Riconoscimento e copia del testo dalle immagini.",
   "news.office": "Anteprima integrata di documenti Word e cartelle Excel.",

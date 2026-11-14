@@ -229,7 +229,7 @@ public partial class ImageViewer : UserControl
         if (IsReadingText) EndTextMode(); // another picture: its own text
         try
         {
-            // The shown image stays cached too: reopening it (Space, Space) is instant instead of a fresh decode
+            // Reuse decodes while navigating within the current preview session.
             var entry = GetDecode(filePath);
             var decoding = entry.Decoding;
             _ = decoding.ContinueWith(_ => App.Log($"[Perf] Image decode ready in {loadWatch.ElapsedMilliseconds} ms (load {token})"),
@@ -240,6 +240,7 @@ public partial class ImageViewer : UserControl
             // A slow decode (big PNG, PSD, AVIF...): show a quick stand-in first, the real picture replaces it
             if (await Task.WhenAny(decoding, Task.Delay(QuickPreviewAfterMs)) != decoding)
             {
+                if (token != _loadToken) return false;
                 var quick = await QuickPreviewAsync(filePath, decoding);
                 App.Log($"[Perf] Quick preview returned in {loadWatch.ElapsedMilliseconds} ms; full decode ready={decoding.IsCompleted} (load {token})");
                 if (token != _loadToken) return false;
@@ -420,6 +421,7 @@ public partial class ImageViewer : UserControl
         catch (Exception ex)
         {
             // Damaged file or missing Windows codec: Magick.NET is more forgiving
+            progress?.Cancellation.ThrowIfCancellationRequested();
             App.Log($"[ImageViewer] Windows decoder failed ({ex.Message}), falling back to Magick.NET");
             return DecodeWithMagick(filePath, progress);
         }
@@ -469,7 +471,9 @@ public partial class ImageViewer : UserControl
         if (PreviewImage.Source is not BitmapSource shown || _currentPath == null) return null;
         if (!_showingPlaceholder && !IsReduced(shown)) return shown;
         string path = _currentPath;
-        var (bitmap, _, _, _) = await Task.Run(() => Decode(path, full: true));
+        int token = _loadToken;
+        var (bitmap, _, _, _) = await StartDecode(path, full: true).Decoding;
+        if (token != _loadToken) return null;
         return bitmap;
     }
 
@@ -477,10 +481,21 @@ public partial class ImageViewer : UserControl
 
     private sealed record CacheEntry(DateTime LastWrite, Task<(BitmapSource, long, int, int)> Decoding, Core.DecodeProgress Progress);
 
-    private static CacheEntry StartDecode(string path, bool full = false)
+    private System.Threading.CancellationTokenSource _decodeSession = new();
+
+    private CacheEntry StartDecode(string path, bool full = false)
     {
-        var progress = new Core.DecodeProgress();
-        return new CacheEntry(File.GetLastWriteTimeUtc(path), Task.Run(() => Decode(path, full, progress)), progress);
+        var cancellation = _decodeSession.Token;
+        var progress = new Core.DecodeProgress { Cancellation = cancellation };
+        return new CacheEntry(File.GetLastWriteTimeUtc(path), Task.Run(() =>
+        {
+            cancellation.ThrowIfCancellationRequested();
+            var result = Decode(path, full, progress);
+            // A native codec may finish its current operation before noticing cancellation.
+            // Never retain its bitmap as the result of a closed preview's task.
+            cancellation.ThrowIfCancellationRequested();
+            return result;
+        }, cancellation), progress);
     }
 
     private const int MaxCachedImages = 4; // decoded images are capped at 4096 px, so ≤ ~64 MB each
@@ -492,8 +507,15 @@ public partial class ImageViewer : UserControl
     {
         EndTextMode();
         _loadToken++;
+        _decodeSession.Cancel();
+        _decodeSession.Dispose();
+        _decodeSession = new();
         _activeDecode = null;
         PreviewImage.Source = null;
+        _currentPath = null;
+        _naturalWidth = _naturalHeight = 0;
+        _showingPlaceholder = false;
+        _detailRequested = false;
         _cache.Clear();
         _cacheOrder.Clear();
         FilmstripList.ItemsSource = null;
@@ -547,7 +569,7 @@ public partial class ImageViewer : UserControl
     {
         try
         {
-            if (_cache.TryGetValue(filePath, out var entry) && !entry.Decoding.IsFaulted &&
+            if (_cache.TryGetValue(filePath, out var entry) && !entry.Decoding.IsFaulted && !entry.Decoding.IsCanceled &&
                 entry.LastWrite == File.GetLastWriteTimeUtc(filePath))
                 return entry;
         }

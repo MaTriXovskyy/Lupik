@@ -346,6 +346,7 @@
   "news.keyboard": "Correcciones del manejo del teclado.",
   "news.loading": "Barra de carga de imágenes con el color del tema.",
   "news.markdown": "Vista previa de archivos Markdown.",
+  "news.imageMemory": "Liberación de memoria y cancelación de la carga de imágenes grandes al cerrar la vista previa.",
   "news.mediaEdit": "Recortar audio y vídeo y quitar fragmentos del medio (E).",
   "news.ocr": "Lectura y copia de texto de imágenes.",
   "news.office": "Vista previa integrada de documentos Word y libros Excel.",

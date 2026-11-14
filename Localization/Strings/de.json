@@ -346,6 +346,7 @@
   "news.keyboard": "Verbesserte Tastaturbedienung.",
   "news.loading": "Ladefortschritt für Bilder in der Akzentfarbe.",
   "news.markdown": "Vorschau für Markdown-Dateien.",
+  "news.imageMemory": "Speicher freigeben und das Laden großer Bilder beim Schließen der Vorschau abbrechen.",
   "news.mediaEdit": "Audio und Video kürzen und Teile aus der Mitte herausschneiden (E).",
   "news.ocr": "Text aus Bildern erkennen und kopieren.",
   "news.office": "Integrierte Vorschau für Word-Dokumente und Excel-Dateien.",
